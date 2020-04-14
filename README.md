@@ -94,6 +94,14 @@ config['init_options'] = {
 ```
 
 
+You may also want to create mappings for the code action command and to organize imports:
+
+```
+nnoremap <A-CR> <Cmd>lua require'jdtls'.code_action()<CR>
+nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
+```
+
+
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
