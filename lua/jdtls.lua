@@ -256,6 +256,9 @@ function M.location_callback(autojump)
 end
 
 
+local original_configurations = nil
+
+
 function M.setup_dap()
   local status, dap = pcall(require, 'dap')
   if not status then
@@ -270,14 +273,17 @@ function M.setup_dap()
       callback({ type = 'server'; host = '127.0.0.1'; port = port; })
     end)
   end
+  if not original_configurations then
+    original_configurations = dap.configurations.java or {}
+  end
+  local configurations = vim.deepcopy(original_configurations)
+  dap.configurations.java = configurations
 
   M.execute_command({command = 'vscode.java.resolveMainClass'}, function(err0, mainclasses)
     if err0 then
       print('Could not resolve mainclasses: ' .. err0.message)
       return
     end
-    local configurations = {}
-    dap.configurations.java = configurations
 
     for _, mc in pairs(mainclasses) do
       local mainclass = mc.mainClass
