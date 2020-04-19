@@ -177,9 +177,11 @@ end
 
 
 -- Until https://github.com/neovim/neovim/pull/11607 is merged
-function M.execute_command(command)
-  vim.lsp.buf_request(0, 'workspace/executeCommand', command, function(err, _, _)
-    if err then
+function M.execute_command(command, callback)
+  vim.lsp.buf_request(0, 'workspace/executeCommand', command, function(err, _, resp)
+    if callback then
+      callback(err, resp)
+    elseif err then
       print("Could not execute code action: " .. err.message)
     end
   end)
@@ -251,6 +253,63 @@ function M.location_callback(autojump)
       end
     end
   end
+end
+
+
+function M.setup_dap()
+  local status, dap = pcall(require, 'dap')
+  if not status then
+    print('nvim-dap is not available')
+    return
+  end
+
+  dap.adapters.java = function(callback)
+    M.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
+      assert(not err0, vim.inspect(err0))
+
+      callback({ type = 'server'; host = '127.0.0.1'; port = port; })
+    end)
+  end
+
+  M.execute_command({command = 'vscode.java.resolveMainClass'}, function(err0, mainclasses)
+    if err0 then
+      print('Could not resolve mainclasses: ' .. err0.message)
+      return
+    end
+    local configurations = {}
+    dap.configurations.java = configurations
+
+    for _, mc in pairs(mainclasses) do
+      local mainclass = mc.mainClass
+      local project = mc.projectName
+
+      M.execute_command({command = 'vscode.java.resolveJavaExecutable', arguments = { mainclass, project }}, function(err1, java_exec)
+        if err1 then
+          print('Could not resolve java executable: ' .. err1.message)
+          return
+        end
+
+        M.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err2, paths)
+          if err2 then
+            print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err2.message))
+            return
+          end
+          local config = {
+            type = 'java';
+            name = 'Launch ' .. mainclass;
+            projectName = project;
+            mainClass = mainclass;
+            modulePaths = paths[1];
+            classPaths = paths[2];
+            javaExec = java_exec;
+            request = 'launch';
+            console = 'integratedTerminal';
+          }
+          table.insert(configurations, config)
+        end)
+      end)
+    end
+  end)
 end
 
 

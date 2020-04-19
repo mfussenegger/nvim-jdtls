@@ -12,6 +12,7 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] Code action extensions (`java.apply.workspaceEdit`).
 - [x] `toString` generation.
 - [x] `hashCode` and `equals` generation.
+- [x] Integration with [nvim-dap][5]
 
 
 ## Installation
@@ -102,7 +103,34 @@ nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
 ```
 
 
+## nvim-dap
+
+
+`nvim-jdtls` provides integration with [nvim-dap][5].
+
+
+For this to work, [eclipse.jdt.ls][3] needs to load the [java-debug][6] extension.
+To do so, clone [java-debug][6] and run `./mvnw clean install` in the cloned directory, then extend the `initializationOptions` with which you start [eclipse.jdt.ls][3]:
+
+```lua
+config['init_options'] = {
+  bundles = {
+    vim.fn.glob("path/to/java.debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar")
+  };
+}
+```
+
+You also need to call `require('jdtls').setup_dap()` to have it register a `java` adapter for `nvim-dap` and to create configurations for all discovered main classes:
+
+```lua
+config['on_attach'] = function(client, bufnr)
+  require('jdtls').setup_dap()
+end
+```
+
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
 [4]: https://github.com/neovim/neovim/releases/tag/nightly
+[5]: https://github.com/mfussenegger/nvim-dap
+[6]: https://github.com/microsoft/java-debug
