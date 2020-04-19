@@ -39,11 +39,6 @@ The callbacks:
     orig_publishDiagnostics(err, method, result)
   end
   vim.lsp.callbacks["textDocument/publishDiagnostics"] = publish_diagnostics,
-  vim.lsp.callbacks['textDocument/declaration'] = jdtls.location_callback(true),
-  vim.lsp.callbacks['textDocument/definition'] = jdtls.location_callback(true),
-  vim.lsp.callbacks['textDocument/typeDefinition'] = jdtls.location_callback(true),
-  vim.lsp.callbacks['textDocument/implementation'] = jdtls.location_callback(true),
-  vim.lsp.callbacks['textDocument/references'] = jdtls.location_callback(false),
   vim.lsp.callbacks['workspace/applyEdit'] = jdtls.workspace_apply_edit,
 ```
 

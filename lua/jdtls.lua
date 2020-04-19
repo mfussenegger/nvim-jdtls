@@ -196,63 +196,33 @@ function M.organize_imports()
 end
 
 
-local function is_jdt_link_location(location)
-  return location and (location.uri and location.uri:sub(1, 6) == "jdt://")
-end
-
-
-local function jump_to_buf(buf, range)
-  vim.api.nvim_set_current_buf(buf)
-  local row = range.start.line
-  local col = range.start.character
-  local line = vim.api.nvim_buf_get_lines(0, row, row + 1, true)[1]
-  col = vim.str_byteindex(line, col)
-  vim.api.nvim_win_set_cursor(0, { row + 1, col })
-end
-
-
-local function open_jdt_link(uri, range)
-  local bufnr = api.nvim_get_current_buf()
-  local params = {
-    uri = uri
-  }
-  vim.lsp.buf_request(bufnr, 'java/classFileContents', params, function(err, _, content)
-    if err then return end
-    local buf = api.nvim_create_buf(false, true)
-    api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(content, '\n', true))
-    api.nvim_buf_set_option(buf, 'filetype', 'java')
-    jump_to_buf(buf, range)
-  end)
-end
-
-
-function M.location_callback(autojump)
-  return function(_, _, result)
-    if result == nil or #result == 0 then
-      return nil
-    end
-    if not autojump or #result > 1 then
-      vim.fn.setqflist({}, ' ', {
-        title = 'Language Server';
-        items = vim.lsp.util.locations_to_items(
-          vim.tbl_filter(
-            function(loc) return not is_jdt_link_location(loc) end,
-            result
-          )
-        )
-      })
-      api.nvim_command("copen")
-      api.nvim_command("wincmd p")
-    elseif result[1].uri ~= nil then
-      vim.cmd "normal! m'" -- save position in jumplist
-      local location = result[1]
-      if is_jdt_link_location(location) then
-        open_jdt_link(location.uri, location.range)
-      else
-        jump_to_buf(vim.uri_to_bufnr(location.uri), location.range)
-      end
+--- Reads the uri into the current buffer
+--
+-- This requires at least one open buffer that is connected to the jdtls
+-- language server.
+--
+--@param uri expected to be a `jdt://` uri
+function M.open_jdt_link(uri)
+  local lspbuf
+  for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
+    if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' and #vim.lsp.buf_get_clients(buf.bufnr) > 0 then
+      lspbuf = buf.bufnr
+      break
     end
   end
+  local buf = api.nvim_get_current_buf()
+  local params = {
+    uri = uri:gsub("([\\<>`])", function(c) return "%" .. string.format("%02x", string.byte(c)) end)
+  }
+  api.nvim_command('set modifiable')
+  local responses = vim.lsp.buf_request_sync(lspbuf, 'java/classFileContents', params)
+  if not responses or #responses == 0 or not responses[1].result then
+    api.nvim_buf_set_lines(buf, 0, -1, false, {"Failed to load contents for uri", params.uri})
+  else
+    api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(responses[1].result, '\n', true))
+  end
+  api.nvim_buf_set_option(0, 'filetype', 'java')
+  api.nvim_command('set nomodifiable')
 end
 
 
