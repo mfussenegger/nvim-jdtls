@@ -1,5 +1,6 @@
 local api = vim.api
 local diagnostics_by_buf = {}
+local ui = require('jdtls.ui')
 local M = {}
 
 
@@ -26,19 +27,9 @@ local function java_generate_to_string_prompt(_, params)
         return
       end
     end
-    local fields = {}
-    if result.fields and #result.fields > 0 then
-      for _, field in ipairs(result.fields) do
-        local choice = vim.fn.inputlist({
-          string.format("Include `%s: %s` in toString?", field.name, field.type),
-          "1. Yes",
-          "2. No"
-        })
-        if choice == 1 then
-          table.insert(fields, field)
-        end
-      end
-    end
+    local fields = ui.pick_many(result.fields, 'Include item in toString?', function(x)
+      return string.format('%s: %s', x.name, x.type)
+    end)
     vim.lsp.buf_request(0, 'java/generateToString', { context = params; fields = fields; }, function(e, _, edit)
       if e then
         print("Could not execute java/generateToString: " .. e.message)
@@ -57,17 +48,9 @@ local function java_hash_code_equals_prompt(_, params)
       print(string.format("The operation is not applicable to the type %", result.type))
       return
     end
-    local fields = {}
-    for _, field in ipairs(result.fields) do
-      local choice = vim.fn.inputlist({
-        string.format("Include `%s: %s` in equals/hashCode?", field.name, field.type),
-        "1. Yes",
-        "2. No"
-      })
-      if choice == 1 then
-        table.insert(fields, field)
-      end
-    end
+    local fields = ui.pick_many(result.fields, 'Include item in equals/hashCode?', function(x)
+      return string.format('%s: %s', x.name, x.type)
+    end)
     vim.lsp.buf_request(0, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, _, edit)
       if e then
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
@@ -167,17 +150,12 @@ function M.code_action()
       print("No code actions available")
       return
     end
-    local option_strings = {"Code Actions:"}
-    for i, action in ipairs(actions) do
-      local title = action.title:gsub('\r\n', '\\r\\n')
-      title = title:gsub('\n', '\\n')
-      table.insert(option_strings, string.format("%d. %s", i, title))
-    end
-    local choice = vim.fn.inputlist(option_strings)
-    if choice < 1 or choice > #actions then
+    local action = ui.pick_one(actions, 'Code Actions:', function(x)
+      return (x.title:gsub('\r\n', '\\r\\n')):gsub('\n', '\\n')
+    end)
+    if not action then
       return
     end
-    local action = actions[choice]
     if action.edit then
       vim.lsp.util.apply_workspace_edit(action.edit)
       return
