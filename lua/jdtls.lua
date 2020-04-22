@@ -214,7 +214,6 @@ function M.open_jdt_link(uri)
   local params = {
     uri = uri:gsub("([\\<>`])", function(c) return "%" .. string.format("%02x", string.byte(c)) end)
   }
-  api.nvim_command('set modifiable')
   local responses = vim.lsp.buf_request_sync(lspbuf, 'java/classFileContents', params)
   if not responses or #responses == 0 or not responses[1].result then
     api.nvim_buf_set_lines(buf, 0, -1, false, {"Failed to load contents for uri", params.uri})
@@ -222,7 +221,7 @@ function M.open_jdt_link(uri)
     api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(responses[1].result, '\n', true))
   end
   api.nvim_buf_set_option(0, 'filetype', 'java')
-  api.nvim_command('set nomodifiable')
+  api.nvim_command('setlocal nomodifiable')
 end
 
 
