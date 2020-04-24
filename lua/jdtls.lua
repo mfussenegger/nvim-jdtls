@@ -225,8 +225,89 @@ function M.open_jdt_link(uri)
 end
 
 
-local original_configurations = nil
+local function start_debug_adapter(callback)
+  M.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
+    assert(not err0, vim.inspect(err0))
 
+    callback({ type = 'server'; host = '127.0.0.1'; port = port; })
+  end)
+end
+
+function M.test_class()
+  local status, dap = pcall(require, 'dap')
+  if not status then
+    print('nvim-dap is not available')
+    return
+  end
+
+  local uri = vim.uri_from_bufnr(0)
+  local cmd_codelens = {
+    command = 'vscode.java.test.search.codelens';
+    arguments = { uri };
+  }
+  M.execute_command(cmd_codelens, function(err0, codelens)
+    if err0 then
+      print('Error fetching codelens: ' .. err0.message)
+    end
+    local classlens = nil
+    for _, lens in pairs(codelens) do
+      if lens.level == 3 then
+        classlens = lens
+        break
+      end
+    end
+    if not classlens then
+      print('No test class found')
+      return
+    end
+
+    local methodname = ''
+    local name_parts = vim.split(classlens.fullName, '#')
+    local classname = name_parts[1]
+    if #name_parts > 1 then
+      methodname = name_parts[2]
+      if #classlens.paramTypes > 0 then
+        methodname = string.format('%s(%s)', methodname, table.concat(classlens.paramTypes, ','))
+      end
+    end
+    local cmd_junit_args = {
+      command = 'vscode.java.test.junit.argument';
+      arguments = { vim.fn.json_encode({
+        uri = uri;
+        classFullName = classname;
+        testName = methodname;
+        project = classlens.project;
+        scope = classlens.level;
+        testKind = classlens.kind;
+      })};
+    }
+    M.execute_command(cmd_junit_args, function(err1, launch_args)
+      if err1 then
+        print('Error retrieving launch arguments: ' .. err1.message)
+        return
+      end
+      start_debug_adapter(function(adapter)
+        local args = table.concat(launch_args.programArguments, ' ');
+        local config = {
+          name = 'Launch Java Test: ' .. classlens.fullName;
+          type = 'java';
+          request = 'launch';
+          mainClass = launch_args.mainClass;
+          projectName = launch_args.projectName;
+          cwd = launch_args.workingDirectory;
+          classPaths = launch_args.classpath;
+          modulePaths = launch_args.modulepath;
+          args = args:gsub('-port ([0-9]+)', '-port ' .. adapter.port);
+          vmArgs = table.concat(launch_args.vmArguments, ' ');
+          noDebug = false;
+        }
+        dap.attach(adapter.host, adapter.port, config)
+      end)
+    end)
+  end)
+end
+
+local original_configurations = nil
 
 function M.setup_dap()
   local status, dap = pcall(require, 'dap')
@@ -235,13 +316,7 @@ function M.setup_dap()
     return
   end
 
-  dap.adapters.java = function(callback)
-    M.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
-      assert(not err0, vim.inspect(err0))
-
-      callback({ type = 'server'; host = '127.0.0.1'; port = port; })
-    end)
-  end
+  dap.adapters.java = start_debug_adapter
   if not original_configurations then
     original_configurations = dap.configurations.java or {}
   end

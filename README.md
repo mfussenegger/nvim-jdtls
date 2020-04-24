@@ -83,6 +83,7 @@ You may also want to create mappings for the code action command and to organize
 ```
 nnoremap <A-CR> <Cmd>lua require'jdtls'.code_action()<CR>
 nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
+nnoremap <leader>df <Cmd>lua require'jdtls'.test_class()<CR>
 ```
 
 
@@ -98,7 +99,7 @@ To do so, clone [java-debug][6] and run `./mvnw clean install` in the cloned dir
 ```lua
 config['init_options'] = {
   bundles = {
-    vim.fn.glob("path/to/java.debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar")
+    vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar")
   };
 }
 ```
@@ -111,9 +112,30 @@ config['on_attach'] = function(client, bufnr)
 end
 ```
 
+
+Furthermore, `nvim-jdtls` supports running and debugging tests. For this to work the bundles from [vscode-java-test][7] need to be installed: 
+
+- Clone the repo
+- Run `npm install`
+- Run `npm run build-plugin`
+- Extend the bundles:
+
+
+```lua
+local bundles = {
+  vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar"),
+};
+vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar"), "\n"))
+config['init_options'] = {
+  bundles = bundles;
+}
+```
+
+
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
 [4]: https://github.com/neovim/neovim/releases/tag/nightly
 [5]: https://github.com/mfussenegger/nvim-dap
 [6]: https://github.com/microsoft/java-debug
+[7]: https://github.com/microsoft/vscode-java-test
