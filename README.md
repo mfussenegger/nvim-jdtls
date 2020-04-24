@@ -59,18 +59,6 @@ capabilities.textDocument.codeAction = {
   };
 }
 capabilities.workspace = {
-  symbol = {
-    dynamicRegistration = false;
-    symbolKind = {
-      valueSet = (function()
-        local res = {}
-        for k in pairs(vim.lsp.protocol.SymbolKind) do
-        if type(k) == 'number' then table.insert(res, k) end
-        end
-        return res
-      end)();
-    };
-  };
   applyEdit = true;
 }
 ```
