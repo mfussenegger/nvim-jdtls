@@ -87,19 +87,8 @@ function M.workspace_apply_edit(err, _, result)
 end
 
 
-function M.save_diagnostics(bufnr, diagnostics)
-  if not diagnostics then return end
-  if not diagnostics_by_buf[bufnr] then
-    api.nvim_buf_attach(bufnr, false, {
-      on_detach = function(b) diagnostics_by_buf[b] = nil end
-    })
-  end
-  diagnostics_by_buf[bufnr] = diagnostics
-end
-
-
 local function get_diagnostics_for_line(bufnr, linenr)
-  local diagnostics = diagnostics_by_buf[bufnr]
+  local diagnostics = vim.lsp.util.diagnostics_by_buf[bufnr]
   if not diagnostics then return {} end
   local line_diagnostics = {}
   for _, diagnostic in ipairs(diagnostics) do

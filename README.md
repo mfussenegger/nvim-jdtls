@@ -31,14 +31,6 @@ The callbacks:
 
 ```lua
   local jdtls = require 'jdtls'
-  local orig_publishDiagnostics = vim.lsp.callbacks["textDocument/publishDiagnostics"] 
-  local function publish_diagnostics(err, method, result) then
-    local uri = result.uri
-    local bufnr = vim.uri_to_bufnr(uri)
-    jdtls.save_diagnostics(bufnr, result.diagnostics) -- jdtls needs diagnostic information for code actions
-    orig_publishDiagnostics(err, method, result)
-  end
-  vim.lsp.callbacks["textDocument/publishDiagnostics"] = publish_diagnostics,
   vim.lsp.callbacks['workspace/applyEdit'] = jdtls.workspace_apply_edit,
 ```
 
