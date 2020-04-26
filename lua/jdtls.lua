@@ -222,13 +222,13 @@ local function start_debug_adapter(callback)
   end)
 end
 
-function M.test_class()
+
+local function run_test_codelens(choose_lens, no_match_msg)
   local status, dap = pcall(require, 'dap')
   if not status then
     print('nvim-dap is not available')
     return
   end
-
   local uri = vim.uri_from_bufnr(0)
   local cmd_codelens = {
     command = 'vscode.java.test.search.codelens';
@@ -238,25 +238,19 @@ function M.test_class()
     if err0 then
       print('Error fetching codelens: ' .. err0.message)
     end
-    local classlens = nil
-    for _, lens in pairs(codelens) do
-      if lens.level == 3 then
-        classlens = lens
-        break
-      end
-    end
-    if not classlens then
-      print('No test class found')
+    local choice = choose_lens(codelens)
+    if not choice then
+      print(no_match_msg)
       return
     end
 
     local methodname = ''
-    local name_parts = vim.split(classlens.fullName, '#')
+    local name_parts = vim.split(choice.fullName, '#')
     local classname = name_parts[1]
     if #name_parts > 1 then
       methodname = name_parts[2]
-      if #classlens.paramTypes > 0 then
-        methodname = string.format('%s(%s)', methodname, table.concat(classlens.paramTypes, ','))
+      if #choice.paramTypes > 0 then
+        methodname = string.format('%s(%s)', methodname, table.concat(choice.paramTypes, ','))
       end
     end
     local cmd_junit_args = {
@@ -265,9 +259,9 @@ function M.test_class()
         uri = uri;
         classFullName = classname;
         testName = methodname;
-        project = classlens.project;
-        scope = classlens.level;
-        testKind = classlens.kind;
+        project = choice.project;
+        scope = choice.level;
+        testKind = choice.kind;
       })};
     }
     M.execute_command(cmd_junit_args, function(err1, launch_args)
@@ -278,7 +272,7 @@ function M.test_class()
       start_debug_adapter(function(adapter)
         local args = table.concat(launch_args.programArguments, ' ');
         local config = {
-          name = 'Launch Java Test: ' .. classlens.fullName;
+          name = 'Launch Java Test: ' .. choice.fullName;
           type = 'java';
           request = 'launch';
           mainClass = launch_args.mainClass;
@@ -294,6 +288,37 @@ function M.test_class()
       end)
     end)
   end)
+end
+
+
+function M.test_class()
+  local choose_lens = function(codelens)
+    for _, lens in pairs(codelens) do
+      if lens.level == 3 then
+        return lens
+      end
+    end
+  end
+  run_test_codelens(choose_lens, 'No test class found')
+end
+
+
+function M.test_nearest_method()
+  local lnum = api.nvim_win_get_cursor(0)[1]
+  local candidates = {}
+  local choose_lens = function(codelens)
+    for _, lens in pairs(codelens) do
+      if lens.level == 4 and lens.location.range.start.line <= lnum then
+        table.insert(candidates, lens)
+      end
+    end
+    if #candidates == 0 then return end
+    table.sort(candidates, function(a, b)
+      return a.location.range.start.line > b.location.range.start.line
+    end)
+    return candidates[1]
+  end
+  run_test_codelens(choose_lens, 'No suitable test method found')
 end
 
 local original_configurations = nil

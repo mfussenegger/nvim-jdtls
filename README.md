@@ -76,6 +76,7 @@ You may also want to create mappings for the code action command and to organize
 nnoremap <A-CR> <Cmd>lua require'jdtls'.code_action()<CR>
 nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
 nnoremap <leader>df <Cmd>lua require'jdtls'.test_class()<CR>
+nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
 ```
 
 
