@@ -185,6 +185,24 @@ function M.organize_imports()
 end
 
 
+
+local function encode_uri(uri)
+  return uri:gsub("([\\<>`])", function(c) return "%" .. string.format("%02x", string.byte(c)) end)
+end
+
+
+-- Can neovim be changed to preserve uri filenames?
+-- Currently it adds `file://`
+function M.make_text_document_params()
+  local fname = api.nvim_buf_get_name(0)
+  if vim.startswith(fname, 'jdt://') then
+    return { uri = encode_uri(fname); }
+  else
+    return { uri = vim.uri_from_bufnr(0); }
+  end
+end
+
+
 --- Reads the uri into the current buffer
 --
 -- This requires at least one open buffer that is connected to the jdtls
@@ -201,7 +219,7 @@ function M.open_jdt_link(uri)
   end
   local buf = api.nvim_get_current_buf()
   local params = {
-    uri = uri:gsub("([\\<>`])", function(c) return "%" .. string.format("%02x", string.byte(c)) end)
+    uri = encode_uri(uri)
   }
   local responses = vim.lsp.buf_request_sync(lspbuf, 'java/classFileContents', params)
   if not responses or #responses == 0 or not responses[1].result then
