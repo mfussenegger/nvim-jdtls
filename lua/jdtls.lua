@@ -184,6 +184,44 @@ function M.organize_imports()
 end
 
 
+local function resolve_classname()
+  local lines = api.nvim_buf_get_lines(0, 0, -1, true)
+  local pkgname
+  for _, line in ipairs(lines) do
+    local match = line:match('package ([a-z\\.]+);')
+    if match then
+      pkgname = match
+      break
+    end
+  end
+  assert(pkgname, 'Could not find package name for current class')
+  local classname = vim.fn.fnamemodify(vim.fn.expand('%'), ':t:r')
+  return pkgname .. '.' .. classname
+end
+
+
+function M.javap()
+  local options = vim.fn.json_encode({
+    scope = 'runtime';
+  })
+  local cmd = {
+    command = 'java.project.getClasspaths';
+    arguments = { vim.uri_from_bufnr(0), options };
+  }
+  M.execute_command(cmd, function(err, resp)
+    if err then
+      print('Error executing java.project.getClasspaths: ' .. err.message)
+      return
+    end
+    local classname = resolve_classname()
+    local cp = table.concat(resp.classpaths, ':')
+    local buf = api.nvim_create_buf(false, true)
+    api.nvim_win_set_buf(0, buf)
+    vim.fn.termopen({'javap', '-c', '--class-path', cp, classname})
+  end)
+end
+
+
 --- Reads the uri into the current buffer
 --
 -- This requires at least one open buffer that is connected to the jdtls

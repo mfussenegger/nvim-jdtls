@@ -12,6 +12,7 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] Code action extensions (`java.apply.workspaceEdit`).
 - [x] `toString` generation.
 - [x] `hashCode` and `equals` generation.
+- [x] `javap` command to show bytecode of current file
 - [x] Integration with [nvim-dap][5]
 
 
