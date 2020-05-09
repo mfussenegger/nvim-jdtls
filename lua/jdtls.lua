@@ -1,6 +1,7 @@
 local api = vim.api
 local ui = require('jdtls.ui')
 local M = {}
+M.jol_path = nil
 
 
 local function java_apply_workspace_edit(command)
@@ -200,7 +201,7 @@ local function resolve_classname()
 end
 
 
-function M.javap()
+local function with_classpaths(fn)
   local options = vim.fn.json_encode({
     scope = 'runtime';
   })
@@ -211,13 +212,50 @@ function M.javap()
   M.execute_command(cmd, function(err, resp)
     if err then
       print('Error executing java.project.getClasspaths: ' .. err.message)
-      return
+    else
+      fn(resp)
     end
+  end)
+end
+
+
+local function with_java_executable(mainclass, project, fn)
+  M.execute_command({
+    command = 'vscode.java.resolveJavaExecutable',
+    arguments = { mainclass, project }
+  }, function(err, java_exec)
+    if err then
+      print('Could not resolve java executable: ' .. err.message)
+    else
+      fn(java_exec)
+    end
+  end)
+end
+
+
+function M.javap()
+  with_classpaths(function(resp)
     local classname = resolve_classname()
     local cp = table.concat(resp.classpaths, ':')
     local buf = api.nvim_create_buf(false, true)
     api.nvim_win_set_buf(0, buf)
     vim.fn.termopen({'javap', '-c', '--class-path', cp, classname})
+  end)
+end
+
+
+function M.jol(mode)
+  mode = mode or 'estimates'
+  local jol = assert(M.jol_path, [[Path to jol must be set using `lua require('jdtls').jol_path = 'path/to/jol.jar'`]])
+  with_classpaths(function(resp)
+    local classname = resolve_classname()
+    local cp = table.concat(resp.classpaths, ':')
+    with_java_executable(classname, '', function(java_exec)
+      local buf = api.nvim_create_buf(false, true)
+      api.nvim_win_set_buf(0, buf)
+      vim.fn.termopen({
+        java_exec, '-Djdk.attach.allowAttachSelf', '-jar', jol, mode, '-cp', cp, classname})
+    end)
   end)
 end
 
@@ -384,12 +422,7 @@ function M.setup_dap()
       local mainclass = mc.mainClass
       local project = mc.projectName
 
-      M.execute_command({command = 'vscode.java.resolveJavaExecutable', arguments = { mainclass, project }}, function(err1, java_exec)
-        if err1 then
-          print('Could not resolve java executable: ' .. err1.message)
-          return
-        end
-
+      with_java_executable(mainclass, project, function(java_exec)
         M.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err2, paths)
           if err2 then
             print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err2.message))
