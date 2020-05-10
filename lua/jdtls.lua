@@ -63,15 +63,48 @@ local function java_hash_code_equals_prompt(_, params)
 end
 
 
-local function java_apply_refactoring_command(command, params)
+local function handle_refactor_workspace_edit(err, _, result)
+  if err then
+    print('Error getting refactoring edit: ' .. err.message)
+    return
+  end
+  if not result then
+    return
+  end
+
+  if result.edit then
+    vim.lsp.util.apply_workspace_edit(result.edit)
+  end
+
+  if result.command then
+    local command = result.command
+    local fn = M.commands[command.command]
+    if fn then
+      fn(command, {})
+    else
+      M.execute_command(command)
+    end
+  end
+end
+
+
+local function java_apply_refactoring_command(command, code_action_params)
   local cmd = command.arguments[1]
-  local args = {
+  local sts = vim.bo.softtabstop;
+  local params = {
     command = cmd,
-    context = params,
-    options = {},
-    commandArguments = {}
+    context = code_action_params,
+    options = {
+      tabSize = (sts > 0 and sts) or (sts < 0 and vim.bo.shiftwidth) or vim.bo.tabstop;
+      insertSpaces = vim.bo.expandtab;
+    },
   }
-  vim.lsp.buf_request(0, 'java/getRefactorEdit', args, M.workspace_apply_edit)
+  vim.lsp.buf_request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+end
+
+
+local function java_action_rename()
+  -- Ignored for now
 end
 
 
@@ -80,6 +113,7 @@ M.commands = {
   ['java.action.generateToStringPrompt'] = java_generate_to_string_prompt;
   ['java.action.hashCodeEqualsPrompt'] = java_hash_code_equals_prompt;
   ['java.action.applyRefactoringCommand'] = java_apply_refactoring_command;
+  ['java.action.rename'] = java_action_rename;
 }
 
 
@@ -123,8 +157,8 @@ local function make_code_action_params(from_selection)
     local start_row, start_col = unpack(api.nvim_buf_get_mark(0, '<'))
     local end_row, end_col = unpack(api.nvim_buf_get_mark(0, '>'))
     params.range = {
-      ["start"] = { line = start_row - 1, character = start_col };
-      ["end"] = { line = end_row - 1, character = end_col };
+      ["start"] = { line = start_row - 1, character = start_col - 1 };
+      ["end"] = { line = end_row - 1, character = end_col + 1 };
     }
   else
     local row, pos = unpack(api.nvim_win_get_cursor(0))
@@ -211,6 +245,12 @@ end
 function M.extract_variable(from_selection)
   local params = make_code_action_params(from_selection or false)
   java_apply_refactoring_command({ arguments = { 'extractVariable' }, }, params)
+end
+
+
+function M.extract_method(from_selection)
+  local params = make_code_action_params(from_selection or false)
+  java_apply_refactoring_command({ arguments = { 'extractMethod' }, }, params)
 end
 
 
