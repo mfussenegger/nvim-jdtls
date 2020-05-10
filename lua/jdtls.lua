@@ -63,10 +63,23 @@ local function java_hash_code_equals_prompt(_, params)
 end
 
 
+local function java_apply_refactoring_command(command, params)
+  local cmd = command.arguments[1]
+  local args = {
+    command = cmd,
+    context = params,
+    options = {},
+    commandArguments = {}
+  }
+  vim.lsp.buf_request(0, 'java/getRefactorEdit', args, M.workspace_apply_edit)
+end
+
+
 M.commands = {
   ['java.apply.workspaceEdit'] = java_apply_workspace_edit;
   ['java.action.generateToStringPrompt'] = java_generate_to_string_prompt;
   ['java.action.hashCodeEqualsPrompt'] = java_hash_code_equals_prompt;
+  ['java.action.applyRefactoringCommand'] = java_apply_refactoring_command;
 }
 
 
@@ -78,8 +91,9 @@ function M.workspace_apply_edit(err, _, result)
   --
   if err then
     print("Received error for workspace/applyEdit: " .. err.message)
+    return
   end
-  local status, failure = pcall(vim.lsp.util.apply_workspace_edit, result.edit)
+  local status, failure = pcall(vim.lsp.util.apply_workspace_edit, (result or {}).edit)
   return {
     applied = status;
     failureReason = failure;
@@ -103,23 +117,32 @@ local function get_diagnostics_for_line(bufnr, linenr)
 end
 
 
-local function make_code_action_params()
+local function make_code_action_params(from_selection)
   local params = vim.lsp.util.make_position_params()
-  local row, pos = unpack(api.nvim_win_get_cursor(0))
-  params.range = {
-    ["start"] = { line = row - 1; character = pos };
-    ["end"] = { line = row - 1; character = pos };
-  }
+  if from_selection then
+    local start_row, start_col = unpack(api.nvim_buf_get_mark(0, '<'))
+    local end_row, end_col = unpack(api.nvim_buf_get_mark(0, '>'))
+    params.range = {
+      ["start"] = { line = start_row - 1, character = start_col };
+      ["end"] = { line = end_row - 1, character = end_col };
+    }
+  else
+    local row, pos = unpack(api.nvim_win_get_cursor(0))
+    params.range = {
+      ["start"] = { line = row - 1; character = pos };
+      ["end"] = { line = row - 1; character = pos };
+    }
+  end
   local bufnr = api.nvim_get_current_buf()
   params.context = {
-    diagnostics = get_diagnostics_for_line(bufnr, row - 1)
+    diagnostics = get_diagnostics_for_line(bufnr, params.range.start.line)
   }
   return params
 end
 
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
-function M.code_action()
-  local code_action_params = make_code_action_params()
+function M.code_action(from_selection)
+  local code_action_params = make_code_action_params(from_selection or false)
   vim.lsp.buf_request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
     if err then return end
     -- actions is (Command | CodeAction)[] | null
@@ -182,6 +205,12 @@ function M.organize_imports()
     command = "java.edit.organizeImports";
     arguments = { vim.uri_from_bufnr(0) }
   })
+end
+
+
+function M.extract_variable(from_selection)
+  local params = make_code_action_params(from_selection or false)
+  java_apply_refactoring_command({ arguments = { 'extractVariable' }, }, params)
 end
 
 

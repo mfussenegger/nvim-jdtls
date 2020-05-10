@@ -7,7 +7,8 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 
 ## Extensions
 
-- [x] Command to organize imports
+- [x] `organize_imports` command to organize imports
+- [x] `extract_variable` command to introduce a local variable
 - [x] Open class file contents
 - [x] Code action extensions (`java.apply.workspaceEdit`).
 - [x] `toString` generation.
@@ -67,6 +68,7 @@ config['init_options'] = {
     classFileContentsSupport = true;
     generateToStringPromptSupport = true;
     hashCodeEqualsPromptSupport = true;
+    advancedExtractRefactoringSupport = true;
   };
 }
 ```
