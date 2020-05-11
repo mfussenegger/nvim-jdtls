@@ -29,15 +29,8 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 ## Usage
 
 `nvim-jdtls` doesn't contain logic to spawn a LSP client for [eclipse.jdt.ls][3], see `:help lsp` for information on how to launch a LSP client.
-To make use of all the functionality `nvim-jdtls` provides, you need to override some of the `lsp` callbacks, set some extra capabilities and set a couple of initialization options.
 
-The callbacks:
-
-```lua
-  local jdtls = require 'jdtls'
-  vim.lsp.callbacks['workspace/applyEdit'] = jdtls.workspace_apply_edit,
-```
-
+To make use of all the functionality `nvim-jdtls` provides, you need to set some extra capabilities and set a couple of initialization options.
 
 Additional capabilities:
 
@@ -53,9 +46,6 @@ capabilities.textDocument.codeAction = {
       };
     };
   };
-}
-capabilities.workspace = {
-  applyEdit = true;
 }
 ```
 

@@ -117,24 +117,6 @@ M.commands = {
 }
 
 
--- Not needed anymore after https://github.com/neovim/neovim/pull/11607
-function M.workspace_apply_edit(err, _, result)
-  -- result:
-  --   label?: string;
-  --   edit: WorkspaceEdit;
-  --
-  if err then
-    print("Received error for workspace/applyEdit: " .. err.message)
-    return
-  end
-  local status, failure = pcall(vim.lsp.util.apply_workspace_edit, (result or {}).edit)
-  return {
-    applied = status;
-    failureReason = failure;
-  }
-end
-
-
 local function get_diagnostics_for_line(bufnr, linenr)
   local diagnostics = vim.lsp.util.diagnostics_by_buf[bufnr]
   if not diagnostics then return {} end
