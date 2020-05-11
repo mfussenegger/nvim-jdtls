@@ -16,6 +16,7 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] `hashCode` and `equals` generation.
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
+- [x] `jshell` command to open up jshell with classpath from project set
 - [x] Integration with [nvim-dap][5]
 
 

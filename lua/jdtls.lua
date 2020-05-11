@@ -295,6 +295,25 @@ function M.javap()
 end
 
 
+function M.jshell()
+  with_classpaths(function(result)
+    local buf = api.nvim_create_buf(false, true)
+    local classpaths = {}
+    for _, path in pairs(result.classpaths) do
+      if vim.fn.filereadable(path) == 1 or vim.fn.isdirectory(path) == 1 then
+        table.insert(classpaths, path)
+      end
+    end
+    local cp = table.concat(classpaths, ':')
+    with_java_executable(resolve_classname(), '', function(java_exec)
+      api.nvim_win_set_buf(0, buf)
+      local jshell = vim.fn.fnamemodify(java_exec, ':h') .. '/jshell'
+      vim.fn.termopen({jshell, '--class-path', cp})
+    end)
+  end)
+end
+
+
 function M.jol(mode)
   mode = mode or 'estimates'
   local jol = assert(M.jol_path, [[Path to jol must be set using `lua require('jdtls').jol_path = 'path/to/jol.jar'`]])
