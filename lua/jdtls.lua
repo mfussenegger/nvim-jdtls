@@ -224,6 +224,25 @@ function M.organize_imports()
 end
 
 
+function M.compile(full_compile)
+  local CompileWorkspaceStatus = {
+    FAILED = 0,
+    SUCCEED = 1,
+    WITHERROR = 2,
+    CANCELLED = 3,
+  }
+  vim.lsp.buf_request(0, 'java/buildWorkspace', full_compile or false, function(err, _, result)
+    if err then
+      print('Compile error: ' .. err.message)
+      return
+    end
+    if result ~= CompileWorkspaceStatus.SUCCEED then
+      print('Compile error')
+    end
+  end)
+end
+
+
 function M.extract_variable(from_selection)
   local params = make_code_action_params(from_selection or false)
   java_apply_refactoring_command({ arguments = { 'extractVariable' }, }, params)
