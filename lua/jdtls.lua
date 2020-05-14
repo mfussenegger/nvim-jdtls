@@ -243,6 +243,17 @@ function M.compile(full_compile)
 end
 
 
+function M.update_project_config()
+  local params = { uri = vim.uri_from_bufnr(0) }
+  vim.lsp.buf_request(0, 'java/projectConfigurationUpdate', params, function(err)
+    if err then
+      print('Could not update project configuration: ' .. err.message)
+      return
+    end
+  end)
+end
+
+
 function M.extract_variable(from_selection)
   local params = make_code_action_params(from_selection or false)
   java_apply_refactoring_command({ arguments = { 'extractVariable' }, }, params)
