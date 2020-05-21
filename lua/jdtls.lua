@@ -140,7 +140,7 @@ local function make_code_action_params(from_selection)
     local end_row, end_col = unpack(api.nvim_buf_get_mark(0, '>'))
     params.range = {
       ["start"] = { line = start_row - 1, character = start_col - 1 };
-      ["end"] = { line = end_row - 1, character = end_col + 1 };
+      ["end"] = { line = end_row - 1, character = end_col - 1 };
     }
   else
     local row, pos = unpack(api.nvim_win_get_cursor(0))
@@ -186,7 +186,6 @@ function M.code_action(from_selection)
     end
     if action.edit then
       vim.lsp.util.apply_workspace_edit(action.edit)
-      return
     end
     local command
     if type(action.command) == "table" then
@@ -545,6 +544,14 @@ function M.setup_dap()
     end
   end)
 end
+
+
+M.extendedClientCapabilities = {
+  classFileContentsSupport = true;
+  generateToStringPromptSupport = true;
+  hashCodeEqualsPromptSupport = true;
+  advancedExtractRefactoringSupport = true;
+};
 
 
 return M

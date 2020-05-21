@@ -56,12 +56,7 @@ Initialization options:
 
 ```lua
 config['init_options'] = {
-  extendedClientCapabilities = {
-    classFileContentsSupport = true;
-    generateToStringPromptSupport = true;
-    hashCodeEqualsPromptSupport = true;
-    advancedExtractRefactoringSupport = true;
-  };
+  extendedClientCapabilities = require('jdtls').extendedClientCapabilities;
 }
 ```
 
