@@ -108,13 +108,86 @@ local function java_action_rename()
 end
 
 
+local function java_action_organize_imports(_, code_action_params)
+  vim.lsp.buf_request(0, 'java/organizeImports', code_action_params, function(err, _, resp)
+    if err then
+      print('Error on organize imports: ' .. err.message)
+      return
+    end
+    vim.lsp.util.apply_workspace_edit(resp)
+  end)
+end
+
+
+local function find_last(str, pattern)
+  local idx = nil
+  while true do
+    local i = string.find(str, pattern, (idx or 0) + 1)
+    if i == nil then
+      break
+    else
+      idx = i
+    end
+  end
+  return idx
+end
+
+
+local function java_choose_imports(resp)
+  local uri = resp[1]
+  local selections = resp[2]
+  local choices = {}
+  for _, selection in ipairs(selections) do
+    local start = selection.range.start
+
+    local buf = vim.uri_to_bufnr(uri)
+    api.nvim_win_set_buf(0, buf)
+    api.nvim_win_set_cursor(0, {start.line + 1, start.character})
+    api.nvim_command("redraw")
+
+    local candidates = selection.candidates
+    local fqn = candidates[1].fullyQualifiedName
+    local type_name = fqn:sub(find_last(fqn, '%.') + 1)
+    local choice = ui.pick_one(
+      candidates,
+      'Choose type ' .. type_name .. ' to import',
+      function(x) return x.fullyQualifiedName end
+    )
+    table.insert(choices, choice)
+  end
+  return choices
+end
+
+
 M.commands = {
   ['java.apply.workspaceEdit'] = java_apply_workspace_edit;
   ['java.action.generateToStringPrompt'] = java_generate_to_string_prompt;
   ['java.action.hashCodeEqualsPrompt'] = java_hash_code_equals_prompt;
   ['java.action.applyRefactoringCommand'] = java_apply_refactoring_command;
   ['java.action.rename'] = java_action_rename;
+  ['java.action.organizeImports'] = java_action_organize_imports;
+  ['java.action.organizeImports.chooseImports'] = java_choose_imports
 }
+
+
+if not vim.lsp.callbacks['workspace/executeClientCommand'] then
+  vim.lsp.callbacks['workspace/executeClientCommand'] = function(_, _, params)
+    local fn = M.commands[params.command]
+    if fn then
+      local ok, result = pcall(fn, params.arguments)
+      if ok then
+        return result
+      else
+        return vim.lsp.rpc_response_error(vim.lsp.protocol.ErrorCodes.InternalError, result)
+      end
+    else
+      return vim.lsp.rpc_response_error(
+        vim.lsp.protocol.ErrorCodes.MethodNotFound,
+        'Command ' .. params.command .. ' not supported on client'
+      )
+    end
+  end
+end
 
 
 local function get_diagnostics_for_line(bufnr, linenr)
@@ -551,6 +624,7 @@ M.extendedClientCapabilities = {
   generateToStringPromptSupport = true;
   hashCodeEqualsPromptSupport = true;
   advancedExtractRefactoringSupport = true;
+  advancedOrganizeImportsSupport = true;
 };
 
 
