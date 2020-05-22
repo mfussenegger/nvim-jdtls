@@ -206,14 +206,14 @@ local function get_diagnostics_for_line(bufnr, linenr)
 end
 
 
-local function make_code_action_params(from_selection)
+local function make_code_action_params(from_selection, kind)
   local params = vim.lsp.util.make_position_params()
   if from_selection then
     local start_row, start_col = unpack(api.nvim_buf_get_mark(0, '<'))
     local end_row, end_col = unpack(api.nvim_buf_get_mark(0, '>'))
     params.range = {
-      ["start"] = { line = start_row - 1, character = start_col - 1 };
-      ["end"] = { line = end_row - 1, character = end_col - 1 };
+      ["start"] = { line = start_row - 1, character = start_col };
+      ["end"] = { line = end_row - 1, character = end_col };
     }
   else
     local row, pos = unpack(api.nvim_win_get_cursor(0))
@@ -224,14 +224,15 @@ local function make_code_action_params(from_selection)
   end
   local bufnr = api.nvim_get_current_buf()
   params.context = {
-    diagnostics = get_diagnostics_for_line(bufnr, params.range.start.line)
+    diagnostics = get_diagnostics_for_line(bufnr, params.range.start.line),
+    only = kind,
   }
   return params
 end
 
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
-function M.code_action(from_selection)
-  local code_action_params = make_code_action_params(from_selection or false)
+function M.code_action(from_selection, kind)
+  local code_action_params = make_code_action_params(from_selection or false, kind)
   vim.lsp.buf_request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
     if err then return end
     -- actions is (Command | CodeAction)[] | null
