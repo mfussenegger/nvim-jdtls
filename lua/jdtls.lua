@@ -148,7 +148,7 @@ local function java_choose_imports(resp)
     local candidates = selection.candidates
     local fqn = candidates[1].fullyQualifiedName
     local type_name = fqn:sub(find_last(fqn, '%.') + 1)
-    local choice = ui.pick_one(
+    local choice = #candidates == 1 and candidates[1] or ui.pick_one(
       candidates,
       'Choose type ' .. type_name .. ' to import',
       function(x) return x.fullyQualifiedName end
