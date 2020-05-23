@@ -61,13 +61,30 @@ config['init_options'] = {
 ```
 
 
-You may also want to create mappings for the code action command and to organize imports:
+
+You may want to create some mappings and commands to make the functionality of `nvim-jdtls` accessible:
 
 ```
-nnoremap <A-CR> <Cmd>lua require'jdtls'.code_action()<CR>
+nnoremap <A-CR> <Cmd>lua require('jdtls').code_action()<CR>
+vnoremap <A-CR> <Esc><Cmd>lua require('jdtls').code_action(true)<CR>
+nnoremap <leader>r <Cmd>lua require('jdtls').code_action(false, 'refactor')<CR>
+
 nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
+nnoremap crv <Cmd>lua require('jdtls').extract_variable()<CR>
+vnoremap crv <Esc><Cmd>lua require('jdtls').extract_variable(true)<CR>
+vnoremap crm <Esc><Cmd>lua require('jdtls').extract_method(true)<CR>
+
+
+-- For nvim-dap
 nnoremap <leader>df <Cmd>lua require'jdtls'.test_class()<CR>
 nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
+
+
+command! -buffer JdtCompile lua require('jdtls').compile()
+command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()
+command! -buffer JdtJol lua require('jdtls').jol()
+command! -buffer JdtBytecode lua require('jdtls').javap()
+command! -buffer JdtJshell lua require('jdtls').jshell()
 ```
 
 
