@@ -20,6 +20,10 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] Integration with [nvim-dap][5]
 
 
+Take a look at [a demo](https://github.com/mfussenegger/nvim-jdtls/issues/3) to
+see some of the functionality in action.
+
+
 ## Installation
 
 - Requires [Neovim HEAD/nightly][4]
