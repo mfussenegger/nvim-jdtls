@@ -388,6 +388,9 @@ end
 
 
 local function with_java_executable(mainclass, project, fn)
+  vim.validate({
+    mainclass = { mainclass, 'string' }
+  })
   M.execute_command({
     command = 'vscode.java.resolveJavaExecutable',
     arguments = { mainclass, project }
@@ -431,17 +434,17 @@ function M.jshell()
 end
 
 
-function M.jol(mode)
+function M.jol(mode, classname)
   mode = mode or 'estimates'
   local jol = assert(M.jol_path, [[Path to jol must be set using `lua require('jdtls').jol_path = 'path/to/jol.jar'`]])
   with_classpaths(function(resp)
-    local classname = resolve_classname()
+    local resolved_classname = resolve_classname()
     local cp = table.concat(resp.classpaths, ':')
-    with_java_executable(classname, '', function(java_exec)
+    with_java_executable(resolved_classname, '', function(java_exec)
       local buf = api.nvim_create_buf(false, true)
       api.nvim_win_set_buf(0, buf)
       vim.fn.termopen({
-        java_exec, '-Djdk.attach.allowAttachSelf', '-jar', jol, mode, '-cp', cp, classname})
+        java_exec, '-Djdk.attach.allowAttachSelf', '-jar', jol, mode, '-cp', cp, classname or resolved_classname})
     end)
   end)
 end
