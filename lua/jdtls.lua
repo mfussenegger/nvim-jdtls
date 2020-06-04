@@ -114,7 +114,9 @@ local function java_action_organize_imports(_, code_action_params)
       print('Error on organize imports: ' .. err.message)
       return
     end
-    vim.lsp.util.apply_workspace_edit(resp)
+    if resp then
+      vim.lsp.util.apply_workspace_edit(resp)
+    end
   end)
 end
 
