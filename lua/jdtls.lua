@@ -15,6 +15,7 @@ local function java_generate_to_string_prompt(_, params)
   vim.lsp.buf_request(0, 'java/checkToStringStatus', params, function(err, _, result)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
+      return
     end
     if not result then return end
     if result.exists then
@@ -33,8 +34,54 @@ local function java_generate_to_string_prompt(_, params)
     vim.lsp.buf_request(0, 'java/generateToString', { context = params; fields = fields; }, function(e, _, edit)
       if e then
         print("Could not execute java/generateToString: " .. e.message)
+        return
       end
       if edit then
+        vim.lsp.util.apply_workspace_edit(edit)
+      end
+    end)
+  end)
+end
+
+
+local function java_generate_constructors_prompt(_, code_action_params)
+  vim.lsp.buf_request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, _, status)
+    if err0 then
+      print("Could not execute java/checkConstructorsStatus: " .. err0.message)
+      return
+    end
+    if not status or not status.constructors or #status.constructors == 0 then
+      return
+    end
+    local constructors = status.constructors
+    if #status.constructors > 1 then
+      constructors = ui.pick_many(status.constructors, 'Include super class constructor(s): ', function(x)
+        return string.format('%s(%s)', x.name, table.concat(x.parameters, ','))
+      end)
+      if not constructors or #constructors == 0 then
+        return
+      end
+    end
+
+    local fields = status.fields
+    if fields then
+      fields = ui.pick_many(status.fields, 'Include field to initialize by constructor(s): ', function(x)
+        return string.format('%s: %s', x.name, x.type)
+      end)
+      if not fields or #fields == 0 then
+        return
+      end
+    end
+
+    local params = {
+      context = code_action_params,
+      constructors = constructors,
+      fields = fields
+    }
+    vim.lsp.buf_request(0, 'java/generateConstructors', params, function(err1, _, edit)
+      if err1 then
+        print("Could not execute java/generateConstructors: " .. err1.message)
+      elseif edit then
         vim.lsp.util.apply_workspace_edit(edit)
       end
     end)
@@ -168,7 +215,8 @@ M.commands = {
   ['java.action.applyRefactoringCommand'] = java_apply_refactoring_command;
   ['java.action.rename'] = java_action_rename;
   ['java.action.organizeImports'] = java_action_organize_imports;
-  ['java.action.organizeImports.chooseImports'] = java_choose_imports
+  ['java.action.organizeImports.chooseImports'] = java_choose_imports;
+  ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
 }
 
 
@@ -645,6 +693,7 @@ M.extendedClientCapabilities = {
   hashCodeEqualsPromptSupport = true;
   advancedExtractRefactoringSupport = true;
   advancedOrganizeImportsSupport = true;
+  generateConstructorsPromptSupport = true;
 };
 
 

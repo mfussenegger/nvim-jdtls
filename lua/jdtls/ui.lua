@@ -21,7 +21,7 @@ function M.pick_many(items, prompt, label_f)
   local selected = {}
   for _, item in pairs(items) do
     local choice = vim.fn.inputlist({
-      string.format('%s %s', prompt, label_f(item)),
+      string.format('\n%s %s', prompt, label_f(item)),
       "1. Yes",
       "2. No"
     })
