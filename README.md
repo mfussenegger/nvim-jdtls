@@ -11,9 +11,11 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] `extract_variable` command to introduce a local variable
 - [x] `extract_method` command to extract a block of code into a method
 - [x] Open class file contents
-- [x] Code action extensions (`java.apply.workspaceEdit`).
-- [x] `toString` generation.
-- [x] `hashCode` and `equals` generation.
+- [x] Code action extensions
+  - [x] Generate constructors
+  - [x] Generate `toString` function
+  - [x] `hashCode` and `equals` generation.
+  - [x] Extract variables or methods
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
 - [x] `jshell` command to open up jshell with classpath from project set
