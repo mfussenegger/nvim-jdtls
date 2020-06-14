@@ -584,23 +584,23 @@ local function run_test_codelens(choose_lens, no_match_msg)
         print('Error retrieving launch arguments: ' .. err1.message)
         return
       end
-      start_debug_adapter(function(adapter)
-        local args = table.concat(launch_args.programArguments, ' ');
-        local config = {
-          name = 'Launch Java Test: ' .. choice.fullName;
-          type = 'java';
-          request = 'launch';
-          mainClass = launch_args.mainClass;
-          projectName = launch_args.projectName;
-          cwd = launch_args.workingDirectory;
-          classPaths = launch_args.classpath;
-          modulePaths = launch_args.modulepath;
-          args = args:gsub('-port ([0-9]+)', '-port ' .. adapter.port);
-          vmArgs = table.concat(launch_args.vmArguments, ' ');
-          noDebug = false;
-        }
-        dap.attach(adapter.host, adapter.port, config)
-      end)
+      local args = table.concat(launch_args.programArguments, ' ');
+      local config = {
+        name = 'Launch Java Test: ' .. choice.fullName;
+        type = 'java';
+        request = 'launch';
+        mainClass = launch_args.mainClass;
+        projectName = launch_args.projectName;
+        cwd = launch_args.workingDirectory;
+        classPaths = launch_args.classpath;
+        modulePaths = launch_args.modulepath;
+        args = function(adapter)
+          return args:gsub('-port ([0-9]+)', '-port ' .. adapter.port);
+        end;
+        vmArgs = table.concat(launch_args.vmArguments, ' ');
+        noDebug = false;
+      }
+      dap.run(config)
     end)
   end)
 end
