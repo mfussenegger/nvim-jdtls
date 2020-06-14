@@ -1,4 +1,6 @@
 local api = vim.api
+local uv = vim.loop
+
 local ui = require('jdtls.ui')
 local M = {}
 local request = vim.lsp.buf_request
@@ -608,6 +610,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
   M.execute_command(cmd_codelens, function(err0, codelens)
     if err0 then
       print('Error fetching codelens: ' .. err0.message)
+      return
     end
     local choice = choose_lens(codelens)
     if not choice then
@@ -637,7 +640,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
     }
     M.execute_command(cmd_junit_args, function(err1, launch_args)
       if err1 then
-        print('Error retrieving launch arguments: ' .. err1.message)
+        print('Error retrieving launch arguments: ' .. (err1.message or vim.inspect(err1)))
         return
       end
       local args = table.concat(launch_args.programArguments, ' ');
@@ -650,13 +653,33 @@ local function run_test_codelens(choose_lens, no_match_msg)
         cwd = launch_args.workingDirectory;
         classPaths = launch_args.classpath;
         modulePaths = launch_args.modulepath;
-        args = function(adapter)
-          return args:gsub('-port ([0-9]+)', '-port ' .. adapter.port);
-        end;
+        args = args;
         vmArgs = table.concat(launch_args.vmArguments, ' ');
         noDebug = false;
       }
-      dap.run(config)
+      local test_results
+      local server = nil
+      local junit = require('jdtls.junit')
+      dap.run(config, {
+        before = function(conf)
+          server = uv.new_tcp()
+          test_results = junit.mk_test_results()
+          server:bind('127.0.0.1', 0)
+          server:listen(128, function(err2)
+            assert(not err2, err2)
+            local sock = vim.loop.new_tcp()
+            server:accept(sock)
+            sock:read_start(test_results.mk_reader(sock))
+          end)
+          conf.args = conf.args:gsub('-port ([0-9]+)', '-port ' .. server:getsockname().port);
+          return conf
+        end;
+        after = function()
+          server:shutdown()
+          server:close()
+          test_results.show()
+        end;
+      })
     end)
   end)
 end
