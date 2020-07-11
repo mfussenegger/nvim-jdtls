@@ -1,6 +1,7 @@
 local api = vim.api
 local ui = require('jdtls.ui')
 local M = {}
+local request = vim.lsp.buf_request
 M.jol_path = nil
 
 
@@ -12,7 +13,7 @@ end
 
 
 local function java_generate_to_string_prompt(_, params)
-  vim.lsp.buf_request(0, 'java/checkToStringStatus', params, function(err, _, result)
+  request(0, 'java/checkToStringStatus', params, function(err, _, result)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
       return
@@ -31,7 +32,7 @@ local function java_generate_to_string_prompt(_, params)
     local fields = ui.pick_many(result.fields, 'Include item in toString?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    vim.lsp.buf_request(0, 'java/generateToString', { context = params; fields = fields; }, function(e, _, edit)
+    request(0, 'java/generateToString', { context = params; fields = fields; }, function(e, _, edit)
       if e then
         print("Could not execute java/generateToString: " .. e.message)
         return
@@ -45,7 +46,7 @@ end
 
 
 local function java_generate_constructors_prompt(_, code_action_params)
-  vim.lsp.buf_request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, _, status)
+  request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, _, status)
     if err0 then
       print("Could not execute java/checkConstructorsStatus: " .. err0.message)
       return
@@ -78,7 +79,7 @@ local function java_generate_constructors_prompt(_, code_action_params)
       constructors = constructors,
       fields = fields
     }
-    vim.lsp.buf_request(0, 'java/generateConstructors', params, function(err1, _, edit)
+    request(0, 'java/generateConstructors', params, function(err1, _, edit)
       if err1 then
         print("Could not execute java/generateConstructors: " .. err1.message)
       elseif edit then
@@ -89,8 +90,62 @@ local function java_generate_constructors_prompt(_, code_action_params)
 end
 
 
+local function java_generate_delegate_methods_prompt(_, code_action_params)
+  request(0, 'java/checkDelegateMethodsStatus', code_action_params, function(err0, _, status)
+    if err0 then
+      print('Could not execute java/checkDelegateMethodsStatus: ', err0.message)
+      return
+    end
+    if not status or not status.delegateFields or #status.delegateFields == 0 then
+      print('All delegatable methods are already implemented.')
+      return
+    end
+
+    local field = #status.delegateFields == 1 and status.delegateFields[1] or ui.pick_one(
+      status.delegateFields,
+      'Select target to generate delegates for.',
+      function(x) return string.format('%s: %s', x.field.name, x.field.type) end
+    )
+    if not field then
+      return
+    end
+    if #field.delegateMethods == 0 then
+      print('All delegatable methods are already implemented.')
+      return
+    end
+
+    local methods = ui.pick_many(field.delegateMethods, 'Generate delegate for method:', function(x)
+      return string.format('%s(%s)', x.name, table.concat(x.parameters, ','))
+    end)
+    if not methods or #methods == 0 then
+      return
+    end
+
+    local params = {
+      context = code_action_params,
+      delegateEntries = vim.tbl_map(
+        function(x)
+          return {
+            field = field.field,
+            delegateMethod = x
+          }
+        end,
+        methods
+      ),
+    }
+    request(0, 'java/generateDelegateMethods', params, function(err1, _, workspace_edit)
+      if err1 then
+        print('Could not execute java/generateDelegateMethods', err1.message)
+      elseif workspace_edit then
+        vim.lsp.util.apply_workspace_edit(workspace_edit)
+      end
+    end)
+  end)
+end
+
+
 local function java_hash_code_equals_prompt(_, params)
-  vim.lsp.buf_request(0, 'java/checkHashCodeEqualsStatus', params, function(_, _, result)
+  request(0, 'java/checkHashCodeEqualsStatus', params, function(_, _, result)
     if not result or not result.fields or #result.fields == 0 then
       print(string.format("The operation is not applicable to the type %", result.type))
       return
@@ -98,7 +153,7 @@ local function java_hash_code_equals_prompt(_, params)
     local fields = ui.pick_many(result.fields, 'Include item in equals/hashCode?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    vim.lsp.buf_request(0, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, _, edit)
+    request(0, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, _, edit)
       if e then
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
       end
@@ -146,7 +201,7 @@ local function java_apply_refactoring_command(command, code_action_params)
       insertSpaces = vim.bo.expandtab;
     },
   }
-  vim.lsp.buf_request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+  request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
 end
 
 
@@ -156,7 +211,7 @@ end
 
 
 local function java_action_organize_imports(_, code_action_params)
-  vim.lsp.buf_request(0, 'java/organizeImports', code_action_params, function(err, _, resp)
+  request(0, 'java/organizeImports', code_action_params, function(err, _, resp)
     if err then
       print('Error on organize imports: ' .. err.message)
       return
@@ -217,6 +272,7 @@ M.commands = {
   ['java.action.organizeImports'] = java_action_organize_imports;
   ['java.action.organizeImports.chooseImports'] = java_choose_imports;
   ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
+  ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
 }
 
 
@@ -297,7 +353,7 @@ end
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
 function M.code_action(from_selection, kind)
   local code_action_params = make_code_action_params(from_selection or false, kind)
-  vim.lsp.buf_request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
+  request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
     if err then return end
     -- actions is (Command | CodeAction)[] | null
     -- CodeAction
@@ -343,7 +399,7 @@ end
 
 -- Until https://github.com/neovim/neovim/pull/11607 is merged
 function M.execute_command(command, callback)
-  vim.lsp.buf_request(0, 'workspace/executeCommand', command, function(err, _, resp)
+  request(0, 'workspace/executeCommand', command, function(err, _, resp)
     if callback then
       callback(err, resp)
     elseif err then
@@ -368,7 +424,7 @@ function M.compile(full_compile)
     WITHERROR = 2,
     CANCELLED = 3,
   }
-  vim.lsp.buf_request(0, 'java/buildWorkspace', full_compile or false, function(err, _, result)
+  request(0, 'java/buildWorkspace', full_compile or false, function(err, _, result)
     if err then
       print('Compile error: ' .. err.message)
       return
@@ -382,7 +438,7 @@ end
 
 function M.update_project_config()
   local params = { uri = vim.uri_from_bufnr(0) }
-  vim.lsp.buf_request(0, 'java/projectConfigurationUpdate', params, function(err)
+  request(0, 'java/projectConfigurationUpdate', params, function(err)
     if err then
       print('Could not update project configuration: ' .. err.message)
       return
@@ -694,6 +750,7 @@ M.extendedClientCapabilities = {
   advancedExtractRefactoringSupport = true;
   advancedOrganizeImportsSupport = true;
   generateConstructorsPromptSupport = true;
+  generateDelegateMethodsPromptSupport = true;
 };
 
 
