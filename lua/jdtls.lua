@@ -620,7 +620,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
     local classname = name_parts[1]
     if #name_parts > 1 then
       methodname = name_parts[2]
-      if #choice.paramTypes > 0 then
+      if choice.paramTypes and #choice.paramTypes > 0 then
         methodname = string.format('%s(%s)', methodname, table.concat(choice.paramTypes, ','))
       end
     end
