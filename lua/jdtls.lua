@@ -297,20 +297,75 @@ if not vim.lsp.callbacks['workspace/executeClientCommand'] then
   end
 end
 
+local function within_range(outer, inner)
+  local o1y = outer.start.line
+  local o1x = outer.start.character
+  local o2y = outer['end'].line
+  local o2x = outer['end'].character
+  assert(o1y <= o2y, "Start must be before end: " .. vim.inspect(outer))
 
-local function get_diagnostics_for_line(bufnr, linenr)
+  local i1y = inner.start.line
+  local i1x = inner.start.character
+  local i2y = inner['end'].line
+  local i2x = inner['end'].character
+  assert(i1y <= i2y, "Start must be before end: " .. vim.inspect(inner))
+
+  -- Outer: {}
+  -- Inner: []
+  -------------
+  -------------
+  --  {     [ ]
+  --      }
+  -------------
+  --     {
+  --  []   }
+  -------------
+
+  if o1y < i1y then
+    --     {
+    --  [      ]
+    --     }
+    if o2y > i2y then
+      return true
+    end
+    --     {
+    --  [  }   ]
+    return o2y == i2y and o2x >= i2x
+  elseif o1y == i1y then
+    if o2y > i2y then
+      -- { []
+      --  }
+      return true
+    else
+      --  { [ ]  }
+      --  [ { ]  }
+      return o2y == i2y and o1x <= i1x and o2x >= i2x
+    end
+  else
+    return false
+  end
+end
+
+
+local function get_diagnostics_for_range(bufnr, range)
   local diagnostics = vim.lsp.util.diagnostics_by_buf[bufnr]
   if not diagnostics then return {} end
   local line_diagnostics = {}
   for _, diagnostic in ipairs(diagnostics) do
-    if diagnostic.range.start.line == linenr then
+    if within_range(diagnostic.range, range) then
       table.insert(line_diagnostics, diagnostic)
     end
   end
-  if #line_diagnostics >= 1 then
-    return line_diagnostics[1]
+  if #line_diagnostics == 0 then
+    -- If there is no diagnostics at the cursor position,
+    -- see if there is at least something on the same line
+    for _, diagnostic in ipairs(diagnostics) do
+      if diagnostic.range.start.line == range.start.line then
+        table.insert(line_diagnostics, diagnostic)
+      end
+    end
   end
-  return {}
+  return line_diagnostics
 end
 
 
@@ -346,7 +401,7 @@ local function make_code_action_params(from_selection, kind)
   end
   local bufnr = api.nvim_get_current_buf()
   params.context = {
-    diagnostics = get_diagnostics_for_line(bufnr, params.range.start.line),
+    diagnostics = get_diagnostics_for_range(bufnr, params.range),
     only = kind,
   }
   return params
@@ -609,7 +664,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
   }
   M.execute_command(cmd_codelens, function(err0, codelens)
     if err0 then
-      print('Error fetching codelens: ' .. err0.message)
+      print('Error fetching codelens: ' .. (err0.message or vim.inspect(err0)))
       return
     end
     local choice = choose_lens(codelens)
