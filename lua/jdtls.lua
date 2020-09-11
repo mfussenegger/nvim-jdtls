@@ -642,11 +642,48 @@ function M.open_jdt_link(uri)
 end
 
 
+local function enrich_dap_config(config_, on_config)
+  local config = vim.deepcopy(config_)
+  if not config.mainClass then
+    config.mainClass = resolve_classname()
+  end
+  M.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
+    assert(not err, err and (err.message or vim.inspect(err)))
+
+    for _, entry in ipairs(mainclasses) do
+      if entry.mainClass == config.mainClass then
+        config.projectName = entry.projectName
+        break
+      end
+    end
+    assert(config.projectName, "projectName is missing")
+    with_java_executable(config.mainClass, config.projectName, function(java_exec)
+      config.javaExec = java_exec
+      local params = {
+        command = 'vscode.java.resolveClasspath',
+        arguments = { config.mainClass, config.projectName }
+      }
+      M.execute_command(params, function(err1, paths)
+        assert(not err1, err1 and (err1.message or vim.inspect(err1)))
+        config.modulePaths = paths[1]
+        config.classPaths = paths[2]
+        on_config(config)
+      end)
+    end)
+  end)
+end
+
+
 local function start_debug_adapter(callback)
   M.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
 
-    callback({ type = 'server'; host = '127.0.0.1'; port = port; })
+    callback({
+      type = 'server';
+      host = '127.0.0.1';
+      port = port;
+      enrich_config = enrich_dap_config;
+    })
   end)
 end
 
