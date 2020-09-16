@@ -873,15 +873,9 @@ function M.setup_dap()
 end
 
 
-M.extendedClientCapabilities = {
-  classFileContentsSupport = true;
-  generateToStringPromptSupport = true;
-  hashCodeEqualsPromptSupport = true;
-  advancedExtractRefactoringSupport = true;
-  advancedOrganizeImportsSupport = true;
-  generateConstructorsPromptSupport = true;
-  generateDelegateMethodsPromptSupport = true;
-};
-
+local setup = require('jdtls.setup')
+M.extendedClientCapabilities = setup.extendedClientCapabilities
+M.start_or_attach = setup.start_or_attach
+M.setup = setup
 
 return M
