@@ -830,11 +830,12 @@ function M.setup_dap()
     print('nvim-dap is not available')
     return
   end
+  if dap.adapters.java and original_configurations then
+    return
+  end
 
   dap.adapters.java = start_debug_adapter
-  if not original_configurations then
-    original_configurations = dap.configurations.java or {}
-  end
+  original_configurations = dap.configurations.java or {}
   local configurations = vim.deepcopy(original_configurations)
   dap.configurations.java = configurations
 
