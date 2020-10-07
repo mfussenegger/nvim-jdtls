@@ -59,10 +59,10 @@ local function start_or_attach(config)
     end
   end
 
-  config.root_dir = config.root_dir or find_root(bufname, {'.git', 'gradlew', 'mvnw'})
-  if not config.root_dir then
-    return
-  end
+  config.root_dir = (config.root_dir
+    or find_root(bufname, {'.git', 'gradlew', 'mvnw'})
+    or vim.fn.getcwd()
+  )
   config.callbacks = config.callbacks or {}
   config.callbacks['language/status'] = config.callbacks['language/status'] or status_callback
   config.capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
