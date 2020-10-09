@@ -20,7 +20,7 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
 - [x] `jshell` command to open up jshell with classpath from project set
-- [x] Integration with [nvim-dap][5]
+- [x] Debugger support via [nvim-dap][5]
 
 
 Take a look at [a demo](https://github.com/mfussenegger/nvim-jdtls/issues/3) to
@@ -101,9 +101,10 @@ following:
 if has('nvim-0.5')
   packadd nvim-jdtls
   lua jdtls = require('jdtls')
+  lua config = {cmd = {'java-lsp.sh'}}
   augroup lsp
     au!
-    au FileType java lua jdtls.start_or_attach({cmd={'java-lsp.sh'}})
+    au FileType java lua jdtls.start_or_attach(config)
   augroup end
 endif
 ```
@@ -136,6 +137,7 @@ vnoremap crm <Esc><Cmd>lua require('jdtls').extract_method(true)<CR>
 
 
 -- If using nvim-dap
+-- This requires java-debug and vscode-java-test bundles, see install steps in this README further below.
 nnoremap <leader>df <Cmd>lua require'jdtls'.test_class()<CR>
 nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
 ```
@@ -154,14 +156,35 @@ command! -buffer JdtJshell lua require('jdtls').jshell()
 ```
 
 
-## nvim-dap
+## Debugger (via nvim-dap)
 
 
 `nvim-jdtls` provides integration with [nvim-dap][5].
 
+Once setup correctly, it enables the following additional functionality:
 
-For this to work, [eclipse.jdt.ls][3] needs to load the [java-debug][6] extension.
-To do so, clone [java-debug][6] and run `./mvnw clean install` in the cloned directory, then extend the `initializationOptions` with which you start [eclipse.jdt.ls][3]:
+1. Debug applications via explicit configurations
+2. Debug automatically discovered main classes
+3. Debug junit tests. Either whole classes or individual test methods
+
+For 1 & 2 to work, [eclipse.jdt.ls][3] needs to load the [java-debug][6]
+extension. For 3 to work, it also needs to load the [vscode-java-test][7] extension.
+
+For usage instructions once installed, read the [nvim-dap][5] help.
+Debugging junit test classes or methods will be possible via these two functions:
+
+```lua
+require'jdtls'.test_class()
+require'jdtls'.test_nearest_method()
+```
+
+### java-debug installation
+
+- Clone [java-debug][6]
+- Navigate into the cloned repository (`cd java-debug`)
+- Run `./mvnw clean install`
+- Extend the `initializationOptions` with which you start [eclipse.jdt.ls][3] as follows:
+
 
 ```lua
 config['init_options'] = {
@@ -171,7 +194,13 @@ config['init_options'] = {
 }
 ```
 
-You also need to call `require('jdtls').setup_dap()` to have it register a `java` adapter for `nvim-dap` and to create configurations for all discovered main classes:
+### nvim-dap setup
+
+You also need to call `require('jdtls').setup_dap()` to have it register a
+`java` adapter for `nvim-dap` and to create configurations for all discovered
+main classes.
+
+To do that, extend the configuration for `nvim-jdtls` with:
 
 ```lua
 config['on_attach'] = function(client, bufnr)
@@ -179,19 +208,25 @@ config['on_attach'] = function(client, bufnr)
 end
 ```
 
+### vscode-java-test installation
 
-Furthermore, `nvim-jdtls` supports running and debugging tests. For this to work the bundles from [vscode-java-test][7] need to be installed: 
+To be able to debug junit tests, it is necessary to install the bundles from [vscode-java-test][7]:
 
-- Clone the repo
+- Clone the repository
+- Navigate into the folder (`cd vscode-java-test`)
 - Run `npm install`
 - Run `npm run build-plugin`
-- Extend the bundles:
+- Extend the bundles in the nvim-jdtls config:
 
 
 ```lua
+
+-- This bundles definition is the same as in the previous section (java-debug installation)
 local bundles = {
   vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar"),
 };
+
+-- This is the new part
 vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar"), "\n"))
 config['init_options'] = {
   bundles = bundles;
