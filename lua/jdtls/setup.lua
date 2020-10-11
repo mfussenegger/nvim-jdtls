@@ -36,6 +36,18 @@ local function find_root(bufname, markers)
   end
 end
 
+
+local extendedClientCapabilities = {
+  classFileContentsSupport = true;
+  generateToStringPromptSupport = true;
+  hashCodeEqualsPromptSupport = true;
+  advancedExtractRefactoringSupport = true;
+  advancedOrganizeImportsSupport = true;
+  generateConstructorsPromptSupport = true;
+  generateDelegateMethodsPromptSupport = true;
+};
+
+
 local function start_or_attach(config)
   assert(config, 'config is required')
   assert(
@@ -78,6 +90,10 @@ local function start_or_attach(config)
           };
       };
   }
+  config.init_options = config.init_options or {}
+  config.init_options.extendedClientCapabilities = (
+    config.init_options.extendedClientCapabilities or extendedClientCapabilities
+  )
   local client_id = lsps[config.root_dir]
   if not client_id then
     client_id = lsp.start_client(config)
@@ -85,16 +101,6 @@ local function start_or_attach(config)
   end
   lsp.buf_attach_client(bufnr, client_id)
 end
-
-local extendedClientCapabilities = {
-  classFileContentsSupport = true;
-  generateToStringPromptSupport = true;
-  hashCodeEqualsPromptSupport = true;
-  advancedExtractRefactoringSupport = true;
-  advancedOrganizeImportsSupport = true;
-  generateConstructorsPromptSupport = true;
-  generateDelegateMethodsPromptSupport = true;
-};
 
 
 local function add_commands()
