@@ -1,6 +1,12 @@
 local M = {}
 
 
+function M.pick_one_async(items, prompt, label_fn, cb)
+  local result = M.pick_one(items, prompt, label_fn)
+  cb(result)
+end
+
+
 function M.pick_one(items, prompt, label_fn)
   local choices = {prompt}
   for i, item in ipairs(items) do

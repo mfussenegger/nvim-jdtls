@@ -429,27 +429,33 @@ function M.code_action(from_selection, kind)
       print("No code actions available")
       return
     end
-    local action = ui.pick_one(actions, 'Code Actions:', function(x)
-      return (x.title:gsub('\r\n', '\\r\\n')):gsub('\n', '\\n')
-    end)
-    if not action then
-      return
-    end
-    if action.edit then
-      vim.lsp.util.apply_workspace_edit(action.edit)
-    end
-    local command
-    if type(action.command) == "table" then
-      command = action.command
-    else
-      command = action
-    end
-    local fn = M.commands[command.command]
-    if fn then
-      fn(command, code_action_params)
-    else
-      M.execute_command(command)
-    end
+    ui.pick_one_async(
+      actions,
+      'Code Actions:',
+      function(x)
+        return (x.title:gsub('\r\n', '\\r\\n')):gsub('\n', '\\n')
+      end,
+      function(action)
+        if not action then
+          return
+        end
+        if action.edit then
+          vim.lsp.util.apply_workspace_edit(action.edit)
+        end
+        local command
+        if type(action.command) == "table" then
+          command = action.command
+        else
+          command = action
+        end
+        local fn = M.commands[command.command]
+        if fn then
+          fn(command, code_action_params)
+        else
+          M.execute_command(command)
+        end
+      end
+    )
   end)
 end
 
