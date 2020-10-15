@@ -34,7 +34,7 @@ see some of the functionality in action.
 - Call `:packadd nvim-jdtls` if you install `nvim-jdtls` to `'packpath'`.
 
 
-## LSP Installation
+## Language Server Installation
 
 For ``nvim-jdtls`` to work, [eclipse.jdt.ls][3] needs to be installed.
 
@@ -232,6 +232,35 @@ config['init_options'] = {
   bundles = bundles;
 }
 ```
+
+## Troubleshooting
+
+### Diagnostics and completion suggestions are slow
+
+Completion requests can be quite expensive on big projects. If you're using
+some kind of autoc-ompletion plugin that triggers completion requests
+automatically, consider deactivating it or tuning it so it is less aggressive.
+Triggering a completion request on each typed character is likely overloading
+[eclipse.jdt.ls][3].
+
+
+### Newly added dependencies are not found
+
+You can try running `:JdtUpdateConfig` to refresh the configuration. If that
+doesn't work you'll need to restart the language server.
+
+### Language server doesn't find classes that should be there
+
+You can try opening the files that are not found. Sometimes if a file is added
+outside of Neovim, the language server doesn't get the message.
+
+
+### After updating eclipse.jdt.ls it doesn't work properly anymore
+
+Try wiping your workspace folder and restart Neovim and the language server.
+
+(the workspace folder is the path you used as argument to `-data` in your
+`java-lsp.sh`).
 
 
 [1]: https://microsoft.github.io/language-server-protocol/
