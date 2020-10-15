@@ -243,6 +243,26 @@ config['init_options'] = {
 
 ## Troubleshooting
 
+### vim.lsp.buf functions don't do anything
+
+This can have two reasons:
+
+1. The client and server aren't starting up correctly.
+
+You can check if the client is running with `:lua print(vim.inspect(vim.lsp.buf_get_clients()))`, it should output a lot of information.
+If it doesn't, verify:
+
+- That the language server can be started standalone. (Run the `java-lsp.sh` in a terminal)
+- That there are no configuration errors. (Run `:set ft=java` and `:messages` after opening a Java file)
+- Check the log files (`:lua print(vim.fn.stdpath('data'))` lists the path, there should be a `lsp.log`)
+
+
+2. Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths.
+
+- Check the log files (`:lua print(vim.fn.stdpath('data'))` lists the path, there should be a `lsp.log`)
+- If there is nothing, try changing the log level. See `:help vim.lsp.set_log_level()`
+
+
 ### Diagnostics and completion suggestions are slow
 
 Completion requests can be quite expensive on big projects. If you're using
