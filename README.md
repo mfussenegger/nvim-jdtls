@@ -115,6 +115,14 @@ The argument passed to `start_or_attach` is the same `config` mentioned in
 `:help vim.lsp.start_client`. You may want to configure some settings via the `init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available options.
 
 
+**Warning**: Using [nvim-lspconfig][9] in addition to the setup here is not
+required.
+
+You can use it to configure other servers, but you **must not** call
+`require'nvim_lsp'.jdtls.setup{}`. You'd end up running *two* clients and two
+language servers if you do that.
+
+
 ## Usage
 
 `nvim-jdtls` extends the capabilities of the built-in LSP support in
@@ -271,3 +279,4 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
 [8]: https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line
+[9]: https://github.com/neovim/nvim-lspconfig
