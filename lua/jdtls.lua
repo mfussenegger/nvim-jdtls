@@ -709,6 +709,23 @@ local function start_debug_adapter(callback)
 end
 
 
+local TestKind = {
+  None = -1,
+  JUnit = 0,
+  JUnit5 = 1,
+  TestNG = 2
+}
+
+
+local TestLevel = {
+  Root = 0,
+  Folder = 1,
+  Package = 2,
+  Class = 3,
+  Method = 4,
+}
+
+
 local function run_test_codelens(choose_lens, no_match_msg)
   local status, dap = pcall(require, 'dap')
   if not status then
@@ -740,16 +757,21 @@ local function run_test_codelens(choose_lens, no_match_msg)
         methodname = string.format('%s(%s)', methodname, table.concat(choice.paramTypes, ','))
       end
     end
+    local req_arguments = {
+      uri = uri;
+      classFullName = classname;
+      testName = methodname;
+      project = choice.project;
+      scope = choice.level;
+      testKind = choice.kind;
+    }
+    if choice.kind == TestKind.JUnit5 and choice.level == TestLevel.Method then
+      req_arguments['start'] = choice.location.range['start']
+      req_arguments['end'] = choice.location.range['end']
+    end
     local cmd_junit_args = {
       command = 'vscode.java.test.junit.argument';
-      arguments = { vim.fn.json_encode({
-        uri = uri;
-        classFullName = classname;
-        testName = methodname;
-        project = choice.project;
-        scope = choice.level;
-        testKind = choice.kind;
-      })};
+      arguments = { vim.fn.json_encode(req_arguments) };
     }
     M.execute_command(cmd_junit_args, function(err1, launch_args)
       if err1 then
@@ -801,7 +823,7 @@ end
 function M.test_class()
   local choose_lens = function(codelens)
     for _, lens in pairs(codelens) do
-      if lens.level == 3 then
+      if lens.level == TestLevel.Class then
         return lens
       end
     end
@@ -812,10 +834,10 @@ end
 
 function M.test_nearest_method()
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local candidates = {}
   local choose_lens = function(codelens)
+    local candidates = {}
     for _, lens in pairs(codelens) do
-      if lens.level == 4 and lens.location.range.start.line <= lnum then
+      if lens.level == TestLevel.Method and lens.location.range.start.line <= lnum then
         table.insert(candidates, lens)
       end
     end
