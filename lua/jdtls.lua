@@ -4,6 +4,7 @@ local uv = vim.loop
 local ui = require('jdtls.ui')
 local M = {}
 local request = vim.lsp.buf_request
+local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
 
 
@@ -249,6 +250,9 @@ local function java_choose_imports(resp)
     local buf = vim.uri_to_bufnr(uri)
     api.nvim_win_set_buf(0, buf)
     api.nvim_win_set_cursor(0, {start.line + 1, start.character})
+    api.nvim_command('normal! zvzz')
+    api.nvim_buf_add_highlight(
+      0, highlight_ns, 'IncSearch', start.line, start.character, selection.range['end'].character)
     api.nvim_command("redraw")
 
     local candidates = selection.candidates
@@ -259,6 +263,7 @@ local function java_choose_imports(resp)
       'Choose type ' .. type_name .. ' to import',
       function(x) return x.fullyQualifiedName end
     )
+    api.nvim_buf_clear_namespace(0, highlight_ns, 0, -1)
     table.insert(choices, choice)
   end
   return choices
@@ -411,7 +416,7 @@ end
 function M.code_action(from_selection, kind)
   local code_action_params = make_code_action_params(from_selection or false, kind)
   request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
-    if err then return end
+    assert(not err, vim.inspect(err))
     -- actions is (Command | CodeAction)[] | null
     -- CodeAction
     --      title: String
