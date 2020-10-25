@@ -631,23 +631,61 @@ end
 --
 --@param uri expected to be a `jdt://` uri
 function M.open_jdt_link(uri)
-  local lspbuf
+  local client
   for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
-    if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' and #vim.lsp.buf_get_clients(buf.bufnr) > 0 then
-      lspbuf = buf.bufnr
-      break
+    if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
+      local clients = vim.lsp.buf_get_clients(buf.bufnr)
+      for _, c in ipairs(clients) do
+        if c.config.init_options
+          and c.config.init_options.extendedClientCapabilities
+          and c.config.init_options.extendedClientCapabilities.classFileContentsSupport then
+
+          client = c
+          break
+        end
+      end
     end
   end
+  assert(client, 'Must have a buffer open with a language client connected to eclipse.jdt.ls to load JDT URI')
   local buf = api.nvim_get_current_buf()
   local params = {
     uri = uri
   }
-  local responses = vim.lsp.buf_request_sync(lspbuf, 'java/classFileContents', params)
-  if not responses or #responses == 0 or not responses[1].result then
-    api.nvim_buf_set_lines(buf, 0, -1, false, {"Failed to load contents for uri", params.uri})
-  else
-    api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(responses[1].result, '\n', true))
+  local response = nil
+  local cb = function(err, _, result)
+    response = {err, result}
   end
+  local ok, request_id = client.request('java/classFileContents', params, cb, buf)
+  assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
+  local timeout_ms = 1000
+  local wait_ok, reason = vim.wait(timeout_ms, function() return response end)
+  local log_path = require('jdtls.path').join(vim.fn.stdpath('data'), 'lsp.log')
+  local buf_content
+  if wait_ok and #response == 2 and response[2] then
+    local content = response[2]
+    if content == "" then
+      buf_content = {
+        'Received response from server, but it was empty. Check the log file for errors', log_path}
+    else
+      buf_content = vim.split(response[2], '\n', true)
+    end
+  else
+    local error_msg
+    if not wait_ok then
+      client.cancel_request(request_id)
+      local wait_failure = {
+        [-1] = 'timeout';
+        [-2] = 'interrupted';
+        [-3] = 'error'
+      }
+      error_msg = wait_failure[reason]
+    else
+      error_msg = response[1]
+    end
+    buf_content = {
+      'Failed to load content for uri', uri, '', 'Error was: ', error_msg, '', 'Check the log file for errors', log_path}
+  end
+  api.nvim_buf_set_lines(buf, 0, -1, false, buf_content)
   api.nvim_buf_set_option(0, 'filetype', 'java')
   api.nvim_command('setlocal nomodifiable')
 end
