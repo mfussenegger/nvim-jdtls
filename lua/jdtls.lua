@@ -493,12 +493,12 @@ function M.compile(full_compile)
     CANCELLED = 3,
   }
   request(0, 'java/buildWorkspace', full_compile or false, function(err, _, result)
-    if err then
-      print('Compile error: ' .. err.message)
-      return
-    end
-    if result ~= CompileWorkspaceStatus.SUCCEED then
-      print('Compile error')
+    assert(not err, 'Error on `java/buildWorkspace`: ' .. vim.inspect(err))
+    if result == CompileWorkspaceStatus.SUCCEED then
+      print('Compile successfull')
+    else
+      vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
+      print(string.format('Compile error. Check diagnostics results for errors (%s)', CompileWorkspaceStatus[result]))
     end
   end)
 end
