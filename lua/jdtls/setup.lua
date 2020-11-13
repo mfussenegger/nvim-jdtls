@@ -45,6 +45,7 @@ local extendedClientCapabilities = {
   advancedOrganizeImportsSupport = true;
   generateConstructorsPromptSupport = true;
   generateDelegateMethodsPromptSupport = true;
+  inferSelectionSupport = {"extractMethod"};
 };
 
 

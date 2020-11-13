@@ -193,18 +193,48 @@ local function handle_refactor_workspace_edit(err, _, result)
 end
 
 
+local function mk_refactor_options()
+  local sts = vim.bo.softtabstop;
+  return {
+    tabSize = (sts > 0 and sts) or (sts < 0 and vim.bo.shiftwidth) or vim.bo.tabstop;
+    insertSpaces = vim.bo.expandtab;
+  }
+end
+
+
 local function java_apply_refactoring_command(command, code_action_params)
   local cmd = command.arguments[1]
-  local sts = vim.bo.softtabstop;
   local params = {
     command = cmd,
     context = code_action_params,
-    options = {
-      tabSize = (sts > 0 and sts) or (sts < 0 and vim.bo.shiftwidth) or vim.bo.tabstop;
-      insertSpaces = vim.bo.expandtab;
-    },
+    options = mk_refactor_options(),
   }
-  request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+  if cmd ~= 'extractMethod' then
+    request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    return
+  end
+  request(0, 'java/inferSelection', params, function(err, _, selection_info)
+    assert(not err, vim.inspect(err))
+    if not selection_info or #selection_info == 0 then
+      print('No selection found that could be extracted into a method')
+      return
+    end
+    if #selection_info == 1 then
+      params.commandArguments = {selection_info}
+      request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    else
+      ui.pick_one_async(
+        selection_info,
+        'Choices:',
+        function(x) return x.name end,
+        function(selection)
+          if not selection then return end
+          params.commandArguments = {selection}
+          request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+        end
+      )
+    end
+  end)
 end
 
 
