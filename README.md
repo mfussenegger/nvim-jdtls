@@ -152,7 +152,7 @@ nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
 
 
 Some methods are better exposed via commands. As a shortcut you can also call
-`:lua require('jdtls.setup').add_commands()` to declare these. It's recommended to call `add_commands` within the `on_attach` callback that can be set on the `config` table which is passed to `start_or_attach`.
+`:lua require('jdtls.setup').add_commands()` to declare these. It's recommended to call `add_commands` within the `on_attach` handler that can be set on the `config` table which is passed to `start_or_attach`.
 
 
 ```

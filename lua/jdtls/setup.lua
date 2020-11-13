@@ -75,8 +75,8 @@ local function start_or_attach(config)
     or find_root(bufname, {'.git', 'gradlew', 'mvnw'})
     or vim.fn.getcwd()
   )
-  config.callbacks = config.callbacks or {}
-  config.callbacks['language/status'] = config.callbacks['language/status'] or status_callback
+  config.handlers = config.handlers or {}
+  config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   config.capabilities.textDocument.codeAction = {
       dynamicRegistration = false;

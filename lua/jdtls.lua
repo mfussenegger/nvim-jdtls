@@ -283,8 +283,8 @@ M.commands = {
 }
 
 
-if not vim.lsp.callbacks['workspace/executeClientCommand'] then
-  vim.lsp.callbacks['workspace/executeClientCommand'] = function(_, _, params)
+if not vim.lsp.handlers['workspace/executeClientCommand'] then
+  vim.lsp.handlers['workspace/executeClientCommand'] = function(_, _, params)
     local fn = M.commands[params.command]
     if fn then
       local ok, result = pcall(fn, params.arguments)
@@ -353,7 +353,7 @@ end
 
 
 local function get_diagnostics_for_range(bufnr, range)
-  local diagnostics = vim.lsp.util.diagnostics_by_buf[bufnr]
+  local diagnostics = vim.lsp.diagnostic.get(bufnr)
   if not diagnostics then return {} end
   local line_diagnostics = {}
   for _, diagnostic in ipairs(diagnostics) do
