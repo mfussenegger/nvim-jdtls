@@ -101,7 +101,7 @@ following:
 if has('nvim-0.5')
   packadd nvim-jdtls
   lua jdtls = require('jdtls')
-  lua config = {cmd = {'java-lsp.sh'}}
+  lua config = {cmd = {'java-lsp.sh'}, settings = {...}}
   augroup lsp
     au!
     au FileType java lua jdtls.start_or_attach(config)
@@ -113,7 +113,23 @@ endif
 
 The argument passed to `start_or_attach` is the same `config` mentioned in
 `:help vim.lsp.start_client`. You may want to configure some settings via the `init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available options.
+Some additional settings can be passed on to the server upon initialization using a
+`workspace/didChangeConfiguration` notification e.g.
 
+```
+lua <<EOF
+  config {
+    cmd = { ... },
+    settings = {
+      ["java.format.settings.url"] = "/path/to/eclipse-style.xml",
+      ["java.format.settings.profile"] = "MyProfile"
+    }
+  }
+EOF
+```
+Possible settings can be seen [here][10] under configuration properties.
+
+**Note**: Exactly which preferences can be configured through this notification is unclear at the moment and your mileage may vary. 
 
 **Warning**: Using [nvim-lspconfig][9] in addition to the setup here is not
 required.
@@ -300,3 +316,4 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [7]: https://github.com/microsoft/vscode-java-test
 [8]: https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line
 [9]: https://github.com/neovim/nvim-lspconfig
+[10]: https://github.com/redhat-developer/vscode-java/blob/master/package.json

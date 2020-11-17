@@ -90,6 +90,23 @@ local function start_or_attach(config)
           };
       };
   }
+
+  -- Allow settings to be passed to the server
+  config.on_init = function(client, _result)
+      function client.workspace_did_change_configuration(settings)
+          if not settings then return end    -- nil
+          if vim.tbl_isempty(settings) then  -- empty
+              settings = {[vim.type_idx]=vim.types.dictionary}
+          end
+          return client.notify('workspace/didChangeConfiguration', {
+              settings = settings
+          })
+      end
+      if not vim.tbl_isempty(config.settings) then
+          client.workspace_did_change_configuration(config.settings)
+      end
+  end
+
   config.init_options = config.init_options or {}
   config.init_options.extendedClientCapabilities = (
     config.init_options.extendedClientCapabilities or extendedClientCapabilities
