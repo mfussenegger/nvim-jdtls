@@ -7,6 +7,11 @@ local request = vim.lsp.buf_request
 local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
 
+local setup = require('jdtls.setup')
+M.extendedClientCapabilities = setup.extendedClientCapabilities
+M.start_or_attach = setup.start_or_attach
+M.setup = setup
+
 
 local function java_apply_workspace_edit(command)
   for _, argument in ipairs(command.arguments) do
@@ -209,14 +214,14 @@ local function java_apply_refactoring_command(command, code_action_params)
     context = code_action_params,
     options = mk_refactor_options(),
   }
-  if cmd ~= 'extractMethod' then
+  if not vim.tbl_contains(setup.extendedClientCapabilities.inferSelectionSupport, cmd) then
     request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return
   end
   request(0, 'java/inferSelection', params, function(err, _, selection_info)
     assert(not err, vim.inspect(err))
     if not selection_info or #selection_info == 0 then
-      print('No selection found that could be extracted into a method')
+      print('No selection found that could be extracted')
       return
     end
     if #selection_info == 1 then
@@ -868,6 +873,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
       local test_results
       local server = nil
       local junit = require('jdtls.junit')
+      print('Running', classname, methodname)
       dap.run(config, {
         before = function(conf)
           server = uv.new_tcp()
@@ -974,10 +980,5 @@ function M.setup_dap()
   end)
 end
 
-
-local setup = require('jdtls.setup')
-M.extendedClientCapabilities = setup.extendedClientCapabilities
-M.start_or_attach = setup.start_or_attach
-M.setup = setup
 
 return M
