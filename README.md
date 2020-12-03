@@ -123,6 +123,10 @@ You can use it to configure other servers, but you **must not** call
 language servers if you do that.
 
 
+**Tip**: You can get a better UI for code-actions and other functions by
+overriding the `jdtls.ui` picker. See [UI Extensions][10].
+
+
 ## Usage
 
 `nvim-jdtls` extends the capabilities of the built-in LSP support in
@@ -300,3 +304,4 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [7]: https://github.com/microsoft/vscode-java-test
 [8]: https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line
 [9]: https://github.com/neovim/nvim-lspconfig
+[10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
