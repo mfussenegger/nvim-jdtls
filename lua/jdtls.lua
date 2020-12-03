@@ -533,7 +533,41 @@ function M.compile(full_compile)
       print('Compile successfull')
     else
       vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
-      print(string.format('Compile error. Check diagnostics results for errors (%s)', CompileWorkspaceStatus[result]))
+      local diagnostics_by_buf = vim.lsp.diagnostic.get_all()
+      local project_config_errors = {}
+      local compile_errors = {}
+      for bufnr, diagnostics in pairs(diagnostics_by_buf) do
+        local fname = vim.uri_to_fname(vim.uri_from_bufnr(bufnr))
+        local stat = vim.loop.fs_stat(fname)
+        local items
+        if (vim.endswith(fname, 'build.gradle')
+            or vim.endswith(fname, 'pom.xml')
+            or (stat and stat.type == 'directory')) then
+          items = project_config_errors
+        else
+          items = compile_errors
+        end
+        for _, d in pairs(diagnostics) do
+          if d.severity == vim.lsp.protocol.DiagnosticSeverity.Error then
+            table.insert(items, {
+              bufnr = bufnr,
+              lnum = d.range.start.line + 1,
+              col = d.range.start.character + 1,
+              text = d.message,
+              vcol = 1
+            })
+          end
+        end
+      end
+      local items = #project_config_errors > 0 and project_config_errors or compile_errors
+      table.sort(items, function(a, b) return a.lnum < b.lnum end)
+      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = items })
+      if #items > 0 then
+        print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
+        vim.cmd('copen')
+      else
+        print('Compile error, but no error diagnostics available. Try running compile again.')
+      end
     end
   end)
 end
