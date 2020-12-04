@@ -99,12 +99,9 @@ following:
 
 ```
 if has('nvim-0.5')
-  packadd nvim-jdtls
-  lua jdtls = require('jdtls')
-  lua config = {cmd = {'java-lsp.sh'}}
   augroup lsp
     au!
-    au FileType java lua jdtls.start_or_attach(config)
+    au FileType java lua require('jdtls').start_or_attach({cmd = {'java-lsp.sh'}})
   augroup end
 endif
 ```
@@ -112,7 +109,24 @@ endif
 `java-lsp.sh` needs to be changed to the name of the shell script created earlier.
 
 The argument passed to `start_or_attach` is the same `config` mentioned in
-`:help vim.lsp.start_client`. You may want to configure some settings via the `init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available options.
+`:help vim.lsp.start_client`. You may want to configure some settings via the
+`init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available
+options.
+
+For the language server to work correctly it is important that the `root_dir`
+in the `config` is set correctly. By default `start_or_attach` sets the
+`root_dir` automatically by looking for marker files relative to each file
+you're opening. The markers default to `.git`, `mvnw` and `gradlew`. If no
+parent directory contains any of the markers, it will fallback to the current
+working directory.
+
+`nvim-jdtls` contains a `find_root` function which you could use to set a `root_dir`:
+
+```lua
+-- find_root looks for parent directories relative to the current buffer containing one of the given arguments.
+local root_dir = require('jdtls.setup').find_root({'gradle.build', 'pom.xml'})
+-- Use root_dir in the `config` you pass to `start_or_attach`.
+```
 
 
 **Warning**: Using [nvim-lspconfig][9] in addition to the setup here is not

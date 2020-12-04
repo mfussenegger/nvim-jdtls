@@ -24,7 +24,8 @@ local function attach_to_active_buf(bufnr, client_name)
   return false
 end
 
-local function find_root(bufname, markers)
+local function find_root(markers, bufname)
+  bufname = bufname or api.nvim_buf_get_name(api.nvim_get_current_buf())
   local dirname = vim.fn.fnamemodify(bufname, ':p:h')
   while not path.is_fs_root(dirname) do
     for _, marker in ipairs(markers) do
@@ -54,7 +55,7 @@ local function start_or_attach(config)
   assert(
     config.cmd and type(config.cmd) == 'table',
     'Config must have a `cmd` property and that must be a table. Got: '
-      .. table.concat(config.cmd, ' ') or 'nil'
+      .. table.concat(config.cmd, ' ')
   )
   assert(
     tonumber(vim.fn.executable(config.cmd[1])) == 1,
@@ -73,7 +74,7 @@ local function start_or_attach(config)
   end
 
   config.root_dir = (config.root_dir
-    or find_root(bufname, {'.git', 'gradlew', 'mvnw'})
+    or find_root({'.git', 'gradlew', 'mvnw'}, bufname)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
@@ -116,4 +117,5 @@ return {
   start_or_attach = start_or_attach;
   extendedClientCapabilities = extendedClientCapabilities;
   add_commands = add_commands;
+  find_root = find_root;
 }
