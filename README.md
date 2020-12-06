@@ -277,6 +277,10 @@ If it doesn't, verify:
 
 2. Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths.
 
+- Run `:JdtCompile` for incremental compilation or `:JdtCompile true` for full
+  compilation. If there are any errors in the project, it will open the
+  quickfix list with the errors.
+
 - Check the log files (`:lua print(vim.fn.stdpath('data'))` lists the path, there should be a `lsp.log`)
 - If there is nothing, try changing the log level. See `:help vim.lsp.set_log_level()`
 
@@ -297,8 +301,15 @@ doesn't work you'll need to restart the language server.
 
 ### Language server doesn't find classes that should be there
 
-You can try opening the files that are not found. Sometimes if a file is added
-outside of Neovim, the language server doesn't get the message.
+The language server has its own mental model of which files exists based on
+what the client tells it. If you modify files outside of neovim, then the
+language server won't be notified of the changes. This can happen for example
+if you switch to a different branch with git.
+
+If the language server doesn't get a notification about a new file, you might
+get errors, telling you that a class cannot be resolved. If that is the case,
+open the file and save it. Then the language server will be notified about the
+new file and it should start to recognize the classes within the file.
 
 
 ### After updating eclipse.jdt.ls it doesn't work properly anymore
