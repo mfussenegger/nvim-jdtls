@@ -225,7 +225,7 @@ local function java_apply_refactoring_command(command, code_action_params)
       return
     end
     if #selection_info == 1 then
-      params.commandArguments = {selection_info}
+      params.commandArguments = selection_info
       request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     else
       ui.pick_one_async(
