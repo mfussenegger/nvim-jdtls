@@ -63,6 +63,13 @@ If you're using Java < 9, remove the `add-modules` and `-add-opens` options.
 ```bash
 #!/usr/bin/env bash
 
+# NOTE:
+# This doesn't work as is on Windows. You'll need to create an equivalent `.bat` file instead
+#
+# NOTE:
+# If you're not using Linux you'll need to adjust the `-configuration` option
+# to point to the `config_mac' or `config_win` folders depending on your system.
+
 JAR="$HOME/dev/eclipse/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/plugins/org.eclipse.equinox.launcher_*.jar"
 GRADLE_HOME=$HOME/gradle /usr/lib/jvm/java-14-openjdk/bin/java \
   -Declipse.application=org.eclipse.jdt.ls.core.id1 \
