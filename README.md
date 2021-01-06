@@ -120,12 +120,11 @@ you're opening. The markers default to `.git`, `mvnw` and `gradlew`. If no
 parent directory contains any of the markers, it will fallback to the current
 working directory.
 
-`nvim-jdtls` contains a `find_root` function which you could use to set a `root_dir`:
+`nvim-jdtls` contains a `find_root` function which you could use to customize the `root_dir`:
 
 ```lua
 -- find_root looks for parent directories relative to the current buffer containing one of the given arguments.
-local root_dir = require('jdtls.setup').find_root({'gradle.build', 'pom.xml'})
--- Use root_dir in the `config` you pass to `start_or_attach`.
+require('jdtls').start_or_attach({cmd = {'java-lsp.sh'}, root_dir = require('jdtls.setup').find_root({'gradle.build', 'pom.xml'})})
 ```
 
 
