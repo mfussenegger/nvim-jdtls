@@ -27,13 +27,16 @@ end
 local function find_root(markers, bufname)
   bufname = bufname or api.nvim_buf_get_name(api.nvim_get_current_buf())
   local dirname = vim.fn.fnamemodify(bufname, ':p:h')
-  while not path.is_fs_root(dirname) do
+  local getparent = function(p)
+    return vim.fn.fnamemodify(p, ':h')
+  end
+  while not getparent(dirname) == dirname do
     for _, marker in ipairs(markers) do
       if uv.fs_stat(path.join(dirname, marker)) then
         return dirname
       end
     end
-    dirname = vim.fn.fnamemodify(dirname, ':h')
+    dirname = getparent(dirname)
   end
 end
 
