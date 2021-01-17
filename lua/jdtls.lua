@@ -728,7 +728,7 @@ function M.open_jdt_link(uri)
   assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
   local timeout_ms = 1000
   local wait_ok, reason = vim.wait(timeout_ms, function() return response end)
-  local log_path = require('jdtls.path').join(vim.fn.stdpath('data'), 'lsp.log')
+  local log_path = require('jdtls.path').join(vim.fn.stdpath('cache'), 'lsp.log')
   local buf_content
   if wait_ok and #response == 2 and response[2] then
     local content = response[2]

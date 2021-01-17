@@ -278,7 +278,7 @@ If it doesn't, verify:
 
 - That the language server can be started standalone. (Run the `java-lsp.sh` in a terminal)
 - That there are no configuration errors. (Run `:set ft=java` and `:messages` after opening a Java file)
-- Check the log files (`:lua print(vim.fn.stdpath('data'))` lists the path, there should be a `lsp.log`)
+- Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
 
 
 2. Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths.
@@ -287,7 +287,7 @@ If it doesn't, verify:
   compilation. If there are any errors in the project, it will open the
   quickfix list with the errors.
 
-- Check the log files (`:lua print(vim.fn.stdpath('data'))` lists the path, there should be a `lsp.log`)
+- Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
 - If there is nothing, try changing the log level. See `:help vim.lsp.set_log_level()`
 
 
