@@ -52,8 +52,6 @@ the paths**.
 
 - `$HOME/dev/eclipse` needs to be changed to the folder where you cloned the
 repository.
-- `$HOME/workspace` needs to be changed to where you want eclipse.jdt.ls to save
-settings for workspaces.
 - `/usr/lib/jvm/java-14-openjdk/bin/java` needs to be changed to point to your
   Java installation.
 
@@ -81,7 +79,7 @@ GRADLE_HOME=$HOME/gradle /usr/lib/jvm/java-14-openjdk/bin/java \
   -Xmx2G \
   -jar $(echo "$JAR") \
   -configuration "$HOME/dev/eclipse/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/config_linux" \
-  -data "$HOME/workspace" \
+  -data "${1:-$HOME/workspace}" \
   --add-modules=ALL-SYSTEM \
   --add-opens java.base/java.util=ALL-UNNAMED \
   --add-opens java.base/java.lang=ALL-UNNAMED
@@ -120,6 +118,8 @@ The argument passed to `start_or_attach` is the same `config` mentioned in
 `init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available
 options.
 
+### root_dir configuration
+
 For the language server to work correctly it is important that the `root_dir`
 in the `config` is set correctly. By default `start_or_attach` sets the
 `root_dir` automatically by looking for marker files relative to each file
@@ -135,6 +135,22 @@ require('jdtls').start_or_attach({cmd = {'java-lsp.sh'}, root_dir = require('jdt
 ```
 
 
+### data directory configuration
+
+`eclipse.jdt.ls` stores project specific data within the folder set via the
+`-data` flag in the `java-lsp.sh` script. If you're using `eclipse.jdt.ls` with
+multiple different projects you should use a dedicated data directory per
+project. You can do that by adding a second argument to the `cmd` property of
+the `config` passed to `start_or_attach`. An example:
+
+
+```lua
+start_or_attach({cmd = {'java-lsp.sh', '/home/user/workspace/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')}})
+```
+
+
+### lspconfig
+
 **Warning**: Using [nvim-lspconfig][9] in addition to the setup here is not
 required.
 
@@ -142,6 +158,8 @@ You can use it to configure other servers, but you **must not** call
 `require'nvim_lsp'.jdtls.setup{}`. You'd end up running *two* clients and two
 language servers if you do that.
 
+
+### UI picker customization
 
 **Tip**: You can get a better UI for code-actions and other functions by
 overriding the `jdtls.ui` picker. See [UI Extensions][10].
