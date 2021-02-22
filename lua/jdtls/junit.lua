@@ -69,20 +69,50 @@ local function mk_buf_loop(sock, handle_buffer)
 end
 
 
-function M.mk_test_results()
+function M.mk_test_results(bufnr)
   local tests = {}
   local handle_buffer = function(buf)
     parse(buf, tests)
   end
   return {
     show = function()
+      local items = {}
       for _, test in ipairs(tests) do
         if test.failed then
-          repl.append(test.fq_class .. '#' .. test.method, '$')
+          repl.append('❌' .. test.method, '$')
           for _, msg in ipairs(test.traces) do
+            local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%a%p]*:%d+)%)')
+            if match then
+              local lnum = vim.split(match, ':')[2]
+              local trace = table.concat(test.traces, '\n')
+              if #trace > 140 then
+                trace = trace:sub(1, 140) .. '...'
+              end
+              table.insert(items, {
+                bufnr = bufnr,
+                lnum = lnum,
+                text = test.method .. ' ' .. trace
+              })
+            end
             repl.append(msg, '$')
           end
+        else
+          repl.append('✔️ ' .. test.method, '$')
         end
+      end
+
+      if #items > 0 then
+        vim.fn.setqflist({}, 'r', {
+          title = 'jdtls-tests',
+          items = items,
+        })
+        print(
+          'Tests finished. Results printed to dap-repl.',
+          'Errors added to quickfix list',
+          string.format('(❌%d / %d)', #items, #tests)
+        )
+      else
+        print('Tests finished. Results printed to dap-repl. All', #tests, 'succeeded')
       end
     end;
     mk_reader = function(sock)

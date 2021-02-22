@@ -844,6 +844,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
     print('nvim-dap is not available')
     return
   end
+  local bufnr = api.nvim_get_current_buf()
   local uri = vim.uri_from_bufnr(0)
   local cmd_codelens = {
     command = 'vscode.java.test.search.codelens';
@@ -911,7 +912,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
       dap.run(config, {
         before = function(conf)
           server = uv.new_tcp()
-          test_results = junit.mk_test_results()
+          test_results = junit.mk_test_results(bufnr)
           server:bind('127.0.0.1', 0)
           server:listen(128, function(err2)
             assert(not err2, err2)
