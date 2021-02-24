@@ -53,6 +53,34 @@ local extendedClientCapabilities = {
 };
 
 
+local function tabsize(bufnr)
+  local get_option = api.nvim_buf_get_option
+  local sts = get_option(bufnr, 'softtabstop')
+  return (
+    (sts > 0 and sts)
+    or (sts < 0 and get_option(bufnr, 'shiftwidth'))
+    or get_option(bufnr, 'tabstop')
+  )
+end
+
+
+local function configuration_handler(err, method, params, client_id, bufnr, config)
+  local client = vim.lsp.get_client_by_id(client_id)
+  -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configue tabsize/spaces
+  -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
+  -- This ensures the language-server will use the latest version of the options
+  client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
+    java = {
+      format = {
+        insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
+        tabSize = tabsize(bufnr),
+      }
+    }
+  })
+  return vim.lsp.handlers['workspace/configuration'](err, method, params, client_id, bufnr, config)
+end
+
+
 local function start_or_attach(config)
   assert(config, 'config is required')
   assert(
@@ -82,6 +110,7 @@ local function start_or_attach(config)
   )
   config.handlers = config.handlers or {}
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
+  config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   config.capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   config.capabilities.textDocument.codeAction = {
       dynamicRegistration = false;
