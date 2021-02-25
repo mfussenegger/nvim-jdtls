@@ -513,10 +513,7 @@ end
 
 
 function M.organize_imports()
-  M.execute_command({
-    command = "java.edit.organizeImports";
-    arguments = { vim.uri_from_bufnr(0) }
-  })
+  java_action_organize_imports(nil, make_code_action_params(false))
 end
 
 
