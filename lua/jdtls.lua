@@ -869,7 +869,10 @@ local function run_test_codelens(choose_lens, no_match_msg)
     end
     local req_arguments = {
       uri = uri;
+      -- Got renamed to fullName in https://github.com/microsoft/vscode-java-test/commit/57191b5367ae0a357b80e94f0def9e46f5e77796
+      -- keep it for BWC (hopefully that works?)
       classFullName = classname;
+      fullName = classname;
       testName = methodname;
       project = choice.project;
       scope = choice.level;
