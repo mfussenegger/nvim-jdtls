@@ -114,9 +114,12 @@ endif
 `java-lsp.sh` needs to be changed to the name of the shell script created earlier.
 
 The argument passed to `start_or_attach` is the same `config` mentioned in
-`:help vim.lsp.start_client`. You may want to configure some settings via the
-`init_options`. See the [eclipse.jdt.ls Wiki][8] for an overview of available
-options.
+`:help vim.lsp.start_client`. You may want to configure some settings via
+`init_options` or `settings`. See the [eclipse.jdt.ls Wiki][8] for an overview
+of available options.
+
+You can also find more [complete configuration examples in the Wiki][11].
+
 
 ### root_dir configuration
 
@@ -354,3 +357,4 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [8]: https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line
 [9]: https://github.com/neovim/nvim-lspconfig
 [10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
+[11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
