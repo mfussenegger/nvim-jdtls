@@ -1,4 +1,3 @@
-local M = {}
 local api = vim.api
 
 local ui = require('jdtls.ui')
@@ -8,18 +7,23 @@ local with_java_executable = util.with_java_executable
 local resolve_classname = util.resolve_classname
 local execute_command = util.execute_command
 
-for i, v in pairs(require('jdtls.dap')) do
-  M[i] = v
-end
+local jdtls_dap = require('jdtls.dap')
+local setup = require('jdtls.setup')
+
+local M = {
+  setup_dap = jdtls_dap.setup_dap,
+  test_class = jdtls_dap.test_class,
+  test_nearest_method = jdtls_dap.test_nearest_method,
+  pick_test = jdtls_dap.pick_test,
+  extendedClientCapabilities = setup.extendedClientCapabilities,
+  start_or_attach = setup.start_or_attach,
+  setup = setup,
+}
 
 local request = vim.lsp.buf_request
 local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
 
-local setup = require('jdtls.setup')
-M.extendedClientCapabilities = setup.extendedClientCapabilities
-M.start_or_attach = setup.start_or_attach
-M.setup = setup
 
 
 local function java_apply_workspace_edit(command)

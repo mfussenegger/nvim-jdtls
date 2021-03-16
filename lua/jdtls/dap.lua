@@ -229,6 +229,16 @@ local function run(lens, config, context, opts)
 end
 
 
+--- API of these methods is unstable and might change in the future
+M.experimental = {
+  run = run,
+  fetch_lenses = fetch_lenses,
+  fetch_launch_args = fetch_launch_args,
+  make_context = make_context,
+  make_config = make_config,
+}
+
+
 function M.test_class(opts)
   opts = opts or {}
   local context = make_context()
