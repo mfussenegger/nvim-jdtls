@@ -84,137 +84,184 @@ local TestLevel = {
 }
 
 
-local function run_test_codelens(choose_lens, no_match_msg)
-  local status, dap = pcall(require, 'dap')
-  if not status then
-    print('nvim-dap is not available')
-    return
+local function make_junit_request_args(lens, uri)
+  local methodname = ''
+  local name_parts = vim.split(lens.fullName, '#')
+  local classname = name_parts[1]
+  if #name_parts > 1 then
+    methodname = name_parts[2]
+    if lens.paramTypes and #lens.paramTypes > 0 then
+      methodname = string.format('%s(%s)', methodname, table.concat(lens.paramTypes, ','))
+    end
   end
-  local bufnr = api.nvim_get_current_buf()
-  local uri = vim.uri_from_bufnr(0)
+  local req_arguments = {
+    uri = uri;
+    -- Got renamed to fullName in https://github.com/microsoft/vscode-java-test/commit/57191b5367ae0a357b80e94f0def9e46f5e77796
+    -- keep it for BWC (hopefully that works?)
+    classFullName = classname;
+    fullName = classname;
+    testName = methodname;
+    project = lens.project;
+    scope = lens.level;
+    testKind = lens.kind;
+  }
+  if lens.kind == TestKind.JUnit5 and lens.level == TestLevel.Method then
+    req_arguments['start'] = lens.location.range['start']
+    req_arguments['end'] = lens.location.range['end']
+  end
+  return req_arguments
+end
+
+
+local function fetch_lenses(context, on_lenses)
   local cmd_codelens = {
     command = 'vscode.java.test.search.codelens';
-    arguments = { uri };
+    arguments = { context.uri };
   }
   util.execute_command(cmd_codelens, function(err0, codelens)
     if err0 then
       print('Error fetching codelens: ' .. (err0.message or vim.inspect(err0)))
-      return
+    else
+      on_lenses(codelens)
     end
-    local choice = choose_lens(codelens)
-    if not choice then
-      print(no_match_msg)
-      return
-    end
+  end)
+end
 
-    local methodname = ''
-    local name_parts = vim.split(choice.fullName, '#')
-    local classname = name_parts[1]
-    if #name_parts > 1 then
-      methodname = name_parts[2]
-      if choice.paramTypes and #choice.paramTypes > 0 then
-        methodname = string.format('%s(%s)', methodname, table.concat(choice.paramTypes, ','))
+local function fetch_launch_args(lens, context, on_launch_args)
+  local req_arguments = make_junit_request_args(lens, context.uri)
+  local cmd_junit_args = {
+    command = 'vscode.java.test.junit.argument';
+    arguments = { vim.fn.json_encode(req_arguments) };
+  }
+  util.execute_command(cmd_junit_args, function(err, launch_args)
+    if err then
+      print('Error retrieving launch arguments: ' .. (err.message or vim.inspect(err)))
+    else
+      on_launch_args(launch_args)
+    end
+  end)
+end
+
+
+local function get_method_lens_above_cursor(lenses, lnum)
+  local result
+  for _, lens in pairs(lenses) do
+    if lens.level == TestLevel.Method and lens.location.range.start.line <= lnum then
+      if result == nil then
+        result = lens
+      elseif lens.location.range.start.line > result.location.range.start.line then
+        result = lens
       end
     end
-    local req_arguments = {
-      uri = uri;
-      -- Got renamed to fullName in https://github.com/microsoft/vscode-java-test/commit/57191b5367ae0a357b80e94f0def9e46f5e77796
-      -- keep it for BWC (hopefully that works?)
-      classFullName = classname;
-      fullName = classname;
-      testName = methodname;
-      project = choice.project;
-      scope = choice.level;
-      testKind = choice.kind;
-    }
-    if choice.kind == TestKind.JUnit5 and choice.level == TestLevel.Method then
-      req_arguments['start'] = choice.location.range['start']
-      req_arguments['end'] = choice.location.range['end']
+  end
+  return result
+end
+
+
+local function get_first_class_lens(lenses)
+  for _, lens in pairs(lenses) do
+    if lens.level == TestLevel.Class then
+      return lens
     end
-    local cmd_junit_args = {
-      command = 'vscode.java.test.junit.argument';
-      arguments = { vim.fn.json_encode(req_arguments) };
-    }
-    util.execute_command(cmd_junit_args, function(err1, launch_args)
-      if err1 then
-        print('Error retrieving launch arguments: ' .. (err1.message or vim.inspect(err1)))
-        return
-      end
-      local args = table.concat(launch_args.programArguments, ' ');
-      local config = {
-        name = 'Launch Java Test: ' .. choice.fullName;
-        type = 'java';
-        request = 'launch';
-        mainClass = launch_args.mainClass;
-        projectName = launch_args.projectName;
-        cwd = launch_args.workingDirectory;
-        classPaths = launch_args.classpath;
-        modulePaths = launch_args.modulepath;
-        args = args;
-        vmArgs = table.concat(launch_args.vmArguments, ' ');
-        noDebug = false;
-      }
-      local test_results
-      local server = nil
-      local junit = require('jdtls.junit')
-      print('Running', classname, methodname)
-      dap.run(config, {
-        before = function(conf)
-          server = uv.new_tcp()
-          test_results = junit.mk_test_results(bufnr)
-          server:bind('127.0.0.1', 0)
-          server:listen(128, function(err2)
-            assert(not err2, err2)
-            local sock = vim.loop.new_tcp()
-            server:accept(sock)
-            sock:read_start(test_results.mk_reader(sock))
-          end)
-          conf.args = conf.args:gsub('-port ([0-9]+)', '-port ' .. server:getsockname().port);
-          return conf
-        end;
-        after = function()
-          server:shutdown()
-          server:close()
-          test_results.show()
-        end;
-      })
+  end
+end
+
+
+local function make_config(lens, launch_args)
+  local args = table.concat(launch_args.programArguments, ' ');
+  return {
+    name = 'Launch Java Test: ' .. lens.fullName;
+    type = 'java';
+    request = 'launch';
+    mainClass = launch_args.mainClass;
+    projectName = launch_args.projectName;
+    cwd = launch_args.workingDirectory;
+    classPaths = launch_args.classpath;
+    modulePaths = launch_args.modulepath;
+    args = args;
+    vmArgs = table.concat(launch_args.vmArguments, ' ');
+    noDebug = false;
+  }
+end
+
+
+local function make_context()
+  local bufnr = api.nvim_get_current_buf()
+  return {
+    bufnr = bufnr,
+    win = api.nvim_get_current_win(),
+    uri = vim.uri_from_bufnr(bufnr)
+  }
+end
+
+
+local function run(lens, config, context)
+  local ok, dap = pcall(require, 'dap')
+  if not ok then
+    vim.notify('`nvim-dap` must be installed to run and debug methods')
+    return
+  end
+  local test_results
+  local server = nil
+  local junit = require('jdtls.junit')
+  print('Running', lens.fullName)
+  dap.run(config, {
+    before = function(conf)
+      server = uv.new_tcp()
+      test_results = junit.mk_test_results(context.bufnr)
+      server:bind('127.0.0.1', 0)
+      server:listen(128, function(err2)
+        assert(not err2, err2)
+        local sock = vim.loop.new_tcp()
+        server:accept(sock)
+        sock:read_start(test_results.mk_reader(sock))
+      end)
+      conf.args = conf.args:gsub('-port ([0-9]+)', '-port ' .. server:getsockname().port);
+      return conf
+    end;
+    after = function()
+      server:shutdown()
+      server:close()
+      test_results.show()
+    end;
+  })
+end
+
+
+function M.test_class()
+  local context = make_context()
+  fetch_lenses(context, function(lenses)
+    local lens = get_first_class_lens(lenses)
+    if not lens then
+      vim.notify('No test class found')
+      return
+    end
+    fetch_launch_args(lens, context, function(launch_args)
+      local config = make_config(lens, launch_args)
+      run(lens, config, context)
     end)
   end)
 end
 
 
-function M.test_class()
-  local choose_lens = function(codelens)
-    for _, lens in pairs(codelens) do
-      if lens.level == TestLevel.Class then
-        return lens
-      end
-    end
-  end
-  run_test_codelens(choose_lens, 'No test class found')
-end
-
-
 function M.test_nearest_method()
   local lnum = api.nvim_win_get_cursor(0)[1]
-  local choose_lens = function(codelens)
-    local candidates = {}
-    for _, lens in pairs(codelens) do
-      if lens.level == TestLevel.Method and lens.location.range.start.line <= lnum then
-        table.insert(candidates, lens)
-      end
+  local context = make_context()
+  fetch_lenses(context, function(lenses)
+    local lens = get_method_lens_above_cursor(lenses, lnum)
+    if not lens then
+      vim.notify('No suitable test method found')
+      return
     end
-    if #candidates == 0 then return end
-    table.sort(candidates, function(a, b)
-      return a.location.range.start.line > b.location.range.start.line
+    fetch_launch_args(lens, context, function(launch_args)
+      local config = make_config(lens, launch_args)
+      run(lens, config, context)
     end)
-    return candidates[1]
-  end
-  run_test_codelens(choose_lens, 'No suitable test method found')
+  end)
 end
 
-local original_configurations = nil
 
+local original_configurations = nil
 function M.setup_dap()
   local status, dap = pcall(require, 'dap')
   if not status then
