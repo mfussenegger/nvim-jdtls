@@ -195,12 +195,13 @@ local function make_context()
 end
 
 
-local function run(lens, config, context)
+local function run(lens, config, context, opts)
   local ok, dap = pcall(require, 'dap')
   if not ok then
     vim.notify('`nvim-dap` must be installed to run and debug methods')
     return
   end
+  config = vim.tbl_extend('force', config, opts.config or {})
   local test_results
   local server = nil
   local junit = require('jdtls.junit')
@@ -228,7 +229,8 @@ local function run(lens, config, context)
 end
 
 
-function M.test_class()
+function M.test_class(opts)
+  opts = opts or {}
   local context = make_context()
   fetch_lenses(context, function(lenses)
     local lens = get_first_class_lens(lenses)
@@ -238,13 +240,14 @@ function M.test_class()
     end
     fetch_launch_args(lens, context, function(launch_args)
       local config = make_config(lens, launch_args)
-      run(lens, config, context)
+      run(lens, config, context, opts)
     end)
   end)
 end
 
 
-function M.test_nearest_method()
+function M.test_nearest_method(opts)
+  opts = opts or {}
   local lnum = api.nvim_win_get_cursor(0)[1]
   local context = make_context()
   fetch_lenses(context, function(lenses)
@@ -255,7 +258,7 @@ function M.test_nearest_method()
     end
     fetch_launch_args(lens, context, function(launch_args)
       local config = make_config(lens, launch_args)
-      run(lens, config, context)
+      run(lens, config, context, opts)
     end)
   end)
 end
