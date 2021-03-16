@@ -84,7 +84,8 @@ local TestLevel = {
 }
 
 
-local function run_test_codelens(choose_lens, no_match_msg)
+local function run_test_codelens(choose_lens, no_match_msg, opts)
+  opts = opts or {}
   local status, dap = pcall(require, 'dap')
   if not status then
     print('nvim-dap is not available')
@@ -175,7 +176,11 @@ local function run_test_codelens(choose_lens, no_match_msg)
         after = function()
           server:shutdown()
           server:close()
-          test_results.show()
+          local items = test_results.show()
+          if opts.until_error and #items == 0 then
+            print('`until_error` set and no tests failed. Repeating.')
+            vim.defer_fn(dap.run_last, 1000)
+          end
         end;
       })
     end)
@@ -183,7 +188,7 @@ local function run_test_codelens(choose_lens, no_match_msg)
 end
 
 
-function M.test_class()
+function M.test_class(opts)
   local choose_lens = function(codelens)
     for _, lens in pairs(codelens) do
       if lens.level == TestLevel.Class then
@@ -191,11 +196,11 @@ function M.test_class()
       end
     end
   end
-  run_test_codelens(choose_lens, 'No test class found')
+  run_test_codelens(choose_lens, 'No test class found', opts)
 end
 
 
-function M.test_nearest_method()
+function M.test_nearest_method(opts)
   local lnum = api.nvim_win_get_cursor(0)[1]
   local choose_lens = function(codelens)
     local candidates = {}
@@ -210,7 +215,7 @@ function M.test_nearest_method()
     end)
     return candidates[1]
   end
-  run_test_codelens(choose_lens, 'No suitable test method found')
+  run_test_codelens(choose_lens, 'No suitable test method found', opts)
 end
 
 local original_configurations = nil
