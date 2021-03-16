@@ -264,6 +264,28 @@ function M.test_nearest_method(opts)
 end
 
 
+function M.pick_test(opts)
+  opts = opts or {}
+  local context = make_context()
+  fetch_lenses(context, function(lenses)
+    require('jdtls.ui').pick_one_async(
+      lenses,
+      'Tests> ',
+      function(lens) return lens.fullName end,
+      function(lens)
+        if not lens then
+          return
+        end
+        fetch_launch_args(lens, context, function(launch_args)
+          local config = make_config(lens, launch_args)
+          run(lens, config, context, opts)
+        end)
+      end
+    )
+  end)
+end
+
+
 local original_configurations = nil
 function M.setup_dap()
   local status, dap = pcall(require, 'dap')
