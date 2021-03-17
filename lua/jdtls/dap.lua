@@ -195,6 +195,23 @@ local function make_context()
 end
 
 
+local function maybe_repeat(lens, config, context, opts, items)
+  if not opts.until_error then
+    return
+  end
+  if opts.until_error > 0 and #items == 0 then
+    print('`until_error` set and no tests failed. Repeating.', opts.until_error)
+    opts.until_error = opts.until_error - 1
+    local repeat_test = function()
+      M.experimental.run(lens, config, context, opts)
+    end
+    vim.defer_fn(repeat_test, 2000)
+  elseif opts.until_error <= 0 then
+    print('Stopping repeat, `until_error` reached', opts.until_error)
+  end
+end
+
+
 local function run(lens, config, context, opts)
   local ok, dap = pcall(require, 'dap')
   if not ok then
@@ -223,7 +240,8 @@ local function run(lens, config, context, opts)
     after = function()
       server:shutdown()
       server:close()
-      test_results.show()
+      local items = test_results.show()
+      maybe_repeat(lens, config, context, opts, items)
     end;
   })
 end
