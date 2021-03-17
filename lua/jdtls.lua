@@ -220,6 +220,188 @@ local function mk_refactor_options()
 end
 
 
+local function move_file(command, code_action_params)
+  local uri = command.arguments[3].uri
+  local params = {
+    moveKind = 'moveResource';
+    sourceUris = { uri, },
+    params = vim.NIL
+  }
+  request(0, 'java/getMoveDestinations', params, function(err, _, result)
+    assert(not err, err and err.message or vim.inspect(err))
+    if result and result.errorMessage then
+      print(result.errorMessage)
+      return
+    end
+    if not result or not result.destinations or #result.destinations == 0 then
+      print("Couldn't find any destination packages")
+      return
+    end
+    local destinations = vim.tbl_filter(
+      function(x) return not x.isDefaultPackage end,
+      result.destinations
+    )
+    ui.pick_one_async(
+      destinations,
+      'Target package> ',
+      function(x) return x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName end,
+      function(x)
+        local move_params = {
+          moveKind = 'moveResource',
+          sourceUris = { uri, },
+          params = code_action_params,
+          destination = x,
+          updateReferences = true
+        }
+        request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
+          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        end)
+      end
+    )
+  end)
+end
+
+
+local function move_instance_method(command, code_action_params)
+  local params = {
+    moveKind = 'moveInstanceMethod';
+    sourceUris = { command.arguments[2].textDocument.uri, };
+    params = code_action_params
+  }
+  request(0, 'java/getMoveDestinations', params, function(err, _, result)
+    assert(not err, err and err.message or vim.inspect(err))
+    if result and result.errorMessage then
+      print(result.errorMessage)
+      return
+    end
+    if not result or not result.destinations or #result.destinations == 0 then
+      print("Couldn't find any destinations")
+      return
+    end
+    ui.pick_one_async(
+      result.destinations,
+      'Destination> ',
+      function(x)
+        local prefix
+        if x.isField then
+          prefix = '[Field]            '
+        else
+          prefix = '[Method Parameter] '
+        end
+        return prefix .. x.type .. ' ' .. x.name
+      end,
+      function(x)
+        params.destination = x
+        params.updateReferences = true
+        request(0, 'java/move', params, function(move_err, _, refactor_edit)
+          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        end)
+      end
+    )
+  end)
+end
+
+local function search_symbols(project, enclosing_type_name, on_selection)
+  local params = {
+    query = '*',
+    projectName = project,
+    sourceOnly = true,
+  }
+  request(0, 'java/searchSymbols', params, function(err, _, result)
+    assert(not err, err and err.message or vim.inspect(err))
+    if not result or #result == 0 then
+      print("Couldn't find any destinations")
+      return
+    end
+    if enclosing_type_name then
+      result = vim.tbl_filter(
+        function(x)
+          if x.containerName then
+            return enclosing_type_name == x.containerName .. '.' .. x.name
+          else
+            return enclosing_type_name == x.name
+          end
+        end,
+        result
+      )
+    end
+    ui.pick_one_async(
+      result,
+      'Destination> ',
+      function(x) return x.containerName .. ' » ' .. x.name end,
+      on_selection
+    )
+  end)
+end
+
+
+local function move_static_member(command, code_action_params)
+  local member = command.arguments[3]
+  search_symbols(
+    member.projectName,
+    member.enclosingTypeName,
+    function(picked)
+      local move_params = {
+        moveKind = 'moveStaticMember',
+        sourceUris = { command.arguments[2].uri },
+        params = code_action_params,
+        destination = picked
+      }
+      request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
+        handle_refactor_workspace_edit(move_err, _, refactor_edit)
+      end)
+    end
+  )
+end
+
+local function move_type(command, code_action_params)
+  local info = command.arguments[3]
+  if not info.supportedDestinationKinds or #info.supportedDestinationKinds == 0 then
+    print('No available destinations')
+    return
+  end
+  ui.pick_one_async(
+    info.supportedDestinationKinds,
+    'Action> ',
+    function(x)
+      if x == 'newFile' then
+        return string.format('Move type `%s` to new file', info.displayName)
+      else
+        return string.format('Move type `%s` to another class', info.displayName)
+      end
+    end,
+    function(x)
+      if x == 'newFile' then
+        local move_params = {
+          moveKind = 'moveTypeToNewFile',
+          sourceUris = { command.arguments[2].textDocument.uri },
+          params = code_action_params
+        }
+        request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
+          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        end)
+      else
+        search_symbols(
+          info.projectName,
+          info.enclosingTypeName,
+          function(picked)
+            local move_params = {
+              moveKind = 'moveTypeToClass',
+              sourceUris = { command.arguments[2].uri },
+              params = code_action_params,
+              destination = picked
+            }
+            request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
+              handle_refactor_workspace_edit(move_err, _, refactor_edit)
+            end)
+          end
+        )
+      end
+    end
+  )
+end
+
+
 local function java_apply_refactoring_command(command, code_action_params)
   local cmd = command.arguments[1]
   local params = {
@@ -227,6 +409,15 @@ local function java_apply_refactoring_command(command, code_action_params)
     context = code_action_params,
     options = mk_refactor_options(),
   }
+  if cmd == 'moveFile' then
+    return move_file(command, code_action_params)
+  elseif cmd == 'moveInstanceMethod' then
+    return move_instance_method(command, code_action_params)
+  elseif cmd == 'moveStaticMember' then
+    return move_static_member(command, code_action_params)
+  elseif cmd == 'moveType' then
+    return move_type(command, code_action_params)
+  end
   if not vim.tbl_contains(setup.extendedClientCapabilities.inferSelectionSupport, cmd) then
     request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return

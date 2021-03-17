@@ -49,6 +49,7 @@ local extendedClientCapabilities = {
   advancedOrganizeImportsSupport = true;
   generateConstructorsPromptSupport = true;
   generateDelegateMethodsPromptSupport = true;
+  moveRefactoringSupport = true;
   inferSelectionSupport = {"extractMethod", "extractVariable"};
 };
 
@@ -111,8 +112,8 @@ local function start_or_attach(config)
   config.handlers = config.handlers or {}
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
-  config.capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
-  config.capabilities.textDocument.codeAction = {
+  local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
+  capabilities.textDocument.codeAction = {
       dynamicRegistration = false;
       codeActionLiteralSupport = {
           codeActionKind = {
@@ -124,10 +125,19 @@ local function start_or_attach(config)
           };
       };
   }
+  config.capabilities = capabilities
   config.init_options = config.init_options or {}
   config.init_options.extendedClientCapabilities = (
-    config.init_options.extendedClientCapabilities or extendedClientCapabilities
+    config.init_options.extendedClientCapabilities or vim.deepcopy(extendedClientCapabilities)
   )
+  local workspace = capabilities.workspace or {}
+  if not workspace.workspaceEdit
+    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'rename')
+    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'create')
+    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'delete')
+  then
+    config.init_options.extendedClientCapabilities.moveRefactoringSupport = false;
+  end
   local client_id = lsps[config.root_dir]
   if not client_id then
     client_id = lsp.start_client(config)
