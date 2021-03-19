@@ -231,6 +231,11 @@ local function java_apply_refactoring_command(command, code_action_params)
     request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return
   end
+  local range = code_action_params.range
+  if not (range.start.character == range['end'].character and range.start.line == range['end'].line) then
+    request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    return
+  end
   request(0, 'java/inferSelection', params, function(err, _, selection_info)
     assert(not err, vim.inspect(err))
     if not selection_info or #selection_info == 0 then
@@ -423,34 +428,11 @@ end
 
 
 local function make_code_action_params(from_selection, kind)
-  local params = {
-    textDocument = { uri = vim.uri_from_bufnr(0) },
-  }
+  local params
   if from_selection then
-    local start_row, start_col = unpack(api.nvim_buf_get_mark(0, '<'))
-    local end_row, end_col = unpack(api.nvim_buf_get_mark(0, '>'))
-    start_row = start_row - 1
-    end_row = end_row - 1
-    start_col = vim.lsp.util.character_offset(0, start_row, start_col)
-    end_col = vim.lsp.util.character_offset(0, end_row, end_col)
-    -- LSP spec: If you want to specify a range that contains a line including
-    -- the line ending character(s) then use an end position denoting the start
-    -- of the next line
-    local line = api.nvim_buf_get_lines(0, end_row, end_row + 1, true)[1]
-    if line and end_col == (#line - 1) then
-      end_row = end_row + 1
-      end_col = 0
-    end
-    params.range = {
-      ["start"] = { line = start_row, character = start_col };
-      ["end"] = { line = end_row, character = end_col };
-    }
+    params = vim.lsp.util.make_given_range_params()
   else
-    local row, pos = unpack(api.nvim_win_get_cursor(0))
-    params.range = {
-      ["start"] = { line = row - 1; character = pos };
-      ["end"] = { line = row - 1; character = pos };
-    }
+    params = vim.lsp.util.make_range_params()
   end
   local bufnr = api.nvim_get_current_buf()
   params.context = {
