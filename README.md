@@ -90,7 +90,7 @@ The script must be placed in a folder that is part of `$PATH`. To verify that
 the installation worked, launch it in a shell. You should get the following
 output:
 
-```
+```text
 Content-Length: 126
 
 {"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"Sep 16, 2020, 8:10:53 PM Main thread is waiting"}}
@@ -103,7 +103,7 @@ Content-Length: 126
 To use `nvim-jdtls`, you need to setup a LSP client. In your `init.vim` add the
 following:
 
-```
+```vimL
 if has('nvim-0.5')
   augroup lsp
     au!
@@ -177,7 +177,7 @@ Neovim, so all the functions mentioned in `:help lsp` will work.
 `nvim-jdtls` provides some extras, for those you'll want to create additional
 mappings:
 
-```
+```vimL
 -- `code_action` is a superset of vim.lsp.buf.code_action and you'll be able to
 -- use this mapping also with other language servers
 nnoremap <A-CR> <Cmd>lua require('jdtls').code_action()<CR>
@@ -201,7 +201,7 @@ Some methods are better exposed via commands. As a shortcut you can also call
 `:lua require('jdtls.setup').add_commands()` to declare these. It's recommended to call `add_commands` within the `on_attach` handler that can be set on the `config` table which is passed to `start_or_attach`.
 
 
-```
+```vimL
 command! -buffer JdtCompile lua require('jdtls').compile()
 command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()
 command! -buffer JdtJol lua require('jdtls').jol()

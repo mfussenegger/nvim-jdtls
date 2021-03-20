@@ -528,7 +528,7 @@ M.commands = {
 
 
 if not vim.lsp.handlers['workspace/executeClientCommand'] then
-  vim.lsp.handlers['workspace/executeClientCommand'] = function(_, _, params)
+  vim.lsp.handlers['workspace/executeClientCommand'] = function(_, _, params)  -- luacheck: ignore 122
     local fn = M.commands[params.command]
     if fn then
       local ok, result = pcall(fn, params.arguments)

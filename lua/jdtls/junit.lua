@@ -56,7 +56,7 @@ end
 
 
 local function mk_buf_loop(sock, handle_buffer)
-  buffer = ''
+  local buffer = ''
   return function(err, chunk)
     assert(not err, err)
     if chunk then
