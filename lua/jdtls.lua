@@ -211,15 +211,6 @@ local function handle_refactor_workspace_edit(err, _, result)
 end
 
 
-local function mk_refactor_options()
-  local sts = vim.bo.softtabstop;
-  return {
-    tabSize = (sts > 0 and sts) or (sts < 0 and vim.bo.shiftwidth) or vim.bo.tabstop;
-    insertSpaces = vim.bo.expandtab;
-  }
-end
-
-
 local function move_file(command, code_action_params)
   local uri = command.arguments[3].uri
   local params = {
@@ -407,7 +398,10 @@ local function java_apply_refactoring_command(command, code_action_params)
   local params = {
     command = cmd,
     context = code_action_params,
-    options = mk_refactor_options(),
+    options = {
+      tabSize = vim.lsp.util.get_effective_tabstop(),
+      insertSpaces = vim.bo.expandtab,
+    }
   }
   if cmd == 'moveFile' then
     return move_file(command, code_action_params)

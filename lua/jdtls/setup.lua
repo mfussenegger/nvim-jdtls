@@ -55,17 +55,6 @@ local extendedClientCapabilities = {
 };
 
 
-local function tabsize(bufnr)
-  local get_option = api.nvim_buf_get_option
-  local sts = get_option(bufnr, 'softtabstop')
-  return (
-    (sts > 0 and sts)
-    or (sts < 0 and get_option(bufnr, 'shiftwidth'))
-    or get_option(bufnr, 'tabstop')
-  )
-end
-
-
 local function configuration_handler(err, method, params, client_id, bufnr, config)
   local client = vim.lsp.get_client_by_id(client_id)
   -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configue tabsize/spaces
@@ -75,7 +64,7 @@ local function configuration_handler(err, method, params, client_id, bufnr, conf
     java = {
       format = {
         insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
-        tabSize = tabsize(bufnr),
+        tabSize = vim.lsp.util.get_effective_tabstop(bufnr)
       }
     }
   })
