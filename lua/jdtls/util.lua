@@ -3,6 +3,30 @@ local request = vim.lsp.buf_request
 local M = {}
 
 
+--- Takes a workspaceEdit and nils versions of textDocuments within the
+--- documentChanges if the version is zero.
+---
+--- Workaround for https://github.com/eclipse/eclipse.jdt.ls/issues/1695
+--- Will be removed once it is no longer necessary
+function M._nil_version_if_zero(edit)
+  if not edit or not edit.documentChanges then
+    return edit
+  end
+  for _, change in pairs(edit.documentChanges) do
+    local text_document = change.textDocument
+    if text_document and text_document.version and text_document.version == 0 then
+      text_document.version = nil
+    end
+  end
+  return edit
+end
+
+
+function M.apply_workspace_edit(edit)
+  return vim.lsp.util.apply_workspace_edit(M._nil_version_if_zero(edit))
+end
+
+
 function M.execute_command(command, callback)
   request(0, 'workspace/executeCommand', command, function(err, _, resp)
     if callback then

@@ -28,7 +28,7 @@ M.jol_path = nil
 
 local function java_apply_workspace_edit(command)
   for _, argument in ipairs(command.arguments) do
-    vim.lsp.util.apply_workspace_edit(argument)
+    util.apply_workspace_edit(argument)
   end
 end
 
@@ -59,7 +59,7 @@ local function java_generate_to_string_prompt(_, params)
         return
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        util.apply_workspace_edit(edit)
       end
     end)
   end)
@@ -104,7 +104,7 @@ local function java_generate_constructors_prompt(_, code_action_params)
       if err1 then
         print("Could not execute java/generateConstructors: " .. err1.message)
       elseif edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        util.apply_workspace_edit(edit)
       end
     end)
   end)
@@ -158,7 +158,7 @@ local function java_generate_delegate_methods_prompt(_, code_action_params)
       if err1 then
         print('Could not execute java/generateDelegateMethods', err1.message)
       elseif workspace_edit then
-        vim.lsp.util.apply_workspace_edit(workspace_edit)
+        util.apply_workspace_edit(workspace_edit)
       end
     end)
   end)
@@ -179,7 +179,7 @@ local function java_hash_code_equals_prompt(_, params)
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        util.apply_workspace_edit(edit)
       end
     end)
   end)
@@ -196,7 +196,7 @@ local function handle_refactor_workspace_edit(err, _, result)
   end
 
   if result.edit then
-    vim.lsp.util.apply_workspace_edit(result.edit)
+    util.apply_workspace_edit(result.edit)
   end
 
   if result.command then
@@ -464,7 +464,7 @@ local function java_action_organize_imports(_, code_action_params)
       return
     end
     if resp then
-      vim.lsp.util.apply_workspace_edit(resp)
+      util.apply_workspace_edit(resp)
     end
   end)
 end
@@ -666,7 +666,7 @@ function M.code_action(from_selection, kind)
           return
         end
         if action.edit then
-          vim.lsp.util.apply_workspace_edit(action.edit)
+          util.apply_workspace_edit(action.edit)
         end
         local command
         if type(action.command) == "table" then

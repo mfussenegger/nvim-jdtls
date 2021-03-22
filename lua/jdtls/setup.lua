@@ -2,6 +2,7 @@ local api = vim.api
 local lsp = vim.lsp
 local uv = vim.loop
 local path = require('jdtls.path')
+local util = require('jdtls.util')
 
 local lsps = {}
 local status_callback = vim.schedule_wrap(function(_, _, result)
@@ -82,6 +83,16 @@ local function configuration_handler(err, method, params, client_id, bufnr, conf
 end
 
 
+local function nil_zero_version_in_edit(default_handler, upstream)
+  return function(...)
+    local edit = select(3, ...)
+    util._nil_version_if_zero(edit)
+    local handler = default_handler or vim.lsp.handlers[upstream]
+    handler(...)
+  end
+end
+
+
 local function start_or_attach(config)
   assert(config, 'config is required')
   assert(
@@ -112,6 +123,8 @@ local function start_or_attach(config)
   config.handlers = config.handlers or {}
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
+  config.handlers['workspace/applyEdit'] = nil_zero_version_in_edit(config.handlers['workspace/applyEdit'], 'workspace/applyEdit')
+  config.handlers['textDocument/rename'] = nil_zero_version_in_edit(config.handlers['textDocument/rename'], 'textDocument/rename')
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   capabilities.textDocument.codeAction = {
       dynamicRegistration = false;
