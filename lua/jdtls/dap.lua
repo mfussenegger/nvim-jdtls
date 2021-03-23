@@ -168,8 +168,7 @@ end
 
 
 local function make_config(lens, launch_args)
-  local args = table.concat(launch_args.programArguments, ' ');
-  return {
+  local config = {
     name = 'Launch Java Test: ' .. lens.fullName;
     type = 'java';
     request = 'launch';
@@ -178,10 +177,23 @@ local function make_config(lens, launch_args)
     cwd = launch_args.workingDirectory;
     classPaths = launch_args.classpath;
     modulePaths = launch_args.modulepath;
-    args = args;
     vmArgs = table.concat(launch_args.vmArguments, ' ');
     noDebug = false;
   }
+  if lens.kind == TestKind.TestNG then
+    config.mainClass = 'org.testng.TestNG'
+    -- id is in the format <project>@<class>#<method>
+    local parts = vim.split(lens.id, '@')
+    parts  = vim.split(parts[2], '#')
+    if #parts > 1 then
+      config.args = string.format('-testclass %s -methods %s.%s', parts[1], parts[1], parts[2])
+    else
+      config.args = string.format('-testclass %s', parts[1])
+    end
+  else
+    config.args = table.concat(launch_args.programArguments, ' ');
+  end
+  return config
 end
 
 
@@ -223,6 +235,12 @@ local function run(lens, config, context, opts)
   local server = nil
   local junit = require('jdtls.junit')
   print('Running', lens.fullName)
+
+  if lens.kind == TestKind.TestNG then
+    dap.run(config)
+    return
+  end
+
   dap.run(config, {
     before = function(conf)
       server = uv.new_tcp()
