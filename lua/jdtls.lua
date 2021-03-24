@@ -10,6 +10,8 @@ local execute_command = util.execute_command
 local jdtls_dap = require('jdtls.dap')
 local setup = require('jdtls.setup')
 
+
+
 local M = {
   setup_dap = jdtls_dap.setup_dap,
   test_class = jdtls_dap.test_class,
@@ -18,6 +20,9 @@ local M = {
   extendedClientCapabilities = setup.extendedClientCapabilities,
   start_or_attach = setup.start_or_attach,
   setup = setup,
+  settings = {
+    jdt_uri_timeout_ms = 5000,
+  }
 }
 
 local request = vim.lsp.buf_request
@@ -858,7 +863,7 @@ function M.open_jdt_link(uri)
   end
   local ok, request_id = client.request('java/classFileContents', params, cb, buf)
   assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
-  local timeout_ms = 1000
+  local timeout_ms = M.settings.jdt_uri_timeout_ms
   local wait_ok, reason = vim.wait(timeout_ms, function() return response end)
   local log_path = require('jdtls.path').join(vim.fn.stdpath('cache'), 'lsp.log')
   local buf_content
