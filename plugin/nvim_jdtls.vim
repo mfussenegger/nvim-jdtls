@@ -3,4 +3,4 @@ if exists('g:nvim_jdtls')
 endif
 let g:nvim_jdtls = 1
 
-au BufReadCmd jdt://* call jdtls#FileUrlEdit(expand("<amatch>"))
+au BufReadCmd jdt://* lua require('jdtls').open_jdt_link(vim.fn.expand('<amatch>'))
