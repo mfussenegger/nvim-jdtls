@@ -838,18 +838,13 @@ end
 --@param uri expected to be a `jdt://` uri
 function M.open_jdt_link(uri)
   local client
-  for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
-    if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
-      local clients = vim.lsp.buf_get_clients(buf.bufnr)
-      for _, c in ipairs(clients) do
-        if c.config.init_options
-          and c.config.init_options.extendedClientCapabilities
-          and c.config.init_options.extendedClientCapabilities.classFileContentsSupport then
+  for _, c in ipairs(vim.lsp.get_active_clients()) do
+    if c.config.init_options
+      and c.config.init_options.extendedClientCapabilities
+      and c.config.init_options.extendedClientCapabilities.classFileContentsSupport then
 
-          client = c
-          break
-        end
-      end
+      client = c
+      break
     end
   end
   assert(client, 'Must have a buffer open with a language client connected to eclipse.jdt.ls to load JDT URI')
