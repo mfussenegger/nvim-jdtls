@@ -234,7 +234,6 @@ local function run(lens, config, context, opts)
   local test_results
   local server = nil
   local junit = require('jdtls.junit')
-  print('Running', lens.fullName)
 
   if lens.kind == TestKind.TestNG then
     dap.run(config)
