@@ -9,6 +9,28 @@ local status_callback = vim.schedule_wrap(function(_, _, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
 end)
 
+
+local function progress_report(_, _, result, client_id)
+  local client = vim.lsp.get_client_by_id(client_id)
+  local client_name = client and client.name or string.format("id=%d", client_id)
+  assert(client, "LSP[" .. client_name .. "] client has shut down after sending the message")
+
+  -- Messages are only cleared on consumption, so protect against messages
+  -- filling up infinitely if user doesn't consume them by discarding new ones.
+  -- Ring buffer would be nicer, but messages.progress is a dict
+  if vim.tbl_count(client.messages.progress) > 10 then
+    return
+  end
+  client.messages.progress[result.id or 'DUMMY'] = {
+    title = result.task,
+    message = result.subTask,
+    percentage = (result.workDone / result.totalWork) * 100,
+    done = result.complete
+  }
+  vim.cmd("doautocmd <nomodeline> User LspProgressUpdate")
+end
+
+
 local function attach_to_active_buf(bufnr, client_name)
   for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
     if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
@@ -43,6 +65,7 @@ end
 
 
 local extendedClientCapabilities = {
+  progressReportProvider = true;
   classFileContentsSupport = true;
   generateToStringPromptSupport = true;
   hashCodeEqualsPromptSupport = true;
@@ -110,6 +133,7 @@ local function start_or_attach(config)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
+  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   config.handlers['workspace/applyEdit'] = nil_zero_version_in_edit(config.handlers['workspace/applyEdit'], 'workspace/applyEdit')
@@ -132,6 +156,11 @@ local function start_or_attach(config)
   config.init_options.extendedClientCapabilities = (
     config.init_options.extendedClientCapabilities or vim.deepcopy(extendedClientCapabilities)
   )
+  config.settings = vim.tbl_deep_extend('keep', config.settings or {}, {
+    java = {
+      progressReports = { enabled = true },
+    }
+  })
   local workspace = capabilities.workspace or {}
   if not workspace.workspaceEdit
     or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'rename')
