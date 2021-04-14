@@ -12,8 +12,9 @@ end)
 
 local function progress_report(_, _, result, client_id)
   local client = vim.lsp.get_client_by_id(client_id)
-  local client_name = client and client.name or string.format("id=%d", client_id)
-  assert(client, "LSP[" .. client_name .. "] client has shut down after sending the message")
+  if not client then
+    return
+  end
 
   -- Messages are only cleared on consumption, so protect against messages
   -- filling up infinitely if user doesn't consume them by discarding new ones.
