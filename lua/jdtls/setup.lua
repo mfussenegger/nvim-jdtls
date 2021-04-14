@@ -3,11 +3,51 @@ local lsp = vim.lsp
 local uv = vim.loop
 local path = require('jdtls.path')
 local util = require('jdtls.util')
+local M = {}
 
-local lsps = {}
 local status_callback = vim.schedule_wrap(function(_, _, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
 end)
+
+
+local lsp_clients = {}
+do
+  local client_id_by_root_dir = {}
+
+  function lsp_clients.start(config)
+      local bufnr = api.nvim_get_current_buf()
+      local client_id = client_id_by_root_dir[config.root_dir]
+      -- client could have died on us; so check if alive
+      if client_id then
+        local client = vim.lsp.get_client_by_id(client_id)
+        if not client or client.is_stopped() then
+          client_id = nil
+        end
+      end
+      if not client_id then
+        client_id = lsp.start_client(config)
+        client_id_by_root_dir[config.root_dir] = client_id
+      end
+      lsp.buf_attach_client(bufnr, client_id)
+  end
+
+  function lsp_clients.restart()
+    for root_dir, client_id in pairs(client_id_by_root_dir) do
+      local client = vim.lsp.get_client_by_id(client_id)
+      if client then
+        local bufs = vim.lsp.get_buffers_by_client_id(client_id)
+        client.stop()
+        client_id = lsp.start_client(client.config)
+        client_id_by_root_dir[root_dir] = client_id
+        for _, buf in pairs(bufs) do
+          lsp.buf_attach_client(buf, client_id)
+        end
+      end
+    end
+  end
+end
+
+M.restart = lsp_clients.restart()
 
 
 local function progress_report(_, _, result, client_id)
@@ -48,7 +88,7 @@ local function attach_to_active_buf(bufnr, client_name)
   return false
 end
 
-local function find_root(markers, bufname)
+function M.find_root(markers, bufname)
   bufname = bufname or api.nvim_buf_get_name(api.nvim_get_current_buf())
   local dirname = vim.fn.fnamemodify(bufname, ':p:h')
   local getparent = function(p)
@@ -65,7 +105,7 @@ local function find_root(markers, bufname)
 end
 
 
-local extendedClientCapabilities = {
+M.extendedClientCapabilities = {
   progressReportProvider = true;
   classFileContentsSupport = true;
   generateToStringPromptSupport = true;
@@ -106,7 +146,7 @@ local function nil_zero_version_in_edit(default_handler, upstream)
 end
 
 
-local function start_or_attach(config)
+function M.start_or_attach(config)
   assert(config, 'config is required')
   assert(
     config.cmd and type(config.cmd) == 'table',
@@ -130,7 +170,7 @@ local function start_or_attach(config)
   end
 
   config.root_dir = (config.root_dir
-    or find_root({'.git', 'gradlew', 'mvnw'}, bufname)
+    or M.find_root({'.git', 'gradlew', 'mvnw'}, bufname)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
@@ -155,7 +195,7 @@ local function start_or_attach(config)
   config.capabilities = capabilities
   config.init_options = config.init_options or {}
   config.init_options.extendedClientCapabilities = (
-    config.init_options.extendedClientCapabilities or vim.deepcopy(extendedClientCapabilities)
+    config.init_options.extendedClientCapabilities or vim.deepcopy(M.extendedClientCapabilities)
   )
   config.settings = vim.tbl_deep_extend('keep', config.settings or {}, {
     java = {
@@ -170,26 +210,18 @@ local function start_or_attach(config)
   then
     config.init_options.extendedClientCapabilities.moveRefactoringSupport = false;
   end
-  local client_id = lsps[config.root_dir]
-  if not client_id then
-    client_id = lsp.start_client(config)
-    lsps[config.root_dir] = client_id
-  end
-  lsp.buf_attach_client(bufnr, client_id)
+  lsp_clients.start(config)
 end
 
 
-local function add_commands()
+function M.add_commands()
   api.nvim_command [[command! -buffer -nargs=? JdtCompile lua require('jdtls').compile(<f-args>)]]
   api.nvim_command [[command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()]]
   api.nvim_command [[command! -buffer -nargs=* JdtJol lua require('jdtls').jol(<f-args>)]]
   api.nvim_command [[command! -buffer JdtBytecode lua require('jdtls').javap()]]
   api.nvim_command [[command! -buffer JdtJshell lua require('jdtls').jshell()]]
+  api.nvim_command [[command! -buffer JdtRestart lua require('jdtls.setup').restart()]]
 end
 
-return {
-  start_or_attach = start_or_attach;
-  extendedClientCapabilities = extendedClientCapabilities;
-  add_commands = add_commands;
-  find_root = find_root;
-}
+
+return M
