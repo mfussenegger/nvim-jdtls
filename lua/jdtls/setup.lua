@@ -2,7 +2,6 @@ local api = vim.api
 local lsp = vim.lsp
 local uv = vim.loop
 local path = require('jdtls.path')
-local util = require('jdtls.util')
 local M = {}
 
 local status_callback = vim.schedule_wrap(function(_, _, result)
@@ -19,7 +18,7 @@ do
       local client_id = client_id_by_root_dir[config.root_dir]
       -- client could have died on us; so check if alive
       if client_id then
-        local client = vim.lsp.get_client_by_id(client_id)
+        local client = lsp.get_client_by_id(client_id)
         if not client or client.is_stopped() then
           client_id = nil
         end
@@ -33,9 +32,9 @@ do
 
   function lsp_clients.restart()
     for root_dir, client_id in pairs(client_id_by_root_dir) do
-      local client = vim.lsp.get_client_by_id(client_id)
+      local client = lsp.get_client_by_id(client_id)
       if client then
-        local bufs = vim.lsp.get_buffers_by_client_id(client_id)
+        local bufs = lsp.get_buffers_by_client_id(client_id)
         client.stop()
         client_id = lsp.start_client(client.config)
         client_id_by_root_dir[root_dir] = client_id
@@ -51,7 +50,7 @@ M.restart = lsp_clients.restart()
 
 
 local function progress_report(_, _, result, client_id)
-  local client = vim.lsp.get_client_by_id(client_id)
+  local client = lsp.get_client_by_id(client_id)
   if not client then
     return
   end
@@ -120,7 +119,7 @@ M.extendedClientCapabilities = {
 
 
 local function configuration_handler(err, method, params, client_id, bufnr, config)
-  local client = vim.lsp.get_client_by_id(client_id)
+  local client = lsp.get_client_by_id(client_id)
   -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configue tabsize/spaces
   -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
   -- This ensures the language-server will use the latest version of the options
@@ -128,21 +127,11 @@ local function configuration_handler(err, method, params, client_id, bufnr, conf
     java = {
       format = {
         insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
-        tabSize = vim.lsp.util.get_effective_tabstop(bufnr)
+        tabSize = lsp.util.get_effective_tabstop(bufnr)
       }
     }
   })
-  return vim.lsp.handlers['workspace/configuration'](err, method, params, client_id, bufnr, config)
-end
-
-
-local function nil_zero_version_in_edit(default_handler, upstream)
-  return function(...)
-    local edit = select(3, ...)
-    util._nil_version_if_zero(edit)
-    local handler = default_handler or vim.lsp.handlers[upstream]
-    handler(...)
-  end
+  return lsp.handlers['workspace/configuration'](err, method, params, client_id, bufnr, config)
 end
 
 
@@ -177,8 +166,6 @@ function M.start_or_attach(config)
   config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
-  config.handlers['workspace/applyEdit'] = nil_zero_version_in_edit(config.handlers['workspace/applyEdit'], 'workspace/applyEdit')
-  config.handlers['textDocument/rename'] = nil_zero_version_in_edit(config.handlers['textDocument/rename'], 'textDocument/rename')
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   capabilities.textDocument.codeAction = {
       dynamicRegistration = false;
