@@ -169,7 +169,7 @@ end
 
 local function make_config(lens, launch_args)
   local config = {
-    name = 'Launch Java Test: ' .. lens.fullName;
+    name = lens.fullName;
     type = 'java';
     request = 'launch';
     mainClass = launch_args.mainClass;
