@@ -127,6 +127,25 @@ local function fetch_lenses(context, on_lenses)
   end)
 end
 
+
+local function merge_unique(xs, ys)
+  local result = {}
+  local seen = {}
+  local both = {}
+  vim.list_extend(both, xs or {})
+  vim.list_extend(both, ys or {})
+
+  for _, x in pairs(both) do
+    if not seen[x] then
+      table.insert(result, x)
+      seen[x] = true
+    end
+  end
+
+  return result
+end
+
+
 local function fetch_launch_args(lens, context, on_launch_args)
   local req_arguments = make_junit_request_args(lens, context.uri)
   local cmd_junit_args = {
@@ -137,7 +156,20 @@ local function fetch_launch_args(lens, context, on_launch_args)
     if err then
       print('Error retrieving launch arguments: ' .. (err.message or vim.inspect(err)))
     else
-      on_launch_args(launch_args)
+      -- the classpath in the launch_args might be missing some classes
+      -- See https://github.com/microsoft/vscode-java-test/issues/1073
+      --
+      -- That is why `java.project.getClasspaths` is used as well.
+      local options = vim.fn.json_encode({ scope = 'test'; })
+      local cmd = {
+        command = 'java.project.getClasspaths';
+        arguments = { vim.uri_from_bufnr(0), options };
+      }
+      util.execute_command(cmd, function(err1, resp)
+        assert(not err1, vim.inspect(err1))
+        launch_args.classpath = merge_unique(launch_args.classpath, resp.classpaths)
+        on_launch_args(launch_args)
+      end)
     end
   end)
 end
