@@ -714,11 +714,11 @@ function M.compile(full_compile)
             or vim.endswith(fname, 'pom.xml')
             or (stat and stat.type == 'directory')) then
           items = project_config_errors
-        else
+        elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
           items = compile_errors
         end
         for _, d in pairs(diagnostics) do
-          if d.severity == vim.lsp.protocol.DiagnosticSeverity.Error then
+          if d.severity == vim.lsp.protocol.DiagnosticSeverity.Error and items then
             table.insert(items, {
               bufnr = bufnr,
               lnum = d.range.start.line + 1,
