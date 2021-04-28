@@ -46,7 +46,7 @@ do
   end
 end
 
-M.restart = lsp_clients.restart()
+M.restart = lsp_clients.restart
 
 
 local function progress_report(_, _, result, client_id)
