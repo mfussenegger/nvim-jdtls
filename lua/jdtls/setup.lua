@@ -167,19 +167,26 @@ function M.start_or_attach(config)
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
-  capabilities.textDocument.codeAction = {
-      dynamicRegistration = false;
-      codeActionLiteralSupport = {
+  local extra_capabilities = {
+    textDocument = {
+      codeAction = {
+        dataSupport = true;
+        resolveSupport = {
+          properties = {'edit',}
+        };
+        codeActionLiteralSupport = {
           codeActionKind = {
-              valueSet = {
-                  "source.generate.toString",
-                  "source.generate.hashCodeEquals",
-                  "source.organizeImports",
-              };
+            valueSet = {
+                "source.generate.toString",
+                "source.generate.hashCodeEquals",
+                "source.organizeImports",
+            };
           };
-      };
+        };
+      }
+    }
   }
-  config.capabilities = capabilities
+  config.capabilities = vim.tbl_deep_extend('keep', capabilities, extra_capabilities)
   config.init_options = config.init_options or {}
   config.init_options.extendedClientCapabilities = (
     config.init_options.extendedClientCapabilities or vim.deepcopy(M.extendedClientCapabilities)

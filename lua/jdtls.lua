@@ -632,10 +632,26 @@ local function make_code_action_params(from_selection, kind)
   return params
 end
 
+
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
 function M.code_action(from_selection, kind)
   local code_action_params = make_code_action_params(from_selection or false, kind)
-  request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions)
+  local function apply_command(action)
+    local command
+    if type(action.command) == "table" then
+      command = action.command
+    else
+      command = action
+    end
+    local fn = M.commands[command.command]
+    if fn then
+      fn(command, code_action_params)
+    else
+      execute_command(command)
+    end
+  end
+  request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions, client_id)
+    local client = vim.lsp.get_client_by_id(client_id)
     assert(not err, vim.inspect(err))
     -- actions is (Command | CodeAction)[] | null
     -- CodeAction
@@ -666,18 +682,18 @@ function M.code_action(from_selection, kind)
         end
         if action.edit then
           vim.lsp.util.apply_workspace_edit(action.edit)
-        end
-        local command
-        if type(action.command) == "table" then
-          command = action.command
+        elseif client
+            and type(client.resolved_capabilities.code_action) == 'table'
+            and client.resolved_capabilities.code_action.resolveProvider then
+          client.request('codeAction/resolve', action, function(err1, _, result)
+            assert(not err1, vim.inspect(err1))
+            if result.edit then
+              vim.lsp.util.apply_workspace_edit(result.edit)
+            end
+            apply_command(result)
+          end)
         else
-          command = action
-        end
-        local fn = M.commands[command.command]
-        if fn then
-          fn(command, code_action_params)
-        else
-          execute_command(command)
+          apply_command(action)
         end
       end
     )
