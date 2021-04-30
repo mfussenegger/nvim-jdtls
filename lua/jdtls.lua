@@ -783,19 +783,26 @@ end
 
 
 local function with_classpaths(fn)
-  local options = vim.fn.json_encode({
-    scope = 'runtime';
-  })
-  local cmd = {
-    command = 'java.project.getClasspaths';
-    arguments = { vim.uri_from_bufnr(0), options };
-  }
-  execute_command(cmd, function(err, resp)
-    if err then
-      print('Error executing java.project.getClasspaths: ' .. err.message)
-    else
-      fn(resp)
-    end
+  local is_test_file_cmd = {
+    command = 'java.project.isTestFile',
+    arguments = { vim.uri_from_bufnr(0) }
+  };
+  execute_command(is_test_file_cmd, function(err, is_test_file)
+    assert(not err, vim.inspect(err))
+    local options = vim.fn.json_encode({
+      scope = is_test_file and 'test' or 'runtime';
+    })
+    local cmd = {
+      command = 'java.project.getClasspaths';
+      arguments = { vim.uri_from_bufnr(0), options };
+    }
+    execute_command(cmd, function(err1, resp)
+      if err1 then
+        print('Error executing java.project.getClasspaths: ' .. err1.message)
+      else
+        fn(resp)
+      end
+    end)
   end)
 end
 
