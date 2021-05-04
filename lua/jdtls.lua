@@ -426,6 +426,7 @@ local function java_apply_refactoring_command(command, code_action_params)
     request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return
   end
+
   request(0, 'java/inferSelection', params, function(err, _, selection_info)
     assert(not err, vim.inspect(err))
     if not selection_info or #selection_info == 0 then
@@ -770,16 +771,16 @@ function M.update_project_config()
 end
 
 
-function M.extract_variable(from_selection)
-  local params = make_code_action_params(from_selection or false)
-  java_apply_refactoring_command({ arguments = { 'extractVariable' }, }, params)
+local function mk_extract(entity)
+  return function(from_selection)
+    local params = make_code_action_params(from_selection or false)
+    java_apply_refactoring_command({ arguments = { entity }, }, params)
+  end
 end
 
-
-function M.extract_method(from_selection)
-  local params = make_code_action_params(from_selection or false)
-  java_apply_refactoring_command({ arguments = { 'extractMethod' }, }, params)
-end
+M.extract_constant = mk_extract('extractConstant')
+M.extract_variable = mk_extract('extractVariable')
+M.extract_method = mk_extract('extractMethod')
 
 
 local function with_classpaths(fn)
