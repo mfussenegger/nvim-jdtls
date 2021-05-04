@@ -7,9 +7,10 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 
 ## Extensions
 
-- [x] `organize_imports` command to organize imports
-- [x] `extract_variable` command to introduce a local variable
-- [x] `extract_method` command to extract a block of code into a method
+- [x] `organize_imports` function to organize imports
+- [x] `extract_variable` function to introduce a local variable
+- [x] `extract_constant` function to extract a constant
+- [x] `extract_method` function to extract a block of code into a method
 - [x] Open class file contents
 - [x] Code action extensions
   - [x] Generate constructors
@@ -187,6 +188,8 @@ nnoremap <leader>r <Cmd>lua require('jdtls').code_action(false, 'refactor')<CR>
 nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
 nnoremap crv <Cmd>lua require('jdtls').extract_variable()<CR>
 vnoremap crv <Esc><Cmd>lua require('jdtls').extract_variable(true)<CR>
+nnoremap crc <Cmd>lua require('jdtls').extract_constant()<CR>
+vnoremap crc <Esc><Cmd>lua require('jdtls').extract_constant(true)<CR>
 vnoremap crm <Esc><Cmd>lua require('jdtls').extract_method(true)<CR>
 
 
