@@ -363,8 +363,17 @@ function M.pick_test(opts)
 end
 
 
+local hotcodereplace_type = {
+  ERROR = "ERROR",
+  WARNING = "WARNING",
+  STARTING = "STARTING",
+  END = "END",
+  BUILD_COMPLETE = "BUILD_COMPLETE",
+}
+
+
 local original_configurations = nil
-function M.setup_dap()
+function M.setup_dap(opts)
   local status, dap = pcall(require, 'dap')
   if not status then
     print('nvim-dap is not available')
@@ -372,6 +381,19 @@ function M.setup_dap()
   end
   if dap.adapters.java and original_configurations then
     return
+  end
+  opts = opts or {}
+  dap.listeners.before['event_hotcodereplace']['jdtls'] = function(session, body)
+    if body.changeType == hotcodereplace_type.BUILD_COMPLETE then
+      if opts.hotcodereplace == 'auto' then
+        vim.notify('Applying code changes')
+        session:request('redefineClasses', nil, function(err)
+          assert(not err, vim.inspect(err))
+        end)
+      end
+    elseif body.message then
+      vim.notify(body.message)
+    end
   end
 
   dap.adapters.java = start_debug_adapter
