@@ -261,7 +261,10 @@ To do that, extend the configuration for `nvim-jdtls` with:
 
 ```lua
 config['on_attach'] = function(client, bufnr)
-  require('jdtls').setup_dap()
+  -- With `hotcodereplace = 'auto' the debug adapter will try to apply code changes
+  -- you make during a debug session immediately.
+  -- Remove the option if you do not want that.
+  require('jdtls').setup_dap({ hotcodereplace = 'auto' })
 end
 ```
 
