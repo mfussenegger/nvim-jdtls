@@ -374,7 +374,18 @@ function M.setup_dap()
     return
   end
 
-  dap.adapters.java = start_debug_adapter
+  dap.adapters.java = function()
+    if not original_configurations then
+      -- The LSP may not have loaded the project when setup_dap() was called.
+      -- In this case, we try again.
+      M.setup_dap()
+    end
+    if not original_configurations then
+      print('Either no main classes were found or the LSP has not finished loading the project yet.')
+      return
+    end
+    start_debug_adapter()
+  end
   original_configurations = dap.configurations.java or {}
   local configurations = vim.deepcopy(original_configurations)
   dap.configurations.java = configurations
@@ -411,6 +422,10 @@ function M.setup_dap()
       end)
     end
   end)
+  -- If no configurations are found, set original_configurations nil so that setup_dap can be called again.
+  if next(original_configurations) == nil then
+    original_configurations = nil
+  end
 end
 
 
