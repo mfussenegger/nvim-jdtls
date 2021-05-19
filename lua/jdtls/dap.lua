@@ -372,14 +372,72 @@ local hotcodereplace_type = {
 }
 
 
-local original_configurations = nil
+function M.fetch_main_configs(callback)
+  local configurations = {}
+  util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
+    assert(not err, vim.inspect(err))
+
+    local remaining = #mainclasses
+    if remaining == 0 then
+      callback(configurations)
+      return
+    end
+    for _, mc in pairs(mainclasses) do
+      local mainclass = mc.mainClass
+      local project = mc.projectName
+      with_java_executable(mainclass, project, function(java_exec)
+        util.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err1, paths)
+          remaining = remaining - 1
+          if err1 then
+            print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err1.message))
+            return
+          end
+          local config = {
+            type = 'java';
+            name = 'Launch ' .. mainclass;
+            projectName = project;
+            mainClass = mainclass;
+            modulePaths = paths[1];
+            classPaths = paths[2];
+            javaExec = java_exec;
+            request = 'launch';
+            console = 'integratedTerminal';
+          }
+          table.insert(configurations, config)
+          if remaining == 0 then
+            callback(configurations)
+          end
+        end)
+      end)
+    end
+  end)
+end
+
+local orig_configurations
+function M.setup_dap_main_class_configs()
+  local status, dap = pcall(require, 'dap')
+  if not status then
+    print('nvim-dap is not available')
+    return
+  end
+  if not orig_configurations then
+    orig_configurations = vim.deepcopy(dap.configurations.java)
+  end
+  local current_configurations = vim.deepcopy(orig_configurations)
+  M.fetch_main_configs(function(configurations)
+    vim.list_extend(current_configurations, configurations)
+    dap.configurations.java = current_configurations
+  end)
+end
+
+
 function M.setup_dap(opts)
   local status, dap = pcall(require, 'dap')
   if not status then
     print('nvim-dap is not available')
     return
   end
-  if dap.adapters.java and original_configurations then
+  if dap.adapters.java then
     return
   end
   opts = opts or {}
@@ -395,44 +453,7 @@ function M.setup_dap(opts)
       vim.notify(body.message)
     end
   end
-
   dap.adapters.java = start_debug_adapter
-  original_configurations = dap.configurations.java or {}
-  local configurations = vim.deepcopy(original_configurations)
-  dap.configurations.java = configurations
-
-  util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err0, mainclasses)
-    if err0 then
-      print('Could not resolve mainclasses: ' .. err0.message)
-      return
-    end
-
-    for _, mc in pairs(mainclasses) do
-      local mainclass = mc.mainClass
-      local project = mc.projectName
-
-      with_java_executable(mainclass, project, function(java_exec)
-        util.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err2, paths)
-          if err2 then
-            print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err2.message))
-            return
-          end
-          local config = {
-            type = 'java';
-            name = 'Launch ' .. mainclass;
-            projectName = project;
-            mainClass = mainclass;
-            modulePaths = paths[1];
-            classPaths = paths[2];
-            javaExec = java_exec;
-            request = 'launch';
-            console = 'integratedTerminal';
-          }
-          table.insert(configurations, config)
-        end)
-      end)
-    end
-  end)
 end
 
 

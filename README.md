@@ -201,7 +201,10 @@ nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
 
 
 Some methods are better exposed via commands. As a shortcut you can also call
-`:lua require('jdtls.setup').add_commands()` to declare these. It's recommended to call `add_commands` within the `on_attach` handler that can be set on the `config` table which is passed to `start_or_attach`.
+`:lua require('jdtls.setup').add_commands()` to declare these.
+
+It's recommended to call `add_commands` within the `on_attach` handler that can be set on the `config` table which is passed to `start_or_attach`.
+If you use jdtls together with nvim-dap, call `add_commands` *after* `setup_dap` to ensure it includes debugging related commands. (More about this is in the debugger setup section further below)
 
 
 ```vimL
@@ -254,8 +257,7 @@ config['init_options'] = {
 ### nvim-dap setup
 
 You also need to call `require('jdtls').setup_dap()` to have it register a
-`java` adapter for `nvim-dap` and to create configurations for all discovered
-main classes.
+`java` adapter.
 
 To do that, extend the configuration for `nvim-jdtls` with:
 
@@ -267,6 +269,11 @@ config['on_attach'] = function(client, bufnr)
   require('jdtls').setup_dap({ hotcodereplace = 'auto' })
 end
 ```
+
+If you also want to discover main classes and create configuration entries for them, you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtRefreshDebugConfigs` command which is added as part of `add_commands()` which is mentioned in the [Usage](#Usage) section.
+
+Note that eclipse.jdt.ls needs to have loaded your project before it can discover all main classes and that may take some time. It is best to trigger this deferred or ad-hoc when first required.
+
 
 ### vscode-java-test installation
 
@@ -322,7 +329,7 @@ If it doesn't, verify:
 ### Diagnostics and completion suggestions are slow
 
 Completion requests can be quite expensive on big projects. If you're using
-some kind of autoc-ompletion plugin that triggers completion requests
+some kind of auto-completion plugin that triggers completion requests
 automatically, consider deactivating it or tuning it so it is less aggressive.
 Triggering a completion request on each typed character is likely overloading
 [eclipse.jdt.ls][3].

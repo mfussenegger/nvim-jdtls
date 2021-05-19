@@ -215,6 +215,10 @@ function M.add_commands()
   api.nvim_command [[command! -buffer JdtBytecode lua require('jdtls').javap()]]
   api.nvim_command [[command! -buffer JdtJshell lua require('jdtls').jshell()]]
   api.nvim_command [[command! -buffer JdtRestart lua require('jdtls.setup').restart()]]
+  local ok, dap = pcall(require, 'dap')
+  if ok and dap.adapters.java then
+    api.nvim_command "command! -buffer JdtRefreshDebugConfigs lua require('jdtls.dap').setup_dap_main_class_configs()"
+  end
 end
 
 
