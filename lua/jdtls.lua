@@ -707,14 +707,19 @@ function M.organize_imports()
 end
 
 
-function M.compile(full_compile)
+function M._complete_compile()
+  return 'full\nincremental'
+end
+
+
+function M.compile(type)
   local CompileWorkspaceStatus = {
     FAILED = 0,
     SUCCEED = 1,
     WITHERROR = 2,
     CANCELLED = 3,
   }
-  request(0, 'java/buildWorkspace', full_compile or false, function(err, _, result)
+  request(0, 'java/buildWorkspace', type == 'full', function(err, _, result)
     assert(not err, 'Error on `java/buildWorkspace`: ' .. vim.inspect(err))
     if result == CompileWorkspaceStatus.SUCCEED then
       print('Compile successfull')
@@ -758,7 +763,6 @@ function M.compile(full_compile)
     end
   end)
 end
-
 
 function M.update_project_config()
   local params = { uri = vim.uri_from_bufnr(0) }

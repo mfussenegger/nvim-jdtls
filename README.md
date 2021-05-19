@@ -311,7 +311,7 @@ If it doesn't, verify:
 
 2. Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths.
 
-- Run `:JdtCompile` for incremental compilation or `:JdtCompile true` for full
+- Run `:JdtCompile` for incremental compilation or `:JdtCompile full` for full
   compilation. If there are any errors in the project, it will open the
   quickfix list with the errors.
 

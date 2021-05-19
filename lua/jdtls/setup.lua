@@ -209,7 +209,7 @@ end
 
 
 function M.add_commands()
-  api.nvim_command [[command! -buffer -nargs=? JdtCompile lua require('jdtls').compile(<f-args>)]]
+  api.nvim_command [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)]]
   api.nvim_command [[command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()]]
   api.nvim_command [[command! -buffer -nargs=* JdtJol lua require('jdtls').jol(<f-args>)]]
   api.nvim_command [[command! -buffer JdtBytecode lua require('jdtls').javap()]]
