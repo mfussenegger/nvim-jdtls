@@ -914,9 +914,10 @@ function M.open_jdt_link(uri)
     buf_content = {
       'Failed to load content for uri', uri, '', 'Error was: ', error_msg, '', 'Check the log file for errors', log_path}
   end
+  api.nvim_buf_set_option(buf, 'modifiable', true)
   api.nvim_buf_set_lines(buf, 0, -1, false, buf_content)
   api.nvim_buf_set_option(0, 'filetype', 'java')
-  api.nvim_command('setlocal nomodifiable')
+  api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
 
