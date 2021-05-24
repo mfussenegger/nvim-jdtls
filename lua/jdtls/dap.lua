@@ -30,7 +30,7 @@ local function enrich_dap_config(config_, on_config)
         end
       end
     end
-    assert(config.projectName, "projectName is missing")
+    config.projectName = config.projectName or ''
     with_java_executable(config.mainClass, config.projectName, function(java_exec)
       config.javaExec = config.javaExec or java_exec
       local params = {
