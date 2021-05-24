@@ -135,6 +135,19 @@ local function configuration_handler(err, method, params, client_id, bufnr, conf
 end
 
 
+local function init_with_config_notify(original_init)
+  return function(...)
+    local client = select(1, ...)
+    if client.config.settings then
+      client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
+    end
+    if original_init then
+      original_init(...)
+    end
+  end
+end
+
+
 function M.start_or_attach(config)
   assert(config, 'config is required')
   assert(
@@ -196,6 +209,7 @@ function M.start_or_attach(config)
       progressReports = { enabled = true },
     }
   })
+  config.on_init = init_with_config_notify(config.on_init)
   local workspace = capabilities.workspace or {}
   if not workspace.workspaceEdit
     or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'rename')
