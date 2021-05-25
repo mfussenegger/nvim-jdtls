@@ -421,7 +421,7 @@ function M.setup_dap_main_class_configs()
     return
   end
   if not orig_configurations then
-    orig_configurations = vim.deepcopy(dap.configurations.java)
+    orig_configurations = vim.deepcopy(dap.configurations.java) or {}
   end
   local current_configurations = vim.deepcopy(orig_configurations)
   M.fetch_main_configs(function(configurations)
