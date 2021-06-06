@@ -38,16 +38,16 @@ see some of the functionality in action.
 
 ## Language Server Installation
 
-For ``nvim-jdtls`` to work, [eclipse.jdt.ls][3] needs to be installed.
+For ``nvim-jdtls`` to work, [eclipse.jdt.ls][3] needs to be installed. You've several options:
 
-To build eclipse.jdt.ls from source, switch to a folder of your choice and run:
+- Install eclipse.jdt.ls via your favorite package manager (Assuming a package is available).
+- Download a pre-built [milestone][12] or [snapshot][13] and extract the contents of the package.
+- Build eclipse.jdt.ls from source:
+  - Switch to a folder of your choice.
+  - `git clone https://github.com/eclipse/eclipse.jdt.ls.git`
+  - `cd eclipse.jdt.ls`
+  - `./mvnw clean install -DskipTests` (Set `JAVA_HOME` to Java 11)
 
-
-```bash
-git clone https://github.com/eclipse/eclipse.jdt.ls.git
-cd eclipse.jdt.ls
-./mvnw clean verify
-```
 
 Create a launch script with the following contents. **But don't forget to adapt
 the paths**.
@@ -372,3 +372,5 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [9]: https://github.com/neovim/nvim-lspconfig
 [10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
 [11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
+[12]: https://download.eclipse.org/jdtls/milestones/
+[13]: https://download.eclipse.org/jdtls/snapshots/?d
