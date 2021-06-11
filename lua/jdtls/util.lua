@@ -35,7 +35,7 @@ function M.resolve_classname()
   local lines = api.nvim_buf_get_lines(0, 0, -1, true)
   local pkgname
   for _, line in ipairs(lines) do
-    local match = line:match('package ([a-z\\.]+);')
+    local match = line:match('package ([a-z0-9_\\.]+);')
     if match then
       pkgname = match
       break
