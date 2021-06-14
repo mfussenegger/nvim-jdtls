@@ -1,4 +1,3 @@
-local repl = require('dap.repl')
 local M = {}
 
 
@@ -77,6 +76,7 @@ function M.mk_test_results(bufnr)
   return {
     show = function()
       local items = {}
+      local repl = require('dap.repl')
       for _, test in ipairs(tests) do
         if test.failed then
           repl.append('❌' .. test.method, '$')
