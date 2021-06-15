@@ -3,6 +3,8 @@ local lsp = vim.lsp
 local uv = vim.loop
 local path = require('jdtls.path')
 local M = {}
+local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
+
 
 local status_callback = vim.schedule_wrap(function(_, _, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
@@ -148,6 +150,29 @@ local function init_with_config_notify(original_init)
 end
 
 
+local function maybe_implicit_save()
+  -- 💀
+  -- If the client is attached to a buffer that doesn't exist on the filesystem,
+  -- jdtls struggles and cannot provide completions and other functionality
+  -- until the buffer is re-attached (`:e!`)
+  --
+  -- So this implicitly saves a file before attaching the lsp client.
+  local bufnr = api.nvim_get_current_buf()
+  if vim.o.buftype == '' then
+    local uri = vim.uri_from_bufnr(bufnr)
+    local scheme = uri:match(URI_SCHEME_PATTERN)
+    if scheme ~= 'file' then
+      return
+    end
+    local stat = vim.loop.fs_stat(api.nvim_buf_get_name(bufnr))
+    if not stat then
+      vim.fn.mkdir(vim.fn.expand('%:p:h'), 'p')
+      vim.cmd('w')
+    end
+  end
+end
+
+
 function M.start_or_attach(config)
   assert(config, 'config is required')
   assert(
@@ -218,6 +243,7 @@ function M.start_or_attach(config)
   then
     config.init_options.extendedClientCapabilities.moveRefactoringSupport = false;
   end
+  maybe_implicit_save()
   lsp_clients.start(config)
 end
 
