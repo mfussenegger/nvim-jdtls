@@ -40,7 +40,8 @@ local function java_apply_workspace_edit(command)
 end
 
 
-local function java_generate_to_string_prompt(_, params)
+local function java_generate_to_string_prompt(_, outer_ctx)
+  local params = outer_ctx.params
   request(0, 'java/checkToStringStatus', params, function(err, result, ctx)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
@@ -73,8 +74,8 @@ local function java_generate_to_string_prompt(_, params)
 end
 
 
-local function java_generate_constructors_prompt(_, code_action_params)
-  request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, status, ctx)
+local function java_generate_constructors_prompt(_, outer_ctx)
+  request(0, 'java/checkConstructorsStatus', outer_ctx.params, function(err0, status, ctx)
     if err0 then
       print("Could not execute java/checkConstructorsStatus: " .. err0.message)
       return
@@ -100,7 +101,7 @@ local function java_generate_constructors_prompt(_, code_action_params)
     end
 
     local params = {
-      context = code_action_params,
+      context = outer_ctx.params,
       constructors = constructors,
       fields = fields
     }
@@ -115,8 +116,8 @@ local function java_generate_constructors_prompt(_, code_action_params)
 end
 
 
-local function java_generate_delegate_methods_prompt(_, code_action_params)
-  request(0, 'java/checkDelegateMethodsStatus', code_action_params, function(err0, status, ctx)
+local function java_generate_delegate_methods_prompt(_, outer_ctx)
+  request(0, 'java/checkDelegateMethodsStatus', outer_ctx.params, function(err0, status, ctx)
     if err0 then
       print('Could not execute java/checkDelegateMethodsStatus: ', err0.message)
       return
@@ -147,7 +148,7 @@ local function java_generate_delegate_methods_prompt(_, code_action_params)
     end
 
     local params = {
-      context = code_action_params,
+      context = outer_ctx.params,
       delegateEntries = vim.tbl_map(
         function(x)
           return {
@@ -169,7 +170,8 @@ local function java_generate_delegate_methods_prompt(_, code_action_params)
 end
 
 
-local function java_hash_code_equals_prompt(_, params)
+local function java_hash_code_equals_prompt(_, outer_ctx)
+  local params = outer_ctx.params
   request(0, 'java/checkHashCodeEqualsStatus', params, function(_, result, ctx)
     if not result or not result.fields or #result.fields == 0 then
       print(string.format("The operation is not applicable to the type %", result.type))
@@ -190,7 +192,7 @@ local function java_hash_code_equals_prompt(_, params)
 end
 
 
-local function handle_refactor_workspace_edit(err, result)
+local function handle_refactor_workspace_edit(err, result, ctx)
   if err then
     print('Error getting refactoring edit: ' .. err.message)
     return
@@ -207,7 +209,7 @@ local function handle_refactor_workspace_edit(err, result)
     local command = result.command
     local fn = M.commands[command.command]
     if fn then
-      fn(command, {})
+      fn(command, ctx)
     else
       execute_command(command)
     end
@@ -399,8 +401,9 @@ local function move_type(command, code_action_params)
 end
 
 
-local function java_apply_refactoring_command(command, code_action_params)
+local function java_apply_refactoring_command(command, outer_ctx)
   local cmd = command.arguments[1]
+  local code_action_params = outer_ctx.params
   local params = {
     command = cmd,
     context = code_action_params,
@@ -458,8 +461,8 @@ local function java_action_rename()
 end
 
 
-local function java_action_organize_imports(_, code_action_params)
-  request(0, 'java/organizeImports', code_action_params, function(err, resp)
+local function java_action_organize_imports(_, ctx)
+  request(0, 'java/organizeImports', ctx.params, function(err, resp)
     if err then
       print('Error on organize imports: ' .. err.message)
       return
@@ -527,12 +530,18 @@ M.commands = {
   ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
 }
 
+if vim.lsp.commands then
+  for k, v in pairs(M.commands) do
+    vim.lsp.commands[k] = v  -- luacheck: ignore 122
+  end
+end
+
 
 if not vim.lsp.handlers['workspace/executeClientCommand'] then
-  vim.lsp.handlers['workspace/executeClientCommand'] = util.mk_handler(function(_, params)  -- luacheck: ignore 122
+  vim.lsp.handlers['workspace/executeClientCommand'] = util.mk_handler(function(_, params, ctx)  -- luacheck: ignore 122
     local fn = M.commands[params.command]
     if fn then
-      local ok, result = pcall(fn, params.arguments)
+      local ok, result = pcall(fn, params.arguments, ctx)
       if ok then
         return result
       else
@@ -651,8 +660,11 @@ function M.code_action(from_selection, kind)
       return
     end
     local fn = M.commands[command.command]
+    if not ctx.params then
+      ctx.params = code_action_params
+    end
     if fn then
-      fn(command, code_action_params)
+      fn(command, ctx)
     else
       local client = vim.lsp.get_client_by_id(ctx.client_id)
       assert(client, 'JDTLS client must exist client_id=' .. ctx.client_id)
@@ -711,7 +723,7 @@ end
 
 
 function M.organize_imports()
-  java_action_organize_imports(nil, make_code_action_params(false))
+  java_action_organize_imports(nil, { params = make_code_action_params(false) })
 end
 
 
@@ -786,7 +798,7 @@ end
 local function mk_extract(entity)
   return function(from_selection)
     local params = make_code_action_params(from_selection or false)
-    java_apply_refactoring_command({ arguments = { entity }, }, params)
+    java_apply_refactoring_command({ arguments = { entity }, }, { params = params })
   end
 end
 
