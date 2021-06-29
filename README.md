@@ -32,21 +32,21 @@ see some of the functionality in action.
 ## Plugin Installation
 
 - Requires [Neovim HEAD/nightly][4]
-- nvim-jdtls is a plugin. Install it like any other Vim plugin.
-- Call `:packadd nvim-jdtls` if you install `nvim-jdtls` to `'packpath'`.
-
+- nvim-jdtls is a plugin. Install it like any other Vim plugin:
+  - If using [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
+  - If using [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
 
 ## Language Server Installation
 
-For ``nvim-jdtls`` to work, [eclipse.jdt.ls][3] needs to be installed. You've several options:
+Install [eclipse.jdt.ls][3] using one of the three options:
 
-- Install eclipse.jdt.ls via your favorite package manager (Assuming a package is available).
-- Download a pre-built [milestone][12] or [snapshot][13] and extract the contents of the package.
-- Build eclipse.jdt.ls from source:
-  - Switch to a folder of your choice.
-  - `git clone https://github.com/eclipse/eclipse.jdt.ls.git`
-  - `cd eclipse.jdt.ls`
-  - `./mvnw clean install -DskipTests` (Set `JAVA_HOME` to Java 11)
+1) Install eclipse.jdt.ls via your package manager (Assuming a package is available).
+2) Download a pre-built [milestone][12] or [snapshot][13] and extract the contents of the package.
+3) Build eclipse.jdt.ls from source:
+    - Switch to a folder of your choice.
+    - `git clone https://github.com/eclipse/eclipse.jdt.ls.git`
+    - `cd eclipse.jdt.ls`
+    - `./mvnw clean install -DskipTests` (Set `JAVA_HOME` to Java 11 before you run this)
 
 
 Create a launch script with the following contents. **But don't forget to adapt
@@ -54,10 +54,8 @@ the paths**.
 
 - `$HOME/dev/eclipse` needs to be changed to the folder where you cloned the
 repository.
-- `/usr/lib/jvm/java-14-openjdk/bin/java` needs to be changed to point to your
-  Java installation.
-
-If you're using Java < 9, remove the `add-modules` and `-add-opens` options.
+- `/usr/lib/jvm/java-11-openjdk/bin/java` needs to be changed to point to your
+  Java installation. At least Java 11 is required to run the language server.
 
 
 ```bash
@@ -71,7 +69,7 @@ If you're using Java < 9, remove the `add-modules` and `-add-opens` options.
 # to point to the `config_mac' or `config_win` folders depending on your system.
 
 JAR="$HOME/dev/eclipse/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/plugins/org.eclipse.equinox.launcher_*.jar"
-GRADLE_HOME=$HOME/gradle /usr/lib/jvm/java-14-openjdk/bin/java \
+GRADLE_HOME=$HOME/gradle /usr/lib/jvm/java-11-openjdk/bin/java \
   -Declipse.application=org.eclipse.jdt.ls.core.id1 \
   -Dosgi.bundles.defaultStartLevel=4 \
   -Declipse.product=org.eclipse.jdt.ls.core.product \
@@ -156,13 +154,10 @@ start_or_attach({cmd = {'java-lsp.sh', '/home/user/workspace/' .. vim.fn.fnamemo
 
 ### lspconfig
 
-**Warning**: Using [nvim-lspconfig][9] in addition to the setup here is not
-required.
+**Warning**: You must NOT execute `require'nvim_lsp'.jdtls.setup{}` from
+[nvim-lspconfig][9] if you use `nvim-jdtls`.
 
-You can use it to configure other servers, but you **must not** call
-`require'nvim_lsp'.jdtls.setup{}`. You'd end up running *two* clients and two
-language servers if you do that.
-
+You can use `nvim-lspconfig` for other language servers without problems.
 
 ### UI picker customization
 
@@ -275,6 +270,9 @@ If you also want to discover main classes and create configuration entries for t
 Note that eclipse.jdt.ls needs to have loaded your project before it can discover all main classes and that may take some time. It is best to trigger this deferred or ad-hoc when first required.
 
 
+See the [nvim-dap Adapter Installation Wiki](https://github.com/mfussenegger/nvim-dap/wiki/Debug-Adapter-installation#Java)
+for example configurations in case you're not going to use the main-class discovery functionality of nvim-jdtls.
+
 ### vscode-java-test installation
 
 To be able to debug junit tests, it is necessary to install the bundles from [vscode-java-test][7]:
@@ -374,3 +372,5 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
 [12]: https://download.eclipse.org/jdtls/milestones/
 [13]: https://download.eclipse.org/jdtls/snapshots/?d
+[14]: https://github.com/junegunn/vim-plug
+[15]: https://github.com/wbthomason/packer.nvim
