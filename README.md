@@ -2,9 +2,6 @@
 
 Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2] (>= 0.5) for [eclipse.jdt.ls][3].
 
-**Warning**: This is early state. Neovim 0.5 hasn't been released yet, so APIs can change and things may break.
-
-
 ## Extensions
 
 - [x] `organize_imports` function to organize imports
@@ -31,7 +28,7 @@ see some of the functionality in action.
 
 ## Plugin Installation
 
-- Requires [Neovim HEAD/nightly][4]
+- Requires Neovim (>= 0.5)
 - nvim-jdtls is a plugin. Install it like any other Vim plugin:
   - If using [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
   - If using [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
@@ -362,7 +359,6 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
-[4]: https://github.com/neovim/neovim/releases/tag/nightly
 [5]: https://github.com/mfussenegger/nvim-dap
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
