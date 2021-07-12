@@ -105,7 +105,7 @@ local function make_junit_request_args(lens, uri)
     scope = lens.level;
     testKind = lens.kind;
   }
-  if lens.kind == TestKind.JUnit5 and lens.level == TestLevel.Method then
+  if lens.level == TestLevel.Method then
     req_arguments['start'] = lens.location.range['start']
     req_arguments['end'] = lens.location.range['end']
   end
