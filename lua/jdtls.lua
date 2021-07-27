@@ -912,7 +912,13 @@ function M.open_jdt_link(uri)
       error_msg = response[1]
     end
     buf_content = {
-      'Failed to load content for uri', uri, '', 'Error was: ', error_msg, '', 'Check the log file for errors', log_path}
+      'Failed to load content for uri',
+      uri,
+      '',
+      'Error was: ',
+    }
+    vim.list_extend(buf_content, vim.split(vim.inspect(error_msg), '\n'))
+    vim.list_extend(buf_content, {'', 'Check the log file for errors', log_path})
   end
   api.nvim_buf_set_option(buf, 'modifiable', true)
   api.nvim_buf_set_lines(buf, 0, -1, false, buf_content)
