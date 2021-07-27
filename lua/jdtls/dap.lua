@@ -414,7 +414,8 @@ function M.fetch_main_configs(callback)
 end
 
 local orig_configurations
-function M.setup_dap_main_class_configs()
+function M.setup_dap_main_class_configs(opts)
+  opts = opts or {}
   local status, dap = pcall(require, 'dap')
   if not status then
     print('nvim-dap is not available')
@@ -424,9 +425,15 @@ function M.setup_dap_main_class_configs()
     orig_configurations = vim.deepcopy(dap.configurations.java) or {}
   end
   local current_configurations = vim.deepcopy(orig_configurations)
+  if opts.verbose then
+    vim.notify('Fetching debug configurations')
+  end
   M.fetch_main_configs(function(configurations)
     vim.list_extend(current_configurations, configurations)
     dap.configurations.java = current_configurations
+    if opts.verbose then
+      vim.notify('Updated debug configurations')
+    end
   end)
 end
 
