@@ -75,12 +75,21 @@ local TestKind = {
 }
 
 
-local TestLevel = {
+local LegacyTestLevel = {
   Root = 0,
   Folder = 1,
   Package = 2,
   Class = 3,
   Method = 4,
+}
+
+local TestLevel = {
+  Workspace = 1,
+  WorkspaceFolder = 2,
+  Project = 3,
+  Package = 4,
+  Class = 5,
+  Method = 6,
 }
 
 
@@ -94,37 +103,77 @@ local function make_junit_request_args(lens, uri)
       methodname = string.format('%s(%s)', methodname, table.concat(lens.paramTypes, ','))
     end
   end
-  local req_arguments = {
-    uri = uri;
-    -- Got renamed to fullName in https://github.com/microsoft/vscode-java-test/commit/57191b5367ae0a357b80e94f0def9e46f5e77796
-    -- keep it for BWC (hopefully that works?)
-    classFullName = classname;
-    fullName = classname;
-    testName = methodname;
-    project = lens.project;
-    scope = lens.level;
-    testKind = lens.kind;
-  }
-  if lens.level == TestLevel.Method then
-    req_arguments['start'] = lens.location.range['start']
-    req_arguments['end'] = lens.location.range['end']
+  -- Format changes with https://github.com/microsoft/vscode-java-test/pull/1257
+  local new_api = lens.testKind ~= nil
+  local req_arguments
+  if new_api then
+    req_arguments = {
+      testKind = lens.testKind,
+      projectName = lens.projectName,
+      testLevel = lens.testLevel,
+    }
+    if lens.testKind == TestKind.TestNG or lens.testLevel == TestLevel.Class then
+      req_arguments.testNames = { lens.fullName, }
+    elseif lens.testLevel then
+      req_arguments.testNames = { lens.jdtHandler, }
+    end
+  else
+    req_arguments = {
+      uri = uri,
+      -- Got renamed to fullName in https://github.com/microsoft/vscode-java-test/commit/57191b5367ae0a357b80e94f0def9e46f5e77796
+      -- Include both for BWC
+      classFullName = classname,
+      fullName = classname,
+      testName = methodname,
+      project = lens.project,
+      scope = lens.level,
+      testKind = lens.kind,
+    }
+    if lens.level == LegacyTestLevel.Method then
+      req_arguments['start'] = lens.location.range['start']
+      req_arguments['end'] = lens.location.range['end']
+    end
   end
   return req_arguments
 end
 
 
-local function fetch_lenses(context, on_lenses)
-  local cmd_codelens = {
-    command = 'vscode.java.test.search.codelens';
+local function fetch_candidates(context, on_candidates)
+  local cmd_codelens = 'vscode.java.test.search.codelens'
+  local cmd_find_tests = 'vscode.java.test.findTestTypesAndMethods'
+  local client = nil
+  local params = {
     arguments = { context.uri };
   }
-  util.execute_command(cmd_codelens, function(err0, codelens)
-    if err0 then
-      print('Error fetching codelens: ' .. (err0.message or vim.inspect(err0)))
-    else
-      on_lenses(codelens)
+  for _, c in pairs(vim.lsp.buf_get_clients()) do
+    local command_provider = c.server_capabilities.executeCommandProvider
+    local commands = type(command_provider) == 'table' and command_provider.commands or {}
+    if vim.tbl_contains(commands, cmd_codelens) then
+      params.command = cmd_codelens
+      client = c
+      break
+    elseif vim.tbl_contains(commands, cmd_find_tests) then
+      params.command = cmd_find_tests
+      client = c
+      break
     end
-  end)
+  end
+  if not client then
+    local msg = (
+      'No LSP client found that supports resolving possible test cases. '
+        .. 'Did you add the JAR files of vscode-java-test to `config.init_options.bundles`?')
+    vim.notify(msg, vim.log.levels.WARN)
+    return
+  end
+
+  local handler = function(err, _, result)
+    if err then
+      vim.notify('Errror fetching test candidates: ' .. (err.message or vim.inspect(err)), vim.log.levels.ERROR)
+    else
+      on_candidates(result)
+    end
+  end
+  client.request('workspace/executeCommand', params, handler, context.bufnr)
 end
 
 
@@ -178,12 +227,19 @@ end
 local function get_method_lens_above_cursor(lenses, lnum)
   local result
   for _, lens in pairs(lenses) do
-    if lens.level == TestLevel.Method and lens.location.range.start.line <= lnum then
+    if lens.level == LegacyTestLevel.Method and lens.location.range.start.line <= lnum then
       if result == nil then
         result = lens
       elseif lens.location.range.start.line > result.location.range.start.line then
         result = lens
       end
+    elseif lens.testLevel == TestLevel.Method and lens.range.start.line <= lnum then
+      if result == nil or lens.range.start.line > result.range.start.line then
+        result = lens
+      end
+    end
+    if not result and lens.children then
+      result = get_method_lens_above_cursor(lens.children, lnum)
     end
   end
   return result
@@ -192,7 +248,12 @@ end
 
 local function get_first_class_lens(lenses)
   for _, lens in pairs(lenses) do
-    if lens.level == TestLevel.Class then
+    -- compatibility for versions prior to
+    -- https://github.com/microsoft/vscode-java-test/pull/1257
+    if lens.level == LegacyTestLevel.Class then
+      return lens
+    end
+    if lens.testLevel == TestLevel.Class then
       return lens
     end
   end
@@ -299,7 +360,7 @@ end
 --- API of these methods is unstable and might change in the future
 M.experimental = {
   run = run,
-  fetch_lenses = fetch_lenses,
+  fetch_lenses = fetch_candidates,
   fetch_launch_args = fetch_launch_args,
   make_context = make_context,
   make_config = make_config,
@@ -309,7 +370,7 @@ M.experimental = {
 function M.test_class(opts)
   opts = opts or {}
   local context = make_context()
-  fetch_lenses(context, function(lenses)
+  fetch_candidates(context, function(lenses)
     local lens = get_first_class_lens(lenses)
     if not lens then
       vim.notify('No test class found')
@@ -327,7 +388,7 @@ function M.test_nearest_method(opts)
   opts = opts or {}
   local lnum = api.nvim_win_get_cursor(0)[1]
   local context = make_context()
-  fetch_lenses(context, function(lenses)
+  fetch_candidates(context, function(lenses)
     local lens = get_method_lens_above_cursor(lenses, lnum)
     if not lens then
       vim.notify('No suitable test method found')
@@ -344,7 +405,7 @@ end
 function M.pick_test(opts)
   opts = opts or {}
   local context = make_context()
-  fetch_lenses(context, function(lenses)
+  fetch_candidates(context, function(lenses)
     require('jdtls.ui').pick_one_async(
       lenses,
       'Tests> ',
