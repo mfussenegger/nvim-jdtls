@@ -1,0 +1,42 @@
+---
+name: 🐞 Bug Report
+description: Tell us about something that's not working the way you think it should
+body:
+  - type: textarea
+    id: config
+    attributes:
+      label: LSP client configuration
+      description: The configuration you pass to `require('jdtls').start_or_attach`
+  - type: input
+    id: jdtls_version
+    attributes:
+      label: Eclipse.jdt.ls version
+      placeholder: 1.2.3
+    validations:
+      required: false
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to Reproduce
+      description: How can we see what you're seeing? Please be specific
+      placeholder: |-
+        In a project using { gradle version .. | maven .. } (Ideally with link), opening a Java file ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Result
+      description: Output? Logs? (:help vim.lsp.set_log_level and vim.lsp.log.get_filename). Run `:lua require('jdtls').compile('full')` and post the quickfix window output if there is any.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |-
+        ## Thanks 🙏
