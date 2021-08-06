@@ -164,7 +164,11 @@ local function maybe_implicit_save()
     if scheme ~= 'file' then
       return
     end
-    local stat = vim.loop.fs_stat(api.nvim_buf_get_name(bufnr))
+    local fname = api.nvim_buf_get_name(bufnr)
+    if fname == '' then
+      return
+    end
+    local stat = vim.loop.fs_stat(fname)
     if not stat then
       vim.fn.mkdir(vim.fn.expand('%:p:h'), 'p')
       vim.cmd('w')
