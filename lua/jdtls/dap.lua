@@ -485,12 +485,17 @@ function M.setup_dap_main_class_configs(opts)
   if not orig_configurations then
     orig_configurations = vim.deepcopy(dap.configurations.java) or {}
   end
-  local current_configurations = vim.deepcopy(orig_configurations)
+  local current_configurations = {}
+  for _, config in pairs(orig_configurations) do
+    table.insert(current_configurations, config)
+  end
   if opts.verbose then
     vim.notify('Fetching debug configurations')
   end
   M.fetch_main_configs(function(configurations)
-    vim.list_extend(current_configurations, configurations)
+    for _, config in pairs(configurations) do
+      table.insert(current_configurations, config)
+    end
     dap.configurations.java = current_configurations
     if opts.verbose then
       vim.notify('Updated debug configurations')
