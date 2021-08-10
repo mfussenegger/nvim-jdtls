@@ -170,7 +170,7 @@ local function fetch_candidates(context, on_candidates)
     if err then
       vim.notify('Errror fetching test candidates: ' .. (err.message or vim.inspect(err)), vim.log.levels.ERROR)
     else
-      on_candidates(result)
+      on_candidates(result or {})
     end
   end
   client.request('workspace/executeCommand', params, handler, context.bufnr)
