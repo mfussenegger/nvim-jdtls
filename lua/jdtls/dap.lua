@@ -498,7 +498,7 @@ function M.setup_dap_main_class_configs(opts)
     end
     dap.configurations.java = current_configurations
     if opts.verbose then
-      vim.notify('Updated debug configurations')
+      vim.notify(string.format('Updated %s debug configuration(s)', #configurations))
     end
   end)
 end
