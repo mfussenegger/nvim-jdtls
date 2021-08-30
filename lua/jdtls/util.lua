@@ -3,14 +3,34 @@ local request = vim.lsp.buf_request
 local M = {}
 
 
+function M.mk_handler(fn)
+  return function(...)
+    local count = select('#', ...)
+    local config_or_client_id = select(4, ...)
+    local is_new = type(config_or_client_id) ~= 'number' or count == 4
+    if is_new then
+      fn(...)
+    else
+      local err = select(1, ...)
+      local method = select(2, ...)
+      local result = select(3, ...)
+      local client_id = select(4, ...)
+      local bufnr = select(5, ...)
+      local config = select(6, ...)
+      fn(err, result, { method = method, client_id = client_id, bufnr = bufnr }, config)
+    end
+  end
+end
+
+
 function M.execute_command(command, callback)
-  request(0, 'workspace/executeCommand', command, function(err, _, resp)
+  request(0, 'workspace/executeCommand', command, M.mk_handler(function(err, resp)
     if callback then
       callback(err, resp)
     elseif err then
       print("Could not execute code action: " .. err.message)
     end
-  end)
+  end))
 end
 
 

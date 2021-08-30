@@ -120,7 +120,19 @@ M.extendedClientCapabilities = {
 };
 
 
-local function configuration_handler(err, method, params, client_id, bufnr, config)
+local function configuration_handler(...)
+  local method_or_result = select(2, ...)
+  local client_id
+  local bufnr
+  if type(method_or_result) == 'string' then
+    client_id = select(4, ...)
+    bufnr = select(5, ...)
+  else
+    local ctx = select(3, ...)
+    assert(type(ctx) == 'table', 'third argument to handler must be the ctx')
+    client_id = ctx.client_id
+    bufnr = ctx.bufnr
+  end
   local client = lsp.get_client_by_id(client_id)
   -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configue tabsize/spaces
   -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
@@ -133,7 +145,7 @@ local function configuration_handler(err, method, params, client_id, bufnr, conf
       }
     }
   })
-  return lsp.handlers['workspace/configuration'](err, method, params, client_id, bufnr, config)
+  return lsp.handlers['workspace/configuration'](...)
 end
 
 

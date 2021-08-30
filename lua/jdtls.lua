@@ -25,7 +25,9 @@ local M = {
   }
 }
 
-local request = vim.lsp.buf_request
+local request = function(bufnr, method, params, handler)
+  vim.lsp.buf_request(bufnr, method, params, util.mk_handler(handler))
+end
 local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
 
@@ -39,7 +41,7 @@ end
 
 
 local function java_generate_to_string_prompt(_, params)
-  request(0, 'java/checkToStringStatus', params, function(err, _, result)
+  request(0, 'java/checkToStringStatus', params, function(err, result, ctx)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
       return
@@ -58,7 +60,7 @@ local function java_generate_to_string_prompt(_, params)
     local fields = ui.pick_many(result.fields, 'Include item in toString?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    request(0, 'java/generateToString', { context = params; fields = fields; }, function(e, _, edit)
+    request(ctx.bufnr, 'java/generateToString', { context = params; fields = fields; }, function(e, edit)
       if e then
         print("Could not execute java/generateToString: " .. e.message)
         return
@@ -72,7 +74,7 @@ end
 
 
 local function java_generate_constructors_prompt(_, code_action_params)
-  request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, _, status)
+  request(0, 'java/checkConstructorsStatus', code_action_params, function(err0, status, ctx)
     if err0 then
       print("Could not execute java/checkConstructorsStatus: " .. err0.message)
       return
@@ -105,7 +107,7 @@ local function java_generate_constructors_prompt(_, code_action_params)
       constructors = constructors,
       fields = fields
     }
-    request(0, 'java/generateConstructors', params, function(err1, _, edit)
+    request(ctx.bufnr, 'java/generateConstructors', params, function(err1, edit)
       if err1 then
         print("Could not execute java/generateConstructors: " .. err1.message)
       elseif edit then
@@ -117,7 +119,7 @@ end
 
 
 local function java_generate_delegate_methods_prompt(_, code_action_params)
-  request(0, 'java/checkDelegateMethodsStatus', code_action_params, function(err0, _, status)
+  request(0, 'java/checkDelegateMethodsStatus', code_action_params, function(err0, status, ctx)
     if err0 then
       print('Could not execute java/checkDelegateMethodsStatus: ', err0.message)
       return
@@ -159,7 +161,7 @@ local function java_generate_delegate_methods_prompt(_, code_action_params)
         methods
       ),
     }
-    request(0, 'java/generateDelegateMethods', params, function(err1, _, workspace_edit)
+    request(ctx.bufnr, 'java/generateDelegateMethods', params, function(err1, workspace_edit)
       if err1 then
         print('Could not execute java/generateDelegateMethods', err1.message)
       elseif workspace_edit then
@@ -171,7 +173,7 @@ end
 
 
 local function java_hash_code_equals_prompt(_, params)
-  request(0, 'java/checkHashCodeEqualsStatus', params, function(_, _, result)
+  request(0, 'java/checkHashCodeEqualsStatus', params, function(_, result, ctx)
     if not result or not result.fields or #result.fields == 0 then
       print(string.format("The operation is not applicable to the type %", result.type))
       return
@@ -179,7 +181,7 @@ local function java_hash_code_equals_prompt(_, params)
     local fields = ui.pick_many(result.fields, 'Include item in equals/hashCode?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    request(0, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, _, edit)
+    request(ctx.bufnr, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, edit)
       if e then
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
       end
@@ -191,7 +193,7 @@ local function java_hash_code_equals_prompt(_, params)
 end
 
 
-local function handle_refactor_workspace_edit(err, _, result)
+local function handle_refactor_workspace_edit(err, result)
   if err then
     print('Error getting refactoring edit: ' .. err.message)
     return
@@ -223,7 +225,7 @@ local function move_file(command, code_action_params)
     sourceUris = { uri, },
     params = vim.NIL
   }
-  request(0, 'java/getMoveDestinations', params, function(err, _, result)
+  request(0, 'java/getMoveDestinations', params, function(err, result, ctx)
     assert(not err, err and err.message or vim.inspect(err))
     if result and result.errorMessage then
       print(result.errorMessage)
@@ -249,8 +251,8 @@ local function move_file(command, code_action_params)
           destination = x,
           updateReferences = true
         }
-        request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
-          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        request(ctx.bufnr, 'java/move', move_params, function(move_err, refactor_edit)
+          handle_refactor_workspace_edit(move_err, refactor_edit)
         end)
       end
     )
@@ -264,7 +266,7 @@ local function move_instance_method(command, code_action_params)
     sourceUris = { command.arguments[2].textDocument.uri, };
     params = code_action_params
   }
-  request(0, 'java/getMoveDestinations', params, function(err, _, result)
+  request(0, 'java/getMoveDestinations', params, function(err, result, ctx)
     assert(not err, err and err.message or vim.inspect(err))
     if result and result.errorMessage then
       print(result.errorMessage)
@@ -289,8 +291,8 @@ local function move_instance_method(command, code_action_params)
       function(x)
         params.destination = x
         params.updateReferences = true
-        request(0, 'java/move', params, function(move_err, _, refactor_edit)
-          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        request(ctx.bufnr, 'java/move', params, function(move_err, refactor_edit)
+          handle_refactor_workspace_edit(move_err, refactor_edit)
         end)
       end
     )
@@ -303,7 +305,7 @@ local function search_symbols(project, enclosing_type_name, on_selection)
     projectName = project,
     sourceOnly = true,
   }
-  request(0, 'java/searchSymbols', params, function(err, _, result)
+  request(0, 'java/searchSymbols', params, function(err, result, ctx)
     assert(not err, err and err.message or vim.inspect(err))
     if not result or #result == 0 then
       print("Couldn't find any destinations")
@@ -325,7 +327,9 @@ local function search_symbols(project, enclosing_type_name, on_selection)
       result,
       'Destination> ',
       function(x) return x.containerName .. ' » ' .. x.name end,
-      on_selection
+      function(x)
+        on_selection(x, ctx.bufnr)
+      end
     )
   end)
 end
@@ -336,15 +340,15 @@ local function move_static_member(command, code_action_params)
   search_symbols(
     member.projectName,
     member.enclosingTypeName,
-    function(picked)
+    function(picked, bufnr)
       local move_params = {
         moveKind = 'moveStaticMember',
         sourceUris = { command.arguments[2].uri },
         params = code_action_params,
         destination = picked
       }
-      request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
-        handle_refactor_workspace_edit(move_err, _, refactor_edit)
+      request(bufnr, 'java/move', move_params, function(move_err, refactor_edit)
+        handle_refactor_workspace_edit(move_err, refactor_edit)
       end)
     end
   )
@@ -373,22 +377,22 @@ local function move_type(command, code_action_params)
           sourceUris = { command.arguments[2].textDocument.uri },
           params = code_action_params
         }
-        request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
-          handle_refactor_workspace_edit(move_err, _, refactor_edit)
+        request(0, 'java/move', move_params, function(move_err, refactor_edit)
+          handle_refactor_workspace_edit(move_err, refactor_edit)
         end)
       else
         search_symbols(
           info.projectName,
           info.enclosingTypeName,
-          function(picked)
+          function(picked, bufnr)
             local move_params = {
               moveKind = 'moveTypeToClass',
               sourceUris = { command.arguments[2].uri },
               params = code_action_params,
               destination = picked
             }
-            request(0, 'java/move', move_params, function(move_err, _, refactor_edit)
-              handle_refactor_workspace_edit(move_err, _, refactor_edit)
+            request(bufnr, 'java/move', move_params, function(move_err, refactor_edit)
+              handle_refactor_workspace_edit(move_err, refactor_edit)
             end)
           end
         )
@@ -427,7 +431,7 @@ local function java_apply_refactoring_command(command, code_action_params)
     return
   end
 
-  request(0, 'java/inferSelection', params, function(err, _, selection_info)
+  request(0, 'java/inferSelection', params, function(err, selection_info, ctx)
     assert(not err, vim.inspect(err))
     if not selection_info or #selection_info == 0 then
       print('No selection found that could be extracted')
@@ -435,7 +439,7 @@ local function java_apply_refactoring_command(command, code_action_params)
     end
     if #selection_info == 1 then
       params.commandArguments = selection_info
-      request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+      request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     else
       ui.pick_one_async(
         selection_info,
@@ -444,7 +448,7 @@ local function java_apply_refactoring_command(command, code_action_params)
         function(selection)
           if not selection then return end
           params.commandArguments = {selection}
-          request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+          request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
         end
       )
     end
@@ -458,7 +462,7 @@ end
 
 
 local function java_action_organize_imports(_, code_action_params)
-  request(0, 'java/organizeImports', code_action_params, function(err, _, resp)
+  request(0, 'java/organizeImports', code_action_params, function(err, resp)
     if err then
       print('Error on organize imports: ' .. err.message)
       return
@@ -651,8 +655,8 @@ function M.code_action(from_selection, kind)
       execute_command(command)
     end
   end
-  request(0, 'textDocument/codeAction', code_action_params, function(err, _, actions, client_id)
-    local client = vim.lsp.get_client_by_id(client_id)
+  request(0, 'textDocument/codeAction', code_action_params, function(err, actions, ctx)
+    local client = vim.lsp.get_client_by_id(ctx.client_id)
     assert(not err, vim.inspect(err))
     -- actions is (Command | CodeAction)[] | null
     -- CodeAction
@@ -686,13 +690,13 @@ function M.code_action(from_selection, kind)
         elseif client
             and type(client.resolved_capabilities.code_action) == 'table'
             and client.resolved_capabilities.code_action.resolveProvider then
-          client.request('codeAction/resolve', action, function(err1, _, result)
+          client.request('codeAction/resolve', action, util.mk_handler(function(err1, result)
             assert(not err1, vim.inspect(err1))
             if result.edit then
               vim.lsp.util.apply_workspace_edit(result.edit)
             end
             apply_command(result)
-          end)
+          end), ctx.bufnr)
         else
           apply_command(action)
         end
@@ -719,7 +723,7 @@ function M.compile(type)
     WITHERROR = 2,
     CANCELLED = 3,
   }
-  request(0, 'java/buildWorkspace', type == 'full', function(err, _, result)
+  request(0, 'java/buildWorkspace', type == 'full', function(err, result)
     assert(not err, 'Error on `java/buildWorkspace`: ' .. vim.inspect(err))
     if result == CompileWorkspaceStatus.SUCCEED then
       print('Compile successfull')
@@ -881,9 +885,9 @@ function M.open_jdt_link(uri)
     uri = uri
   }
   local response = nil
-  local cb = function(err, _, result)
+  local cb = util.mk_handler(function(err, result)
     response = {err, result}
-  end
+  end)
   local ok, request_id = client.request('java/classFileContents', params, cb, buf)
   assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
   local timeout_ms = M.settings.jdt_uri_timeout_ms
