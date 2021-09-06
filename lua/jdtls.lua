@@ -532,7 +532,7 @@ M.commands = {
 
 
 if not vim.lsp.handlers['workspace/executeClientCommand'] then
-  vim.lsp.handlers['workspace/executeClientCommand'] = function(_, _, params)  -- luacheck: ignore 122
+  vim.lsp.handlers['workspace/executeClientCommand'] = util.mk_handler(function(_, params)  -- luacheck: ignore 122
     local fn = M.commands[params.command]
     if fn then
       local ok, result = pcall(fn, params.arguments)
@@ -547,7 +547,7 @@ if not vim.lsp.handlers['workspace/executeClientCommand'] then
         'Command ' .. params.command .. ' not supported on client'
       )
     end
-  end
+  end)
 end
 
 local function within_range(outer, inner)
