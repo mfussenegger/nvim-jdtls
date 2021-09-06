@@ -1,14 +1,15 @@
 local api = vim.api
 local lsp = vim.lsp
 local uv = vim.loop
+local util = require('jdtls.util')
 local path = require('jdtls.path')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 
 
-local status_callback = vim.schedule_wrap(function(_, _, result)
+local status_callback = vim.schedule_wrap(util.mk_handler(function(_, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
-end)
+end))
 
 
 local lsp_clients = {}
@@ -51,8 +52,8 @@ end
 M.restart = lsp_clients.restart
 
 
-local function progress_report(_, _, result, client_id)
-  local client = lsp.get_client_by_id(client_id)
+local function progress_report(_, result, ctx)
+  local client = lsp.get_client_by_id(ctx.client_id)
   if not client then
     return
   end
@@ -217,7 +218,7 @@ function M.start_or_attach(config)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
-  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
+  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or util.mk_handler(progress_report)
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
