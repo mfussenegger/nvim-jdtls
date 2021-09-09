@@ -7,7 +7,7 @@ local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 
 
-local status_callback = vim.schedule_wrap(util.mk_handler(function(_, result)
+local status_callback = vim.schedule_wrap(util.mk_handler(function(_, _, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
 end))
 
