@@ -7,9 +7,9 @@ local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 
 
-local status_callback = vim.schedule_wrap(util.mk_handler(function(_, result)
+local status_callback = function(_, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
-end))
+end
 
 
 local lsp_clients = {}
@@ -219,7 +219,7 @@ function M.start_or_attach(config)
   )
   config.handlers = config.handlers or {}
   config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or util.mk_handler(progress_report)
-  config.handlers['language/status'] = config.handlers['language/status'] or status_callback
+  config.handlers['language/status'] = config.handlers['language/status'] or util.mk_handler(status_callback)
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   local extra_capabilities = {
