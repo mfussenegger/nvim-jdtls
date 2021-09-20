@@ -1,5 +1,4 @@
 local api = vim.api
-local request = vim.lsp.buf_request
 local M = {}
 
 
@@ -24,7 +23,27 @@ end
 
 
 function M.execute_command(command, callback)
-  request(0, 'workspace/executeCommand', command, M.mk_handler(function(err, resp)
+  local clients = {}
+  for _, c in pairs(vim.lsp.buf_get_clients()) do
+    local command_provider = c.server_capabilities.executeCommandProvider
+    local commands = type(command_provider) == 'table' and command_provider.commands or {}
+    if vim.tbl_contains(commands, command.command) then
+      table.insert(clients, c)
+    end
+  end
+  local num_clients = vim.tbl_count(clients)
+  if num_clients == 0 then
+    vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
+    return
+  end
+
+  if num_clients > 1 then
+    vim.notify(
+      'Multiple LSP clients found that support ' .. command.command .. ' you should have at most one JDTLS server running',
+      vim.log.levels.WARN)
+  end
+
+  clients[1].request('workspace/executeCommand', command, M.mk_handler(function(err, resp)
     if callback then
       callback(err, resp)
     elseif err then
