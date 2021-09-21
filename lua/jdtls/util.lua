@@ -4,9 +4,8 @@ local M = {}
 
 function M.mk_handler(fn)
   return function(...)
-    local count = select('#', ...)
     local config_or_client_id = select(4, ...)
-    local is_new = type(config_or_client_id) ~= 'number' or count == 4
+    local is_new = type(config_or_client_id) ~= 'number'
     if is_new then
       return fn(...)
     else
