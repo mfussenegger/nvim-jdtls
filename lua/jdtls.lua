@@ -97,9 +97,6 @@ local function java_generate_constructors_prompt(_, code_action_params)
       fields = ui.pick_many(status.fields, 'Include field to initialize by constructor(s): ', function(x)
         return string.format('%s: %s', x.name, x.type)
       end)
-      if not fields or #fields == 0 then
-        return
-      end
     end
 
     local params = {
