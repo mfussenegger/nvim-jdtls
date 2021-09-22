@@ -638,18 +638,25 @@ end
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
 function M.code_action(from_selection, kind)
   local code_action_params = make_code_action_params(from_selection or false, kind)
-  local function apply_command(action)
+  local function apply_command(action, ctx)
     local command
     if type(action.command) == "table" then
       command = action.command
     else
       command = action
     end
+    if not command.command then
+      -- Result was `CodeAction` with optional `command`
+      -- Nothing to do
+      return
+    end
     local fn = M.commands[command.command]
     if fn then
       fn(command, code_action_params)
     else
-      execute_command(command)
+      local client = vim.lsp.get_client_by_id(ctx.client_id)
+      assert(client, 'JDTLS client must exist client_id=' .. ctx.client_id)
+      client.request('workspace/executeCommand', command, nil, ctx.bufnr)
     end
   end
   request(0, 'textDocument/codeAction', code_action_params, function(err, actions, ctx)
@@ -692,10 +699,10 @@ function M.code_action(from_selection, kind)
             if result.edit then
               vim.lsp.util.apply_workspace_edit(result.edit)
             end
-            apply_command(result)
+            apply_command(result, ctx)
           end), ctx.bufnr)
         else
-          apply_command(action)
+          apply_command(action, ctx)
         end
       end
     )
