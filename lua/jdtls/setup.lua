@@ -18,7 +18,8 @@ do
 
   function lsp_clients.start(config)
       local bufnr = api.nvim_get_current_buf()
-      local client_id = client_id_by_root_dir[config.root_dir]
+      local root_dir = uv.fs_realpath(config.root_dir)
+      local client_id = client_id_by_root_dir[root_dir]
       -- client could have died on us; so check if alive
       if client_id then
         local client = lsp.get_client_by_id(client_id)
@@ -28,7 +29,7 @@ do
       end
       if not client_id then
         client_id = lsp.start_client(config)
-        client_id_by_root_dir[config.root_dir] = client_id
+        client_id_by_root_dir[root_dir] = client_id
       end
       lsp.buf_attach_client(bufnr, client_id)
   end
