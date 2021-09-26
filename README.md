@@ -35,80 +35,28 @@ see some of the functionality in action.
 
 ## Language Server Installation
 
-Install [eclipse.jdt.ls][3] using one of the three options:
-
-1) Install eclipse.jdt.ls via your package manager (Assuming a package is available).
-2) Download a pre-built [milestone][12] or [snapshot][13] and extract the contents of the package.
-3) Build eclipse.jdt.ls from source:
-    - Switch to a folder of your choice.
-    - `git clone https://github.com/eclipse/eclipse.jdt.ls.git`
-    - `cd eclipse.jdt.ls`
-    - `./mvnw clean install -DskipTests` (Set `JAVA_HOME` to Java 11 before you run this)
-
-
-Create a launch script with the following contents. **But don't forget to adapt
-the paths**.
-
-- `$HOME/dev/eclipse` needs to be changed to the folder where you cloned the
-repository.
-- `/usr/lib/jvm/java-11-openjdk/bin/java` needs to be changed to point to your
-  Java installation. At least Java 11 is required to run the language server.
-
-
-```bash
-#!/usr/bin/env bash
-
-# NOTE:
-# This doesn't work as is on Windows. You'll need to create an equivalent `.bat` file instead
-#
-# NOTE:
-# If you're not using Linux you'll need to adjust the `-configuration` option
-# to point to the `config_mac' or `config_win` folders depending on your system.
-
-JAR="$HOME/dev/eclipse/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/plugins/org.eclipse.equinox.launcher_*.jar"
-GRADLE_HOME=$HOME/gradle /usr/lib/jvm/java-11-openjdk/bin/java \
-  -Declipse.application=org.eclipse.jdt.ls.core.id1 \
-  -Dosgi.bundles.defaultStartLevel=4 \
-  -Declipse.product=org.eclipse.jdt.ls.core.product \
-  -Dlog.protocol=true \
-  -Dlog.level=ALL \
-  -Xms1g \
-  -Xmx2G \
-  -jar $(echo "$JAR") \
-  -configuration "$HOME/dev/eclipse/eclipse.jdt.ls/org.eclipse.jdt.ls.product/target/repository/config_linux" \
-  -data "${1:-$HOME/workspace}" \
-  --add-modules=ALL-SYSTEM \
-  --add-opens java.base/java.util=ALL-UNNAMED \
-  --add-opens java.base/java.lang=ALL-UNNAMED
-```
-
-The script must be placed in a folder that is part of `$PATH`. To verify that
-the installation worked, launch it in a shell. You should get the following
-output:
-
-```text
-Content-Length: 126
-
-{"jsonrpc":"2.0","method":"window/logMessage","params":{"type":3,"message":"Sep 16, 2020, 8:10:53 PM Main thread is waiting"}}
-```
-
+Install [eclipse.jdt.ls][3] by following their [Installation instructions](https://github.com/eclipse/eclipse.jdt.ls#installation).
 
 ## Configuration
 
+To use `nvim-jdtls`, you need to setup a LSP client. In a `ftplugin/java.lua`
+file, add the following:
 
-To use `nvim-jdtls`, you need to setup a LSP client. In your `init.vim` add the
-following:
+```lua
+local config = {
+  -- The command that starts the language server
+  cmd = {
+    '/path/to/java',
+    '-Dosgi.bundles.defaultStartLevel=4',
+    -- ADD REMAINING OPTIONS FROM https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line !
+  },
 
-```vimL
-if has('nvim-0.5')
-  augroup lsp
-    au!
-    au FileType java lua require('jdtls').start_or_attach({cmd = {'java-lsp.sh'}})
-  augroup end
-endif
+  -- This is the default if not provided, you can remove it. Or adjust as needed.
+  -- One dedicated LSP server & client will be started per unique root_dir
+  root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'})
+}
+require('jdtls').start_or_attach(config)
 ```
-
-`java-lsp.sh` needs to be changed to the name of the shell script created earlier.
 
 The argument passed to `start_or_attach` is the same `config` mentioned in
 `:help vim.lsp.start_client`. You may want to configure some settings via
@@ -117,44 +65,72 @@ of available options.
 
 You can also find more [complete configuration examples in the Wiki][11].
 
-
-### root_dir configuration
-
-For the language server to work correctly it is important that the `root_dir`
-in the `config` is set correctly. By default `start_or_attach` sets the
-`root_dir` automatically by looking for marker files relative to each file
-you're opening. The markers default to `.git`, `mvnw` and `gradlew`. If no
-parent directory contains any of the markers, it will fallback to the current
-working directory.
-
-`nvim-jdtls` contains a `find_root` function which you could use to customize the `root_dir`:
-
-```lua
--- find_root looks for parent directories relative to the current buffer containing one of the given arguments.
-require('jdtls').start_or_attach({cmd = {'java-lsp.sh'}, root_dir = require('jdtls.setup').find_root({'gradle.build', 'pom.xml'})})
-```
+`start_or_attach` needs to run each time you open a `java` file or buffer.
 
 
 ### data directory configuration
 
 `eclipse.jdt.ls` stores project specific data within the folder set via the
-`-data` flag in the `java-lsp.sh` script. If you're using `eclipse.jdt.ls` with
-multiple different projects you should use a dedicated data directory per
-project. You can do that by adding a second argument to the `cmd` property of
-the `config` passed to `start_or_attach`. An example:
+`-data` flag. If you're using `eclipse.jdt.ls` with multiple different projects
+you should use a dedicated data directory per project. You can do that by
+adding a second argument to the `cmd` property of the `config` passed to
+`start_or_attach`. An example:
 
 
 ```lua
-start_or_attach({cmd = {'java-lsp.sh', '/home/user/workspace/' .. vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')}})
+local workspace_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+-- adjust the `cmd` property of the `config`:
+local config = {
+  cmd = {
+    ...,
+    '-data', workspace_dir,
+    ...,
+  }
+}
 ```
 
+Be aware that `...` is not valid Lua in this context. It is meant as
+placeholder for the other options from the [Configuration](Configuration)
+section above.)
 
-### lspconfig
 
-**Warning**: You must NOT execute `require'nvim_lsp'.jdtls.setup{}` from
-[nvim-lspconfig][9] if you use `nvim-jdtls`.
+### nvim-lspconfig and nvim-jdtls differences
 
-You can use `nvim-lspconfig` for other language servers without problems.
+Both nvim-lspconfig and nvim-jdtls use the client built into neovim:
+
+```txt
+  ┌────────────┐           ┌────────────────┐
+  │ nvim-jdtls │           │ nvim-lspconfig │
+  └────────────┘           └────────────────┘
+       |                         |
+      start_or_attach           nvim_lsp.jdtls.setup
+       │                              |
+       │                             setup java filetype hook
+       │    ┌─────────┐                  │
+       └───►│ vim.lsp │◄─────────────────┘
+            └─────────┘
+                .start_client
+                .buf_attach_client
+```
+
+Some differences between the two:
+
+- The `setup` of lspconfig creates a `java` filetype hook itself and provides
+  some defaults for the `cmd` of the `config`.
+- `nvim-jdtls` delegates the choice when to call `start_or_attach` to the user.
+- `nvim-jdtls` adds some logic to handle `jdt://` URIs. These are necessary to
+  load source code from third party libraries or the JDK.
+- `nvim-jdtls` adds some additional handlers and sets same extra capabilities
+  to enable all the extensions.
+
+You could use either to start the `eclipse.jdt.ls` client, but it is
+recommended to use the `start_or_attach` method from `nvim-jdtls` because of
+the additional capabilities it configures and because of the `jdt://` URI
+handling.
+
+You **must not** use both at the same time for java. You'd end up with two
+clients and two language server instances.
+
 
 ### UI picker customization
 
@@ -306,7 +282,7 @@ This can have two reasons:
 You can check if the client is running with `:lua print(vim.inspect(vim.lsp.buf_get_clients()))`, it should output a lot of information.
 If it doesn't, verify:
 
-- That the language server can be started standalone. (Run the `java-lsp.sh` in a terminal)
+- That the language server can be started standalone. (Run eclipse.jdt.ls)
 - That there are no configuration errors. (Run `:set ft=java` and `:messages` after opening a Java file)
 - Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
 
@@ -352,8 +328,7 @@ new file and it should start to recognize the classes within the file.
 
 Try wiping your workspace folder and restart Neovim and the language server.
 
-(the workspace folder is the path you used as argument to `-data` in your
-`java-lsp.sh`).
+(the workspace folder is the path you used as argument to `-data` in `config.cmd`)
 
 
 [1]: https://microsoft.github.io/language-server-protocol/
