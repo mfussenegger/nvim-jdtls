@@ -94,7 +94,7 @@ local config = {
 ```
 
 Be aware that `...` is not valid Lua in this context. It is meant as
-placeholder for the other options from the [Configuration](Configuration)
+placeholder for the other options from the [Configuration](#configuration)
 section above.)
 
 
