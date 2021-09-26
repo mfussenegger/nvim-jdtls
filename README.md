@@ -72,18 +72,22 @@ You can also find more [complete configuration examples in the Wiki][11].
 
 `eclipse.jdt.ls` stores project specific data within the folder set via the
 `-data` flag. If you're using `eclipse.jdt.ls` with multiple different projects
-you should use a dedicated data directory per project. You can do that by
-adding a second argument to the `cmd` property of the `config` passed to
-`start_or_attach`. An example:
+you must use a dedicated data directory per project.
+
+An example how you could accomplish that is to infer the workspace directory
+name from the current working directory.
 
 
 ```lua
+-- If you started neovim within `~/dev/xy/project-1` this would resolve to `project-1`
 local workspace_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+
 -- adjust the `cmd` property of the `config`:
 local config = {
   cmd = {
     ...,
-    '-data', workspace_dir,
+    -- `..` is string concattenation in Lua
+    '-data', '/path/to/workspace-root/' .. workspace_dir,
     ...,
   }
 }
