@@ -19,6 +19,7 @@ local function enrich_dap_config(config_, on_config)
   if not config.mainClass then
     config.mainClass = resolve_classname()
   end
+  local bufnr = api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, err and (err.message or vim.inspect(err)))
 
@@ -47,9 +48,9 @@ local function enrich_dap_config(config_, on_config)
           paths[2]
         )
         on_config(config)
-      end)
-    end)
-  end)
+      end, bufnr)
+    end, bufnr)
+  end, bufnr)
 end
 
 
@@ -218,9 +219,9 @@ local function fetch_launch_args(lens, context, on_launch_args)
         assert(not err1, vim.inspect(err1))
         launch_args.classpath = merge_unique(launch_args.classpath, resp.classpaths)
         on_launch_args(launch_args)
-      end)
+      end, context.bufnr)
     end
-  end)
+  end, context.bufnr)
 end
 
 
@@ -435,6 +436,7 @@ local hotcodereplace_type = {
 
 function M.fetch_main_configs(callback)
   local configurations = {}
+  local bufnr = api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, vim.inspect(err))
 
@@ -468,10 +470,10 @@ function M.fetch_main_configs(callback)
           if remaining == 0 then
             callback(configurations)
           end
-        end)
-      end)
+        end, bufnr)
+      end, bufnr)
     end
-  end)
+  end, bufnr)
 end
 
 local orig_configurations

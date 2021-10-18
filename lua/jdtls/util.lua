@@ -21,9 +21,9 @@ function M.mk_handler(fn)
 end
 
 
-function M.execute_command(command, callback)
+function M.execute_command(command, callback, bufnr)
   local clients = {}
-  for _, c in pairs(vim.lsp.buf_get_clients()) do
+  for _, c in pairs(vim.lsp.buf_get_clients(bufnr)) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
     if vim.tbl_contains(commands, command.command) then
@@ -52,7 +52,7 @@ function M.execute_command(command, callback)
 end
 
 
-function M.with_java_executable(mainclass, project, fn)
+function M.with_java_executable(mainclass, project, fn, bufnr)
   vim.validate({
     mainclass = { mainclass, 'string' }
   })
@@ -65,7 +65,7 @@ function M.with_java_executable(mainclass, project, fn)
     else
       fn(java_exec)
     end
-  end)
+  end, bufnr)
 end
 
 
