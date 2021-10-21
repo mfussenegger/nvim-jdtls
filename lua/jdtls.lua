@@ -456,8 +456,23 @@ local function java_apply_refactoring_command(command, outer_ctx)
 end
 
 
-local function java_action_rename()
-  -- Ignored for now
+local function java_action_rename(command, ctx)
+  local target = command.arguments[1]
+  local win = api.nvim_get_current_win()
+
+  local bufnr = api.nvim_win_get_buf(win)
+  if bufnr ~= ctx.bufnr then
+    return
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(ctx.bufnr, 0, -1, true)
+  local content = table.concat(lines, '\n')
+
+  local byteidx = vim.fn.byteidx(content, target.offset)
+  local line = vim.fn.byte2line(byteidx)
+  local col = byteidx - vim.fn.line2byte(line)
+
+  api.nvim_win_set_cursor(win, { line, col + 1 })
 end
 
 
