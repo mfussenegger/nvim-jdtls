@@ -79,9 +79,12 @@ function M.resolve_classname()
       break
     end
   end
-  assert(pkgname, 'Could not find package name for current class')
   local classname = vim.fn.fnamemodify(vim.fn.expand('%'), ':t:r')
-  return pkgname .. '.' .. classname
+  if pkgname then
+    return pkgname .. '.' .. classname
+  else
+    return classname
+  end
 end
 
 

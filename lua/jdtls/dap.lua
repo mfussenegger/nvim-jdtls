@@ -6,6 +6,23 @@ local with_java_executable = util.with_java_executable
 local M = {}
 
 
+local function fetch_needs_preview(mainclass, project, cb, bufnr)
+  local params = {
+    command = 'vscode.java.checkProjectSettings',
+    arguments = vim.fn.json_encode({
+      className = mainclass,
+      projectName = project,
+      inheritedOptions = true,
+      expectedOptions = { ['org.eclipse.jdt.core.compiler.problem.enablePreviewFeatures'] = 'enabled' }
+    })
+  }
+  util.execute_command(params, function(err, use_preview)
+    assert(not err, err and (err.message or vim.inspect(err)))
+    cb(use_preview)
+  end, bufnr)
+end
+
+
 local function enrich_dap_config(config_, on_config)
   if config_.mainClass
     and config_.projectName
@@ -449,27 +466,30 @@ function M.fetch_main_configs(callback)
       local mainclass = mc.mainClass
       local project = mc.projectName
       with_java_executable(mainclass, project, function(java_exec)
-        util.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err1, paths)
-          remaining = remaining - 1
-          if err1 then
-            print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err1.message))
-            return
-          end
-          local config = {
-            type = 'java';
-            name = 'Launch ' .. mainclass;
-            projectName = project;
-            mainClass = mainclass;
-            modulePaths = paths[1];
-            classPaths = paths[2];
-            javaExec = java_exec;
-            request = 'launch';
-            console = 'integratedTerminal';
-          }
-          table.insert(configurations, config)
-          if remaining == 0 then
-            callback(configurations)
-          end
+        fetch_needs_preview(mainclass, project, function(use_preview)
+          util.execute_command({command = 'vscode.java.resolveClasspath', arguments = { mainclass, project }}, function(err1, paths)
+            remaining = remaining - 1
+            if err1 then
+              print(string.format('Could not resolve classpath and modulepath for %s/%s: %s', project, mainclass, err1.message))
+              return
+            end
+            local config = {
+              type = 'java';
+              name = 'Launch ' .. mainclass;
+              projectName = project;
+              mainClass = mainclass;
+              modulePaths = paths[1];
+              classPaths = paths[2];
+              javaExec = java_exec;
+              request = 'launch';
+              console = 'integratedTerminal';
+              vmArgs = use_preview and '--enable-preview';
+            }
+            table.insert(configurations, config)
+            if remaining == 0 then
+              callback(configurations)
+            end
+          end, bufnr)
         end, bufnr)
       end, bufnr)
     end
