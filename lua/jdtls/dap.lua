@@ -483,7 +483,7 @@ function M.fetch_main_configs(callback)
               javaExec = java_exec;
               request = 'launch';
               console = 'integratedTerminal';
-              vmArgs = use_preview and '--enable-preview';
+              vmArgs = use_preview and '--enable-preview' or nil;
             }
             table.insert(configurations, config)
             if remaining == 0 then
