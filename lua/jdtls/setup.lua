@@ -1,7 +1,6 @@
 local api = vim.api
 local lsp = vim.lsp
 local uv = vim.loop
-local util = require('jdtls.util')
 local path = require('jdtls.path')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
@@ -122,21 +121,11 @@ M.extendedClientCapabilities = {
 };
 
 
-local function configuration_handler(...)
-  local method_or_result = select(2, ...)
-  local client_id
-  local bufnr
-  if type(method_or_result) == 'string' then
-    client_id = select(4, ...)
-    bufnr = select(5, ...)
-  else
-    local ctx = select(3, ...)
-    assert(type(ctx) == 'table', 'third argument to handler must be the ctx')
-    client_id = ctx.client_id
-    bufnr = ctx.bufnr
-  end
+local function configuration_handler(err, result, ctx, config)
+  local client_id = ctx.client_id
+  local bufnr = ctx.bufnr
   local client = lsp.get_client_by_id(client_id)
-  -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configue tabsize/spaces
+  -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
   -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
   -- This ensures the language-server will use the latest version of the options
   client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
@@ -147,7 +136,7 @@ local function configuration_handler(...)
       }
     }
   })
-  return lsp.handlers['workspace/configuration'](...)
+  return lsp.handlers['workspace/configuration'](err, result, ctx, config)
 end
 
 
@@ -219,8 +208,8 @@ function M.start_or_attach(config)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
-  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or util.mk_handler(progress_report)
-  config.handlers['language/status'] = config.handlers['language/status'] or util.mk_handler(status_callback)
+  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
+  config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
   local extra_capabilities = {
