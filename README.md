@@ -1,6 +1,6 @@
 # nvim-jdtls
 
-Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2] (>= 0.5) for [eclipse.jdt.ls][3].
+Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2] (>= 0.5.1) for [eclipse.jdt.ls][3].
 
 ## Extensions
 
@@ -28,7 +28,7 @@ see some of the functionality in action.
 
 ## Plugin Installation
 
-- Requires Neovim (>= 0.5)
+- Requires Neovim (>= 0.5.1)
 - nvim-jdtls is a plugin. Install it like any other Vim plugin:
   - If using [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
   - If using [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`

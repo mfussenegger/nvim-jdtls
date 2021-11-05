@@ -26,7 +26,7 @@ local M = {
 }
 
 local request = function(bufnr, method, params, handler)
-  vim.lsp.buf_request(bufnr, method, params, util.mk_handler(handler))
+  vim.lsp.buf_request(bufnr, method, params, handler)
 end
 local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
@@ -553,7 +553,7 @@ end
 
 
 if not vim.lsp.handlers['workspace/executeClientCommand'] then
-  vim.lsp.handlers['workspace/executeClientCommand'] = util.mk_handler(function(_, params, ctx)  -- luacheck: ignore 122
+  vim.lsp.handlers['workspace/executeClientCommand'] = function(_, params, ctx)  -- luacheck: ignore 122
     local fn = M.commands[params.command]
     if fn then
       local ok, result = pcall(fn, params.arguments, ctx)
@@ -568,7 +568,7 @@ if not vim.lsp.handlers['workspace/executeClientCommand'] then
         'Command ' .. params.command .. ' not supported on client'
       )
     end
-  end)
+  end
 end
 
 local function within_range(outer, inner)
@@ -721,13 +721,13 @@ function M.code_action(from_selection, kind)
         elseif client
             and type(client.resolved_capabilities.code_action) == 'table'
             and client.resolved_capabilities.code_action.resolveProvider then
-          client.request('codeAction/resolve', action, util.mk_handler(function(err1, result)
+          client.request('codeAction/resolve', action, function(err1, result)
             assert(not err1, vim.inspect(err1))
             if result.edit then
               vim.lsp.util.apply_workspace_edit(result.edit)
             end
             apply_command(result, ctx)
-          end), ctx.bufnr)
+          end, ctx.bufnr)
         else
           apply_command(action, ctx)
         end
@@ -916,9 +916,9 @@ function M.open_jdt_link(uri)
     uri = uri
   }
   local response = nil
-  local cb = util.mk_handler(function(err, result)
+  local cb = function(err, result)
     response = {err, result}
-  end)
+  end
   local ok, request_id = client.request('java/classFileContents', params, cb, buf)
   assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
   local timeout_ms = M.settings.jdt_uri_timeout_ms
