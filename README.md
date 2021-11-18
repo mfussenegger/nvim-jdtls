@@ -39,34 +39,75 @@ Install [eclipse.jdt.ls][3] by following their [Installation instructions](https
 
 ## Configuration
 
-To use `nvim-jdtls`, you need to setup a LSP client. In a `ftplugin/java.lua`
-file, add the following:
+To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
+neovim base directory (see `:help base-directory`).
+
+Watch out for the 💀, it indicates that you must adjust something.
+
 
 ```lua
+-- See `:help vim.lsp.start_client` for an overview of the supported `config` options.
 local config = {
   -- The command that starts the language server
+  -- See: https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line
   cmd = {
-    '/path/to/java',
+
+    -- 💀
+    'java', -- or '/path/to/java11_or_newer/bin/java'
+            -- depends on if `java` is in your $PATH env variable and if it points to the right version.
+
+    '-Declipse.application=org.eclipse.jdt.ls.core.id1',
     '-Dosgi.bundles.defaultStartLevel=4',
-    -- ADD REMAINING OPTIONS FROM https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line !
+    '-Declipse.product=org.eclipse.jdt.ls.core.product',
+    '-Dlog.protocol=true',
+    '-Dlog.level=ALL',
+    '-Xms1g',
+    '--add-modules=ALL-SYSTEM',
+    '--add-opens', 'java.base/java.util=ALL-UNNAMED',
+    '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
+
+    -- 💀
+    '-jar', '/path/to/jdtls_install_location/plugins/org.eclipse.equinox.launcher_VERSION_NUMBER.jar',
+         -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                       ^^^^^^^^^^^^^^
+         -- Must point to the                                                     Change this to
+         -- eclipse.jdt.ls installation                                           the actual version
+
+
+    -- 💀
+    '-configuration', '/path/to/jdtls_install_location/config_SYSTEM',
+                    -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^        ^^^^^^
+                    -- Must point to the                      Change to one of `linux`, `win` or `mac`
+                    -- eclipse.jdt.ls installation            Depending on your system.
+
+
+    -- 💀
+    -- See `data directory configuration` section in the README
+    '-data', '/path/to/unique/per/project/workspace/folder'
   },
 
+  -- 💀
   -- This is the default if not provided, you can remove it. Or adjust as needed.
   -- One dedicated LSP server & client will be started per unique root_dir
-  root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'})
+  root_dir = require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'}),
+
+  -- Here you can configure eclipse.jdt.ls specific settings
+  -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
+  -- for a list of options
+  settings = {
+    java = {
+    }
+  }
 }
+-- This starts a new client & server,
+-- or attaches to an existing client & server depending on the `root_dir`.
 require('jdtls').start_or_attach(config)
 ```
 
-The argument passed to `start_or_attach` is the same `config` mentioned in
-`:help vim.lsp.start_client`. You may want to configure some settings via
-`init_options` or `settings`. See the [eclipse.jdt.ls Wiki][8] for an overview
-of available options.
+The `ftplugin/java.lua` logic is executed each time a `FileType` event
+triggers. This happens every time you open a `.java` file or when you invoke
+`:set ft=java`:
 
 You can also find more [complete configuration examples in the Wiki][11].
-
-`start_or_attach` needs to run each time you open a `java` file or buffer.
-
 
 ### data directory configuration
 
@@ -75,27 +116,30 @@ You can also find more [complete configuration examples in the Wiki][11].
 you must use a dedicated data directory per project.
 
 An example how you could accomplish that is to infer the workspace directory
-name from the current working directory.
+name from the current working directory:
 
 
 ```lua
 -- If you started neovim within `~/dev/xy/project-1` this would resolve to `project-1`
-local workspace_dir = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
+local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t')
 
--- adjust the `cmd` property of the `config`:
+local workspace_dir = '/path/to/workspace-root/' .. project_name
+--                                               ^^
+--                                               string concattenation in Lua
+
 local config = {
   cmd = {
     ...,
-    -- `..` is string concattenation in Lua
-    '-data', '/path/to/workspace-root/' .. workspace_dir,
+
+    '-data', workspace_dir,
+
     ...,
   }
 }
 ```
 
-Be aware that `...` is not valid Lua in this context. It is meant as
-placeholder for the other options from the [Configuration](#configuration)
-section above.)
+`...` is not valid Lua in this context. It is meant as placeholder for the
+other options from the [Configuration](#configuration) section above.)
 
 
 ### nvim-lspconfig and nvim-jdtls differences
