@@ -40,7 +40,8 @@ Install [eclipse.jdt.ls][3] by following their [Installation instructions](https
 ## Configuration
 
 To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
-neovim base directory (see `:help base-directory`).
+neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
+see `:help base-directory`).
 
 Watch out for the 💀, it indicates that you must adjust something.
 
