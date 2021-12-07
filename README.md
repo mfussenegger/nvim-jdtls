@@ -196,12 +196,6 @@ Neovim, so all the functions mentioned in `:help lsp` will work.
 mappings:
 
 ```vimL
--- `code_action` is a superset of vim.lsp.buf.code_action and you'll be able to
--- use this mapping also with other language servers
-nnoremap <A-CR> <Cmd>lua require('jdtls').code_action()<CR>
-vnoremap <A-CR> <Esc><Cmd>lua require('jdtls').code_action(true)<CR>
-nnoremap <leader>r <Cmd>lua require('jdtls').code_action(false, 'refactor')<CR>
-
 nnoremap <A-o> <Cmd>lua require'jdtls'.organize_imports()<CR>
 nnoremap crv <Cmd>lua require('jdtls').extract_variable()<CR>
 vnoremap crv <Esc><Cmd>lua require('jdtls').extract_variable(true)<CR>

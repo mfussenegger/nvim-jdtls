@@ -661,6 +661,11 @@ end
 
 -- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
 function M.code_action(from_selection, kind)
+  if from_selection then
+    vim.notify('jdtls.code_action() is deprecated. You can use vim.lsp.buf.range_code_action in neovim 0.6 for the same functionality')
+  else
+    vim.notify('jdtls.code_action() is deprecated. You can use vim.lsp.buf.code_action in neovim 0.6 for the same functionality')
+  end
   local code_action_params = make_code_action_params(from_selection or false, kind)
   local function apply_command(action, ctx)
     local command
