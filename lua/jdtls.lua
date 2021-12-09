@@ -571,79 +571,8 @@ if not vim.lsp.handlers['workspace/executeClientCommand'] then
   end
 end
 
-local function within_range(outer, inner)
-  local o1y = outer.start.line
-  local o1x = outer.start.character
-  local o2y = outer['end'].line
-  local o2x = outer['end'].character
-  assert(o1y <= o2y, "Start must be before end: " .. vim.inspect(outer))
 
-  local i1y = inner.start.line
-  local i1x = inner.start.character
-  local i2y = inner['end'].line
-  local i2x = inner['end'].character
-  assert(i1y <= i2y, "Start must be before end: " .. vim.inspect(inner))
-
-  -- Outer: {}
-  -- Inner: []
-  -------------
-  -------------
-  --  {     [ ]
-  --      }
-  -------------
-  --     {
-  --  []   }
-  -------------
-
-  if o1y < i1y then
-    --     {
-    --  [      ]
-    --     }
-    if o2y > i2y then
-      return true
-    end
-    --     {
-    --  [  }   ]
-    return o2y == i2y and o2x >= i2x
-  elseif o1y == i1y then
-    if o2y > i2y then
-      -- { []
-      --  }
-      return true
-    else
-      --  { [ ]  }
-      --  [ { ]  }
-      return o2y == i2y and o1x <= i1x and o2x >= i2x
-    end
-  else
-    return false
-  end
-end
-
-
-local function get_diagnostics_for_range(bufnr, range)
-  local diagnostics = vim.lsp.diagnostic.get(bufnr)
-  if not diagnostics then return {} end
-  local line_diagnostics = {}
-  for _, diagnostic in ipairs(diagnostics) do
-    if within_range(diagnostic.range, range) then
-      table.insert(line_diagnostics, diagnostic)
-    end
-  end
-  if #line_diagnostics == 0 then
-    -- If there is no diagnostics at the cursor position,
-    -- see if there is at least something on the same line
-    for _, diagnostic in ipairs(diagnostics) do
-      if diagnostic.range.start.line == range.start.line then
-        table.insert(line_diagnostics, diagnostic)
-      end
-    end
-  end
-  return line_diagnostics
-end
-
-
-local function make_code_action_params(from_selection, kind)
+local function make_code_action_params(from_selection)
   local params
   if from_selection then
     params = vim.lsp.util.make_given_range_params()
@@ -652,93 +581,9 @@ local function make_code_action_params(from_selection, kind)
   end
   local bufnr = api.nvim_get_current_buf()
   params.context = {
-    diagnostics = get_diagnostics_for_range(bufnr, params.range),
-    only = kind,
+    diagnostics = vim.lsp.diagnostic.get_line_diagnostics(bufnr),
   }
   return params
-end
-
-
--- Similar to https://github.com/neovim/neovim/pull/11607, but with extensible commands
-function M.code_action(from_selection, kind)
-  if from_selection then
-    vim.notify('jdtls.code_action() is deprecated. You can use vim.lsp.buf.range_code_action in neovim 0.6 for the same functionality')
-  else
-    vim.notify('jdtls.code_action() is deprecated. You can use vim.lsp.buf.code_action in neovim 0.6 for the same functionality')
-  end
-  local code_action_params = make_code_action_params(from_selection or false, kind)
-  local function apply_command(action, ctx)
-    local command
-    if type(action.command) == "table" then
-      command = action.command
-    else
-      command = action
-    end
-    if not command.command then
-      -- Result was `CodeAction` with optional `command`
-      -- Nothing to do
-      return
-    end
-    local fn = M.commands[command.command]
-    if not ctx.params then
-      ctx.params = code_action_params
-    end
-    if fn then
-      fn(command, ctx)
-    else
-      local client = vim.lsp.get_client_by_id(ctx.client_id)
-      assert(client, 'JDTLS client must exist client_id=' .. ctx.client_id)
-      client.request('workspace/executeCommand', command, nil, ctx.bufnr)
-    end
-  end
-  request(0, 'textDocument/codeAction', code_action_params, function(err, actions, ctx)
-    local client = vim.lsp.get_client_by_id(ctx.client_id)
-    assert(not err, vim.inspect(err))
-    -- actions is (Command | CodeAction)[] | null
-    -- CodeAction
-    --      title: String
-    --      kind?: CodeActionKind
-    --      diagnostics?: Diagnostic[]
-    --      isPreferred?: boolean
-    --      edit?: WorkspaceEdit
-    --      command?: Command
-    --
-    -- Command
-    --      title: String
-    --      command: String
-    --      arguments?: any[]
-    if not actions or #actions == 0 then
-      print("No code actions available")
-      return
-    end
-    ui.pick_one_async(
-      actions,
-      'Code Actions:',
-      function(x)
-        return (x.title:gsub('\r\n', '\\r\\n')):gsub('\n', '\\n')
-      end,
-      function(action)
-        if not action then
-          return
-        end
-        if action.edit then
-          vim.lsp.util.apply_workspace_edit(action.edit)
-        elseif client
-            and type(client.resolved_capabilities.code_action) == 'table'
-            and client.resolved_capabilities.code_action.resolveProvider then
-          client.request('codeAction/resolve', action, function(err1, result)
-            assert(not err1, vim.inspect(err1))
-            if result.edit then
-              vim.lsp.util.apply_workspace_edit(result.edit)
-            end
-            apply_command(result, ctx)
-          end, ctx.bufnr)
-        else
-          apply_command(action, ctx)
-        end
-      end
-    )
-  end)
 end
 
 
