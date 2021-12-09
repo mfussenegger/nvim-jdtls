@@ -762,14 +762,14 @@ function M.compile(type)
   request(0, 'java/buildWorkspace', type == 'full', function(err, result)
     assert(not err, 'Error on `java/buildWorkspace`: ' .. vim.inspect(err))
     if result == CompileWorkspaceStatus.SUCCEED then
+      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
       print('Compile successfull')
     else
       vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
-      local diagnostics_by_buf = vim.lsp.diagnostic.get_all()
       local project_config_errors = {}
       local compile_errors = {}
-      for bufnr, diagnostics in pairs(diagnostics_by_buf) do
-        local fname = vim.uri_to_fname(vim.uri_from_bufnr(bufnr))
+      for _, d in pairs(vim.diagnostic.get(nil)) do
+        local fname = api.nvim_buf_get_name(d.bufnr)
         local stat = vim.loop.fs_stat(fname)
         local items
         if (vim.endswith(fname, 'build.gradle')
@@ -779,21 +779,12 @@ function M.compile(type)
         elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
           items = compile_errors
         end
-        for _, d in pairs(diagnostics) do
-          if d.severity == vim.lsp.protocol.DiagnosticSeverity.Error and items then
-            table.insert(items, {
-              bufnr = bufnr,
-              lnum = d.range.start.line + 1,
-              col = d.range.start.character + 1,
-              text = d.message,
-              vcol = 1
-            })
-          end
+        if d.severity == vim.diagnostic.severity.ERROR and items then
+          table.insert(items, d)
         end
       end
       local items = #project_config_errors > 0 and project_config_errors or compile_errors
-      table.sort(items, function(a, b) return a.lnum < b.lnum end)
-      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = items })
+      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
       if #items > 0 then
         print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
         vim.cmd('copen')
