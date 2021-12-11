@@ -254,7 +254,7 @@ require'jdtls'.test_nearest_method()
 - Clone [java-debug][6]
 - Navigate into the cloned repository (`cd java-debug`)
 - Run `./mvnw clean install`
-- Extend the `initializationOptions` with which you start [eclipse.jdt.ls][3] as follows:
+- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration)) as follows:
 
 
 ```lua
@@ -270,7 +270,7 @@ config['init_options'] = {
 You also need to call `require('jdtls').setup_dap()` to have it register a
 `java` adapter.
 
-To do that, extend the configuration for `nvim-jdtls` with:
+To do that, extend the [configuration](#Configuration):
 
 ```lua
 config['on_attach'] = function(client, bufnr)
