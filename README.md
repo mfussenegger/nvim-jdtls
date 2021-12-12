@@ -97,7 +97,18 @@ local config = {
   settings = {
     java = {
     }
-  }
+  },
+
+  -- Language server `initializationOptions`
+  -- You need to extend the `bundles` with paths to jar files
+  -- if you want to use additional eclipse.jdt.ls plugins.
+  --
+  -- See https://github.com/mfussenegger/nvim-jdtls#java-debug-installation
+  --
+  -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
+  init_options = {
+    bundles = {}
+  },
 }
 -- This starts a new client & server,
 -- or attaches to an existing client & server depending on the `root_dir`.
