@@ -238,14 +238,6 @@ function M.start_or_attach(config)
     }
   })
   config.on_init = init_with_config_notify(config.on_init)
-  local workspace = capabilities.workspace or {}
-  if not workspace.workspaceEdit
-    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'rename')
-    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'create')
-    or not vim.tbl_contains(workspace.workspaceEdit.resourceOperations, 'delete')
-  then
-    config.init_options.extendedClientCapabilities.moveRefactoringSupport = false;
-  end
   maybe_implicit_save()
   lsp_clients.start(config)
 end
