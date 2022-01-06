@@ -137,6 +137,9 @@ triggers. This happens every time you open a `.java` file or when you invoke
 
 You can also find more [complete configuration examples in the Wiki][11].
 
+If you have trouble getting jdtls to work, please read the
+[Troubleshooting](#toubleshooting) section.
+
 ### data directory configuration
 
 `eclipse.jdt.ls` stores project specific data within the folder set via the
@@ -344,11 +347,11 @@ config['init_options'] = {
 
 ## Troubleshooting
 
-### vim.lsp.buf functions don't do anything
+### Nothing happens when invoking vim.lsp.buf functions
 
 This can have two reasons:
 
-1. The client and server aren't starting up correctly.
+#### The client and server aren't starting up correctly
 
 You can check if the client is running with `:lua print(vim.inspect(vim.lsp.buf_get_clients()))`, it should output a lot of information.
 If it doesn't, verify:
@@ -357,8 +360,7 @@ If it doesn't, verify:
 - That there are no configuration errors. (Run `:set ft=java` and `:messages` after opening a Java file)
 - Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
 
-
-2. Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths.
+#### Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths
 
 - Run `:JdtCompile` for incremental compilation or `:JdtCompile full` for full
   compilation. If there are any errors in the project, it will open the
@@ -367,6 +369,8 @@ If it doesn't, verify:
 - Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
 - If there is nothing, try changing the log level. See `:help vim.lsp.set_log_level()`
 
+If this all doesn't help, try wiping your workspace folder and restart Neovim.
+.he workspace folder is the path you used as argument to `-data` in `config.cmd`.
 
 ### Diagnostics and completion suggestions are slow
 
@@ -384,22 +388,37 @@ doesn't work you'll need to restart the language server.
 
 ### Language server doesn't find classes that should be there
 
-The language server has its own mental model of which files exists based on
-what the client tells it. If you modify files outside of neovim, then the
-language server won't be notified of the changes. This can happen for example
-if you switch to a different branch with git.
+The language server supports [gradle](https://gradle.org/) and
+[maven](https://maven.apache.org/ref/3.8.4/) as build tools. Your project
+should either have a `pom.xml` or `settings.gradle` and `build.gradle` file to
+declare the dependencies.
 
-If the language server doesn't get a notification about a new file, you might
-get errors, telling you that a class cannot be resolved. If that is the case,
-open the file and save it. Then the language server will be notified about the
-new file and it should start to recognize the classes within the file.
+As an alternative you could manually specify the dependencies within your
+nvim-jdtls configuration like the following, but this is not recommended.
 
+```lua
+config.settings = {
+    java = {
+      project = {
+        referencedLibraries = {
+          '/path/to/dependencyA.jar',
+          '/path/to/dependencyB.jar',
+        },
+      }
+    }
+  }
+```
 
-### After updating eclipse.jdt.ls it doesn't work properly anymore
+If you modify files outside of Neovim (for example with a git checkout), the
+language client and language server may not detect these changes and the state
+of the file on disk diverges with the mental model of the language server. If
+that happens, you need to open all changed files within Neovim and reload them
+with `:e!` to synchronize the state.
 
-Try wiping your workspace folder and restart Neovim and the language server.
+### eclipse.jdt.ls stopped starting
 
-(the workspace folder is the path you used as argument to `-data` in `config.cmd`)
+Try wiping your workspace folder and restart Neovim. The workspace folder is
+the path you used as argument to `-data` in `config.cmd`
 
 
 [1]: https://microsoft.github.io/language-server-protocol/

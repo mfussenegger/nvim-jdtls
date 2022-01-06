@@ -1,7 +1,15 @@
 ---
 name: 🐞 Bug Report
-description: Tell us about something that's not working the way you think it should
+description: |-
+  Tell us about something that's not working the way you think it should.
+  Please read the troubleshooting section (https://github.com/mfussenegger/nvim-jdtls#troubleshooting) first.
+
+
 body:
+  - type: markdown
+    attributes:
+      value: |-
+        [Please make it easy for people to help you](https://zignar.net/2021/12/03/help-people-help-you-and-put-in-some-effort/)
   - type: textarea
     id: config
     attributes:
