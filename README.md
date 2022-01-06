@@ -175,7 +175,7 @@ Both nvim-lspconfig and nvim-jdtls use the client built into neovim:
 
 Some differences between the two:
 
-- The `setup` of lspconfig creates a `java` filetype hook itself and provides
+- The `setup` of lspconfig creates a `java` `filetype` hook itself and provides
   some defaults for the `cmd` of the `config`.
 - `nvim-jdtls` delegates the choice when to call `start_or_attach` to the user.
 - `nvim-jdtls` adds some logic to handle `jdt://` URIs. These are necessary to
