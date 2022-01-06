@@ -291,7 +291,7 @@ local function make_config(lens, launch_args)
     vmArgs = table.concat(launch_args.vmArguments, ' ');
     noDebug = false;
   }
-  if lens.testKind == TestKind.TestNG then
+  if lens.testKind == TestKind.TestNG or lens.kind == TestKind.TestNG then
     config.mainClass = 'org.testng.TestNG'
     -- id is in the format <project>@<class>#<method>
     local parts = vim.split(lens.id, '@')
