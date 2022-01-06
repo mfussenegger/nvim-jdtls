@@ -138,7 +138,7 @@ triggers. This happens every time you open a `.java` file or when you invoke
 You can also find more [complete configuration examples in the Wiki][11].
 
 If you have trouble getting jdtls to work, please read the
-[Troubleshooting](#toubleshooting) section.
+[Troubleshooting](#troubleshooting) section.
 
 ### data directory configuration
 
