@@ -215,10 +215,6 @@ function M.start_or_attach(config)
   local extra_capabilities = {
     textDocument = {
       codeAction = {
-        dataSupport = true;
-        resolveSupport = {
-          properties = {'edit',}
-        };
         codeActionLiteralSupport = {
           codeActionKind = {
             valueSet = {
