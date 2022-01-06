@@ -803,4 +803,81 @@ function M.open_jdt_link(uri)
 end
 
 
+function M._complete_set_runtime()
+  local client
+  for _, c in pairs(vim.lsp.get_active_clients()) do
+    if c.config.settings.java then
+      client = c
+      break
+    end
+  end
+  if not client then
+    return {}
+  end
+  local runtimes = (client.config.settings.java.configuration or {}).runtimes or {}
+  return table.concat(vim.tbl_map(function(runtime) return runtime.name end, runtimes), '\n')
+end
+
+function M.set_runtime(runtime)
+  local client
+  for _, c in pairs(vim.lsp.get_active_clients()) do
+    if c.config.settings.java then
+      client = c
+      break
+    end
+  end
+  if not client then
+    vim.notify('No LSP client found with settings for java', vim.log.levels.ERROR)
+    return
+  end
+  local runtimes = (client.config.settings.java.configuration or {}).runtimes or {}
+  if #runtimes == 0 then
+    vim.notify(
+      'No runtimes found in `config.settings.java.configuration.runtimes`. You need to add runtime paths to change the runtime',
+      vim.log.levels.WARN
+    )
+    return
+  end
+  if runtime then
+    local match = false
+    for _, r in pairs(runtimes) do
+      if r.name == runtime then
+        r.default = true
+        match = true
+      else
+        r.default = nil
+      end
+    end
+    if not match then
+      vim.notify(
+        'Provided runtime `' .. runtime .. '` not found in `config.settings.java.configuration.runtimes`',
+        vim.log.levels.WARN
+      )
+      return
+    end
+    client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
+  else
+    ui.pick_one_async(
+      runtimes,
+      'Runtime> ',
+      function(r)
+        return r.name
+      end,
+      function(selected_runtime)
+        if not selected_runtime then
+          return
+        end
+        selected_runtime.default = true
+        for _, r in pairs(runtimes) do
+          if r ~= selected_runtime then
+            r.default = nil
+          end
+        end
+        client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
+      end
+    )
+  end
+end
+
+
 return M

@@ -233,6 +233,8 @@ function M.start_or_attach(config)
     config.init_options.extendedClientCapabilities or vim.deepcopy(M.extendedClientCapabilities)
   )
   config.settings = vim.tbl_deep_extend('keep', config.settings or {}, {
+    -- the `java` property is used in other places to detect the client as the jdtls client
+    -- don't remove it without updating those places
     java = {
       progressReports = { enabled = true },
     }
@@ -245,6 +247,7 @@ end
 
 function M.add_commands()
   api.nvim_command [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)]]
+  api.nvim_command [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_set_runtime JdtSetRuntime lua require('jdtls').set_runtime(<f-args>)]]
   api.nvim_command [[command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()]]
   api.nvim_command [[command! -buffer -nargs=* JdtJol lua require('jdtls').jol(<f-args>)]]
   api.nvim_command [[command! -buffer JdtBytecode lua require('jdtls').javap()]]

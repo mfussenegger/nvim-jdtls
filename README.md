@@ -246,7 +246,8 @@ If you use jdtls together with nvim-dap, call `add_commands` *after* `setup_dap`
 
 
 ```vimL
-command! -buffer JdtCompile lua require('jdtls').compile()
+command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)
+command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_set_runtime JdtSetRuntime lua require('jdtls').set_runtime(<f-args>)
 command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()
 command! -buffer JdtJol lua require('jdtls').jol()
 command! -buffer JdtBytecode lua require('jdtls').javap()
