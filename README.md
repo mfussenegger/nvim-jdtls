@@ -2,6 +2,22 @@
 
 Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2] (>= 0.6.0) for [eclipse.jdt.ls][3].
 
+
+## Audience
+
+This project follows the [KISS principle][kiss] and targets users with some
+experience with Neovim, Java and its build tools Maven or Gradle who prefer
+configuration as code over GUI configuration. Easy of use is not the main
+priority.
+
+If you prioritize easy of use over simplicity, you may want to use an
+alternative:
+
+- [coc-java](https://github.com/neoclide/coc-java)
+- [vscode](https://code.visualstudio.com/)
+- [IntelliJ IDEA](https://www.jetbrains.com/idea/)
+- [Eclipse](https://www.eclipse.org/ide/)
+
 ## Extensions
 
 - [x] `organize_imports` function to organize imports
@@ -399,3 +415,4 @@ Try wiping your workspace folder and restart Neovim and the language server.
 [13]: https://download.eclipse.org/jdtls/snapshots/?d
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
+[kiss]: https://en.wikipedia.org/wiki/KISS_principle
