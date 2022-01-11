@@ -123,7 +123,7 @@ M.extendedClientCapabilities = {
 
 local function configuration_handler(err, result, ctx, config)
   local client_id = ctx.client_id
-  local bufnr = ctx.bufnr
+  local bufnr = 0
   local client = lsp.get_client_by_id(client_id)
   -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
   -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
