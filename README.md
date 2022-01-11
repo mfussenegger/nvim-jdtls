@@ -372,6 +372,59 @@ If it doesn't, verify:
 If this all doesn't help, try wiping your workspace folder and restart Neovim.
 .he workspace folder is the path you used as argument to `-data` in `config.cmd`.
 
+
+### Error: Unable to access jarfile
+
+Either the file doesn't exist or you're using `~` characters in your path.
+Neovim doesn't automatically expand `~` characters in the `cmd` definition. You
+either need to write them out or wrap the fragments in `vim.fn.expand` calls.
+
+### Unrecognized option: --add-modules=ALL-SYSTEM
+
+Eclipse.jdt.ls requires at least Java 11. You're using a lower version.
+
+### is a non-project file, only syntax errors are reported
+
+You're opening a single file without having a Gradle or Maven project.
+You need to use Gradle or Maven for the full functionality.
+
+### Java XY language features are not available
+
+You need to set the language level via the Gradle or Maven configuration.
+
+If you're starting eclipse.jdt.ls with a Java version that's different from the
+one the project uses, you need to configure the available Java runtimes. Add
+them to the `config` from the [configuration section](#configuration):
+
+```lua
+local config = {
+  ..., -- not valid Lua, this is a placeholder for your other properties.
+  settings = {
+    java = {
+      configuration = {
+        -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
+        -- And search for `interface RuntimeOption`
+        -- The `name` is NOT arbitrary, but must match one of the elements from `enum ExecutionEnvironment` in the link above
+        runtimes = {
+          {
+            name = "JavaSE-11",
+            path = "/usr/lib/jvm/java-11-openjdk/",
+          },
+          {
+            name = "JavaSE-17",
+            path = "/usr/lib/jvm/java-17-openjdk/",
+          },
+        }
+      }
+    }
+  }
+}
+```
+
+You can also change the language level at runtime using the `:JdtSetRuntime`
+command.
+
+
 ### Diagnostics and completion suggestions are slow
 
 Completion requests can be quite expensive on big projects. If you're using
