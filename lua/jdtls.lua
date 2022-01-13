@@ -35,7 +35,7 @@ M.jol_path = nil
 
 local function java_apply_workspace_edit(command)
   for _, argument in ipairs(command.arguments) do
-    vim.lsp.util.apply_workspace_edit(argument)
+    vim.lsp.util.apply_workspace_edit(argument, 'utf-16')
   end
 end
 
@@ -67,7 +67,7 @@ local function java_generate_to_string_prompt(_, outer_ctx)
         return
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
       end
     end)
   end)
@@ -109,7 +109,7 @@ local function java_generate_constructors_prompt(_, outer_ctx)
       if err1 then
         print("Could not execute java/generateConstructors: " .. err1.message)
       elseif edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
       end
     end)
   end)
@@ -163,7 +163,7 @@ local function java_generate_delegate_methods_prompt(_, outer_ctx)
       if err1 then
         print('Could not execute java/generateDelegateMethods', err1.message)
       elseif workspace_edit then
-        vim.lsp.util.apply_workspace_edit(workspace_edit)
+        vim.lsp.util.apply_workspace_edit(workspace_edit, 'utf-16')
       end
     end)
   end)
@@ -185,7 +185,7 @@ local function java_hash_code_equals_prompt(_, outer_ctx)
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit)
+        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
       end
     end)
   end)
@@ -202,7 +202,7 @@ local function handle_refactor_workspace_edit(err, result, ctx)
   end
 
   if result.edit then
-    vim.lsp.util.apply_workspace_edit(result.edit)
+    vim.lsp.util.apply_workspace_edit(result.edit, 'utf-16')
   end
 
   if result.command then
@@ -483,7 +483,7 @@ local function java_action_organize_imports(_, ctx)
       return
     end
     if resp then
-      vim.lsp.util.apply_workspace_edit(resp)
+      vim.lsp.util.apply_workspace_edit(resp, 'utf-16')
     end
   end)
 end
