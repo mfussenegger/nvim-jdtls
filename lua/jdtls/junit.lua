@@ -41,7 +41,13 @@ local function parse(content, tests)
       table.insert(tests, test)
       test = nil
     elseif vim.startswith(line, MessageId.TestFailed) or vim.startswith(line, MessageId.TestError) then
-      assert(test, "Encountered TestFailed/TestError, but no TestStart encounterd")
+      -- Can get test failure without test start if it is a class initialization failure
+      if not test then
+        test = {
+          fq_class = vim.split(line, ',')[2],
+          traces = {},
+        }
+      end
       test.failed = true
     elseif vim.startswith(line, MessageId.TraceStart) then
       tracing = true
@@ -50,6 +56,9 @@ local function parse(content, tests)
     elseif tracing and test then
       table.insert(test.traces, line)
     end
+  end
+  if test then
+    table.insert(tests, test)
   end
 end
 
@@ -79,9 +88,13 @@ function M.mk_test_results(bufnr)
     show = function()
       local items = {}
       local repl = require('dap.repl')
+      local num_failures = 0
       for _, test in ipairs(tests) do
         if test.failed then
-          repl.append('❌' .. test.method, '$')
+          num_failures = num_failures + 1
+          if test.method then
+            repl.append('❌' .. test.method, '$')
+          end
           for _, msg in ipairs(test.traces) do
             local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%a%p]*:%d+)%)')
             if match then
@@ -103,15 +116,15 @@ function M.mk_test_results(bufnr)
         end
       end
 
-      if #items > 0 then
+      if num_failures > 0 then
         vim.fn.setqflist({}, 'r', {
           title = 'jdtls-tests',
           items = items,
         })
         print(
           'Tests finished. Results printed to dap-repl.',
-          'Errors added to quickfix list',
-          string.format('(❌%d / %d)', #items, #tests)
+          #items > 0 and 'Errors added to quickfix list' or '',
+          string.format('(❌%d / %d)', num_failures, #tests)
         )
       else
         print('Tests finished. Results printed to dap-repl. All', #tests, 'succeeded')
