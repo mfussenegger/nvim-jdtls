@@ -24,8 +24,8 @@ local function parse_test_case(line)
   }
 end
 
-local function parse(buf, tests)
-  local lines = vim.split(buf, '\n')
+local function parse(content, tests)
+  local lines = vim.split(content, '\n')
   local tracing = false
   local test = nil
   for _, line in ipairs(lines) do
@@ -52,6 +52,8 @@ local function parse(buf, tests)
     end
   end
 end
+
+M.__parse = parse
 
 
 local function mk_buf_loop(sock, handle_buffer)
