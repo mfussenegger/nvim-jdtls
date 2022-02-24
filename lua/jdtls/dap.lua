@@ -4,6 +4,7 @@ local util = require('jdtls.util')
 local resolve_classname = util.resolve_classname
 local with_java_executable = util.with_java_executable
 local M = {}
+local default_config_overrides = {}
 
 
 local function fetch_needs_preview(mainclass, project, cb, bufnr)
@@ -278,7 +279,7 @@ local function get_first_class_lens(lenses)
 end
 
 
-local function make_config(lens, launch_args)
+local function make_config(lens, launch_args, config_overrides)
   local config = {
     name = lens.fullName;
     type = 'java';
@@ -291,6 +292,7 @@ local function make_config(lens, launch_args)
     vmArgs = table.concat(launch_args.vmArguments, ' ');
     noDebug = false;
   }
+  config = vim.tbl_extend('force', config, config_overrides or default_config_overrides)
   if lens.testKind == TestKind.TestNG or lens.kind == TestKind.TestNG then
     config.mainClass = 'org.testng.TestNG'
     -- id is in the format <project>@<class>#<method>
@@ -395,7 +397,7 @@ function M.test_class(opts)
       return
     end
     fetch_launch_args(lens, context, function(launch_args)
-      local config = make_config(lens, launch_args)
+      local config = make_config(lens, launch_args, opts.config_overrides)
       run(lens, config, context, opts)
     end)
   end)
@@ -413,7 +415,7 @@ function M.test_nearest_method(opts)
       return
     end
     fetch_launch_args(lens, context, function(launch_args)
-      local config = make_config(lens, launch_args)
+      local config = make_config(lens, launch_args, opts.config_overrides)
       run(lens, config, context, opts)
     end)
   end)
@@ -433,7 +435,7 @@ function M.pick_test(opts)
           return
         end
         fetch_launch_args(lens, context, function(launch_args)
-          local config = make_config(lens, launch_args)
+          local config = make_config(lens, launch_args, opts.config_overrides)
           run(lens, config, context, opts)
         end)
       end
@@ -451,7 +453,13 @@ local hotcodereplace_type = {
 }
 
 
-function M.fetch_main_configs(callback)
+function M.fetch_main_configs(opts, callback)
+  opts = opts or {}
+  if type(opts) == 'function' then
+    vim.notify('First argument to `fetch_main_configs` changed to a `opts` table', vim.log.levels.WARN)
+    callback = opts
+    opts = {}
+  end
   local configurations = {}
   local bufnr = api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
@@ -485,6 +493,7 @@ function M.fetch_main_configs(callback)
               console = 'integratedTerminal';
               vmArgs = use_preview and '--enable-preview' or nil;
             }
+            config = vim.tbl_extend('force', config, opts.config_overrides or default_config_overrides)
             table.insert(configurations, config)
             if remaining == 0 then
               callback(configurations)
@@ -514,7 +523,7 @@ function M.setup_dap_main_class_configs(opts)
   if opts.verbose then
     vim.notify('Fetching debug configurations')
   end
-  M.fetch_main_configs(function(configurations)
+  M.fetch_main_configs(opts, function(configurations)
     for _, config in pairs(configurations) do
       table.insert(current_configurations, config)
     end
@@ -536,6 +545,7 @@ function M.setup_dap(opts)
     return
   end
   opts = opts or {}
+  default_config_overrides = opts.config_overrides or {}
   dap.listeners.before['event_hotcodereplace']['jdtls'] = function(session, body)
     if body.changeType == hotcodereplace_type.BUILD_COMPLETE then
       if opts.hotcodereplace == 'auto' then
