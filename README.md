@@ -474,6 +474,12 @@ Try wiping your workspace folder and restart Neovim. The workspace folder is
 the path you used as argument to `-data` in `config.cmd`
 
 
+### Indentation settings from eclipse formatting configuration are not recognized
+
+This is expected. The Neovim `shiftwidth` and `tabstop` settings have a higher
+priority.
+
+
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
