@@ -880,4 +880,13 @@ function M.set_runtime(runtime)
 end
 
 
+function M.show_logs()
+  local data_dir = require('jdtls.util').get_data_dir()
+  if data_dir then
+    vim.cmd('split')
+    vim.cmd('e ' .. data_dir .. '/.log')
+  end
+end
+
+
 return M

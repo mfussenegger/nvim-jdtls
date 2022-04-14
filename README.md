@@ -347,30 +347,46 @@ config['init_options'] = {
 
 ## Troubleshooting
 
-### Nothing happens when invoking vim.lsp.buf functions
+### The client exits with an error / eclipse.jdt.ls stopped working
 
 This can have two reasons:
 
-#### The client and server aren't starting up correctly
+1) Your `cmd` definition in the [Configuration](#configuration) is wrong.
 
-You can check if the client is running with `:lua print(vim.inspect(vim.lsp.buf_get_clients()))`, it should output a lot of information.
-If it doesn't, verify:
+- Check the log files. Use `:JdtShowLogs` or open the log file manually. `:lua
+  print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`.
+  You may have to increase the log level. See `:help vim.lsp.set_log_level()`.
 
-- That the language server can be started standalone. (Run eclipse.jdt.ls)
-- That there are no configuration errors. (Run `:set ft=java` and `:messages` after opening a Java file)
-- Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
+- Ensure you can start the language server standalone by invoking the `cmd`
+  defined in the configuration manually within a terminal.
 
-#### Eclipse.jdt.ls can't compile your project or it cannot load your project and resolve the class paths
+2) The data folder got corrupted.
 
-- Run `:JdtCompile` for incremental compilation or `:JdtCompile full` for full
-  compilation. If there are any errors in the project, it will open the
-  quickfix list with the errors.
+Wipe the folder and ensure that it is in a dedicated directory and not within
+your project repository. See [data directory
+configuration](#data-directory-configuration). You can use
+`:JdtWipeDataAndRestart` to do this.
 
-- Check the log files (`:lua print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`)
-- If there is nothing, try changing the log level. See `:help vim.lsp.set_log_level()`
 
-If this all doesn't help, try wiping your workspace folder and restart Neovim.
-.he workspace folder is the path you used as argument to `-data` in `config.cmd`.
+### Nothing happens when opening a Java file and I can't use any `vim.lsp.buf` functions
+
+This can have several reasons:
+
+1) You didn't follow [Configuration](#configuration) closely and aren't
+invoking `require('jdtls').start_or_attach(config)` as part of a `java`
+`filetype` event. Go back to the configuration section and follow it closely.
+
+2) You made a mistake in your configuration and there is a failure happening
+when you open the file. Try `:set ft=java` and look at the `:messages` output.
+
+3) eclipse.jdt.ls is starting but it cannot recognize your project, or it
+cannot import it properly. Try running `:JdtCompile full` or `:lua
+require('jdtls').compile('full')`. It should open the `quickfix` list with errors
+if eclipse.jdt.ls started but cannot handle your project.
+
+Check the log files. Use `:JdtShowLogs` or open the log file manually. `:lua
+print(vim.fn.stdpath('cache'))` lists the path, there should be a `lsp.log`.
+You may have to increase the log level. See `:help vim.lsp.set_log_level()`.
 
 
 ### Error: Unable to access jarfile
@@ -467,12 +483,6 @@ language client and language server may not detect these changes and the state
 of the file on disk diverges with the mental model of the language server. If
 that happens, you need to open all changed files within Neovim and reload them
 with `:e!` to synchronize the state.
-
-### eclipse.jdt.ls stopped starting
-
-Try wiping your workspace folder and restart Neovim. The workspace folder is
-the path you used as argument to `-data` in `config.cmd`
-
 
 ### Indentation settings from eclipse formatting configuration are not recognized
 
