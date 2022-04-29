@@ -57,6 +57,9 @@ do
       local client = lsp.get_client_by_id(client_id)
       if client then
         local bufs = lsp.get_buffers_by_client_id(client_id)
+        for _, buf in pairs(bufs) do
+          lsp.buf_detach_client(buf, client.id)
+        end
         client.stop()
         client_id = lsp.start_client(client.config)
         client_id_by_root_dir[root_dir] = client_id
@@ -293,12 +296,14 @@ function M.wipe_data_and_restart()
     end
     vim.schedule(function()
       lsp_clients.stop()
-      vim.fn.delete(data_dir, 'rf')
-      for _, buf in pairs(api.nvim_list_bufs()) do
-        if vim.bo[buf].filetype == 'java' then
-          api.nvim_buf_call(buf, function() vim.cmd('e!') end)
+      vim.defer_fn(function()
+        vim.fn.delete(data_dir, 'rf')
+        for _, buf in pairs(api.nvim_list_bufs()) do
+          if vim.bo[buf].filetype == 'java' then
+            api.nvim_buf_call(buf, function() vim.cmd('e!') end)
+          end
         end
-      end
+      end, 200)
     end)
   end)
 end
