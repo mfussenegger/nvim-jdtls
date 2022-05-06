@@ -312,13 +312,15 @@ config['on_attach'] = function(client, bufnr)
 end
 ```
 
-If you also want to discover main classes and create configuration entries for them, you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtRefreshDebugConfigs` command which is added as part of `add_commands()` which is mentioned in the [Usage](#Usage) section.
+### nvim-dap configuration
 
-Note that eclipse.jdt.ls needs to have loaded your project before it can discover all main classes and that may take some time. It is best to trigger this deferred or ad-hoc when first required.
+`nvim-jdtls` includes functionality to discover main classes and create `nvim-dap` configuration entries for them.
 
+To discover the main classes you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtRefreshDebugConfigs` command. It will only discover classes once eclipse.jdt.ls fully loaded the project. Depending on the project that may take a while. Because of that, calling `require('jdtls.dap').setup_dap_main_class_configs()` as part of an `on_attach` handler may not work well.
 
-See the [nvim-dap Adapter Installation Wiki](https://github.com/mfussenegger/nvim-dap/wiki/Debug-Adapter-installation#Java)
-for example configurations in case you're not going to use the main-class discovery functionality of nvim-jdtls.
+For manual configuration see [nvim-dap Adapter Installation Wiki](https://github.com/mfussenegger/nvim-dap/wiki/Java).
+
+To get an overview of all available `attach` and `launch` options, take a look at [java-debug options](https://github.com/microsoft/vscode-java-debug#options). Keep in mind that any `java.debug` options are settings of the vscode-java client extension and not understood by the debug-adapter itself.
 
 ### vscode-java-test installation
 
