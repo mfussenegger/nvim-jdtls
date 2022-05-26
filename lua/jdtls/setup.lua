@@ -40,14 +40,6 @@ do
       if client then
         client.stop()
         client_id_by_root_dir[root_dir] = nil
-        local buffers = lsp.get_buffers_by_client_id(client.id)
-        for _, buf in ipairs(buffers) do
-          lsp.buf_detach_client(buf, client.id)
-        end
-        buffers = lsp.get_buffers_by_client_id(client.id)
-        assert(
-          not next(buffers),
-          "client shouldn't be attached to any buffers, but got " .. vim.inspect(buffers))
       end
     end
   end
@@ -57,9 +49,6 @@ do
       local client = lsp.get_client_by_id(client_id)
       if client then
         local bufs = lsp.get_buffers_by_client_id(client_id)
-        for _, buf in pairs(bufs) do
-          lsp.buf_detach_client(buf, client.id)
-        end
         client.stop()
         client_id = lsp.start_client(client.config)
         client_id_by_root_dir[root_dir] = client_id
