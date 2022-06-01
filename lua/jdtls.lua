@@ -576,7 +576,6 @@ local function java_override_methods(_, context)
       return
     end
 
-    -- vim.ui.select(choices, { prompt = "Select method to override / implement: " }, function (_, i)
     local params = {
       context = context.params,
       overridableMethods = selected
@@ -587,7 +586,6 @@ local function java_override_methods(_, context)
       end
       vim.lsp.util.apply_workspace_edit(result2, 'utf-16')
     end)
-    -- end)
   end)
 end
 
