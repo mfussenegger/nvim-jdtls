@@ -128,6 +128,7 @@ M.extendedClientCapabilities = {
   generateConstructorsPromptSupport = true;
   generateDelegateMethodsPromptSupport = true;
   moveRefactoringSupport = true;
+  overrideMethodsPromptSupport = true;
   inferSelectionSupport = {"extractMethod", "extractVariable", "extractConstant"};
 };
 

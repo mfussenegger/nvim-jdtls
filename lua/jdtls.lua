@@ -532,6 +532,65 @@ local function java_choose_imports(resp)
   return choices
 end
 
+local function java_override_methods(_, context)
+  request(context.bufnr, 'java/listOverridableMethods', context.params, function(e1, result1)
+    if e1 ~= nil then
+      return
+    end
+
+    local choices = {}
+    for i, method in ipairs(result1.methods) do
+
+      local choice = i .. ". " .. method.name
+
+      choice = choice .. '('
+      for j, param in ipairs(method.parameters) do
+        choice = choice .. param
+        if (j < #method.parameters) then
+          choice = choice .. ', '
+        end
+      end
+      choice = choice .. ')'
+
+      choice = choice .. ' class: ' .. method.declaringClass
+
+      table.insert(choices, choice)
+    end
+
+    local selected = {}
+    while true do
+      local answer = vim.fn.input("\n" .. table.concat(choices, "\n") .. "\nChoice (Esc to finish): ")
+      if answer == "" then
+        break
+      end
+      local index = tonumber(answer)
+      if index ~= nil then
+        if string.find(choices[index], "*") == nil then
+          table.insert(selected, result1.methods[index])
+          choices[index] = choices[index] .. " *"
+        end
+      end
+    end
+
+    if #selected < 1 then
+      return
+    end
+
+    -- vim.ui.select(choices, { prompt = "Select method to override / implement: " }, function (_, i)
+    local params = {
+      context = context.params,
+      overridableMethods = selected
+    }
+    request(context.bufnr, 'java/addOverridableMethods', params, function(e2, result2)
+      if e2 ~= nil then
+        return
+      end
+      vim.lsp.util.apply_workspace_edit(result2, 'utf-16')
+    end)
+    -- end)
+  end)
+end
+
 
 M.commands = {
   ['java.apply.workspaceEdit'] = java_apply_workspace_edit;
@@ -543,6 +602,7 @@ M.commands = {
   ['java.action.organizeImports.chooseImports'] = java_choose_imports;
   ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
   ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
+  ['java.action.overrideMethodsPrompt'] = java_override_methods;
 }
 
 if vim.lsp.commands then
