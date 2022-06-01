@@ -534,7 +534,8 @@ end
 
 local function java_override_methods(_, context)
   request(context.bufnr, 'java/listOverridableMethods', context.params, function(e1, result1)
-    if e1 ~= nil then
+    if e1 then
+      print("Error getting overridable methods: " .. e1.message)
       return
     end
 
@@ -582,6 +583,7 @@ local function java_override_methods(_, context)
     }
     request(context.bufnr, 'java/addOverridableMethods', params, function(e2, result2)
       if e2 ~= nil then
+        print("Error getting workspace edits: " .. e2.message)
         return
       end
       vim.lsp.util.apply_workspace_edit(result2, 'utf-16')
