@@ -543,7 +543,7 @@ local function java_override_methods(_, context)
       return string.format("%s(%s) class: %s", method.name, table.concat(method.parameters, ", "), method.declaringClass)
     end
 
-    local selected = ui.pick_many(result1.methods, "Choice (Esc to finish): ", fmt)
+    local selected = ui.pick_many(result1.methods, "Method to override", fmt)
 
     if #selected < 1 then
       return
