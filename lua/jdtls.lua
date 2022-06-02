@@ -539,39 +539,11 @@ local function java_override_methods(_, context)
       return
     end
 
-    local choices = {}
-    for i, method in ipairs(result1.methods) do
-
-      local choice = i .. ". " .. method.name
-
-      choice = choice .. '('
-      for j, param in ipairs(method.parameters) do
-        choice = choice .. param
-        if (j < #method.parameters) then
-          choice = choice .. ', '
-        end
-      end
-      choice = choice .. ')'
-
-      choice = choice .. ' class: ' .. method.declaringClass
-
-      table.insert(choices, choice)
+    local fmt = function(method)
+      return string.format("%s(%s) class: %s", method.name, table.concat(method.parameters, ", "), method.declaringClass)
     end
 
-    local selected = {}
-    while true do
-      local answer = vim.fn.input("\n" .. table.concat(choices, "\n") .. "\nChoice (Esc to finish): ")
-      if answer == "" then
-        break
-      end
-      local index = tonumber(answer)
-      if index ~= nil then
-        if string.find(choices[index], "*") == nil then
-          table.insert(selected, result1.methods[index])
-          choices[index] = choices[index] .. " *"
-        end
-      end
-    end
+    local selected = ui.pick_many(result1.methods, "Choice (Esc to finish): ", fmt)
 
     if #selected < 1 then
       return
