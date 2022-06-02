@@ -532,6 +532,37 @@ local function java_choose_imports(resp)
   return choices
 end
 
+local function java_override_methods(_, context)
+  request(context.bufnr, 'java/listOverridableMethods', context.params, function(e1, result1)
+    if e1 then
+      print("Error getting overridable methods: " .. e1.message)
+      return
+    end
+
+    local fmt = function(method)
+      return string.format("%s(%s) class: %s", method.name, table.concat(method.parameters, ", "), method.declaringClass)
+    end
+
+    local selected = ui.pick_many(result1.methods, "Method to override", fmt)
+
+    if #selected < 1 then
+      return
+    end
+
+    local params = {
+      context = context.params,
+      overridableMethods = selected
+    }
+    request(context.bufnr, 'java/addOverridableMethods', params, function(e2, result2)
+      if e2 ~= nil then
+        print("Error getting workspace edits: " .. e2.message)
+        return
+      end
+      vim.lsp.util.apply_workspace_edit(result2, 'utf-16')
+    end)
+  end)
+end
+
 
 M.commands = {
   ['java.apply.workspaceEdit'] = java_apply_workspace_edit;
@@ -543,6 +574,7 @@ M.commands = {
   ['java.action.organizeImports.chooseImports'] = java_choose_imports;
   ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
   ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
+  ['java.action.overrideMethodsPrompt'] = java_override_methods;
 }
 
 if vim.lsp.commands then
