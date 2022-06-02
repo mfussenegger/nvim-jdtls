@@ -42,7 +42,7 @@ function M.pick_many(items, prompt, label_f)
 
   local selected = {}
   while true do
-    local answer = vim.fn.input(string.format("\n%s\n%s", table.concat(choices, "\n"), prompt))
+    local answer = vim.fn.input(string.format("\n%s\n%s (Esc to finish): ", table.concat(choices, "\n"), prompt))
     if answer == "" then
       break
     end
