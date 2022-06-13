@@ -483,7 +483,7 @@ function M.fetch_main_configs(opts, callback)
             end
             local config = {
               type = 'java';
-              name = 'Launch ' .. mainclass;
+              name = 'Launch ' .. project .. ' ' .. mainclass;
               projectName = project;
               mainClass = mainclass;
               modulePaths = paths[1];
@@ -491,7 +491,7 @@ function M.fetch_main_configs(opts, callback)
               javaExec = java_exec;
               request = 'launch';
               console = 'integratedTerminal';
-              vmArgs = use_preview and '--enable-preview' or nil;
+              vmArgs = (opts.vm_args or '') ..   (use_preview and '--enable-preview' or '');
             }
             config = vim.tbl_extend('force', config, opts.config_overrides or default_config_overrides)
             table.insert(configurations, config)
