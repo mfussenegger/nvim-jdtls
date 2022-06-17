@@ -1,3 +1,5 @@
+---@mod jdtls LSP extensions for Neovim and eclipse.jdt.ls
+
 local api = vim.api
 
 local ui = require('jdtls.ui')
@@ -18,12 +20,18 @@ local M = {
   test_nearest_method = jdtls_dap.test_nearest_method,
   pick_test = jdtls_dap.pick_test,
   extendedClientCapabilities = setup.extendedClientCapabilities,
-  start_or_attach = setup.start_or_attach,
   setup = setup,
   settings = {
     jdt_uri_timeout_ms = 5000,
   }
 }
+
+--- Start the language server (if not started), and attach the current buffer.
+--- @param config table configuration. See |vim.lsp.start_client|
+function M.start_or_attach(config)
+  setup.start_or_attach(config)
+end
+
 
 local request = function(bufnr, method, params, handler)
   vim.lsp.buf_request(bufnr, method, params, handler)
@@ -619,16 +627,22 @@ local function make_code_action_params(from_selection)
 end
 
 
+--- Organize the imports in the current buffer
 function M.organize_imports()
   java_action_organize_imports(nil, { params = make_code_action_params(false) })
 end
 
 
+---@private
 function M._complete_compile()
   return 'full\nincremental'
 end
 
 
+--- Compile/build the Java workspace.
+--- If there are compile errors they'll be shown in the quickfix list.
+---
+---@param type nil|"full"|"incremental"
 function M.compile(type)
   local CompileWorkspaceStatus = {
     FAILED = 0,
@@ -672,6 +686,9 @@ function M.compile(type)
   end)
 end
 
+--- Update the project configuration (from Gradle or Maven).
+--- In a multi-module project this will only update the configuration of the
+--- module of the current buffer.
 function M.update_project_config()
   local params = { uri = vim.uri_from_bufnr(0) }
   request(0, 'java/projectConfigurationUpdate', params, function(err)
@@ -720,6 +737,8 @@ local function with_classpaths(fn)
 end
 
 
+--- Run the `javap` tool in a terminal buffer.
+--- Sets the classpath based on the current project.
 function M.javap()
   with_classpaths(function(resp)
     local classname = resolve_classname()
@@ -731,6 +750,8 @@ function M.javap()
 end
 
 
+--- Run the `jshell` tool in a terminal buffer.
+--- Sets the classpath based on the current project.
 function M.jshell()
   with_classpaths(function(result)
     local buf = api.nvim_create_buf(false, true)
@@ -750,6 +771,29 @@ function M.jshell()
 end
 
 
+--- Run the `jol` tool in a terminal buffer to print the class layout
+--- You must configure `jol_path` to point to the `jol` jar file:
+---
+--- ```
+--- require('jdtls').jol_path = '/absolute/path/to/jol.jar`
+--- ```
+---
+--- https://github.com/openjdk/jol
+---
+--- Must be called from a regular java source file.
+---
+--- Examples:
+--
+--- ```
+--- lua require('jdtls').jol()
+--- ```
+---
+--- ```
+--- lua require('jdtls').jol(nil, "java.util.ImmutableCollections$List12")
+--- ```
+---
+---@param mode nil|"estimates"|"footprint"|"externals"|"internals"
+---@param classname string|nil fully qualified class name. Defaults to the current class.
 function M.jol(mode, classname)
   mode = mode or 'estimates'
   local jol = assert(M.jol_path, [[Path to jol must be set using `lua require('jdtls').jol_path = 'path/to/jol.jar'`]])
@@ -767,11 +811,14 @@ end
 
 
 --- Reads the uri into the current buffer
---
--- This requires at least one open buffer that is connected to the jdtls
--- language server.
---
---@param uri expected to be a `jdt://` uri
+---
+--- This requires at least one open buffer that is connected to the jdtls
+--- language server.
+---
+--- nvim-jdtls by defaults configures a `BufReadCmd` event which uses this function.
+--- You shouldn't need to call this manually.
+---
+--- @param uri string expected to be a `jdt://` uri
 function M.open_jdt_link(uri)
   local client
   for _, c in ipairs(vim.lsp.get_active_clients()) do
@@ -835,6 +882,7 @@ function M.open_jdt_link(uri)
 end
 
 
+---@private
 function M._complete_set_runtime()
   local client
   for _, c in pairs(vim.lsp.get_active_clients()) do
@@ -850,6 +898,10 @@ function M._complete_set_runtime()
   return table.concat(vim.tbl_map(function(runtime) return runtime.name end, runtimes), '\n')
 end
 
+--- Change the Java runtime.
+--- This requires a `settings.java.configuration.runtimes` configuration.
+---
+---@param runtime nil|string Java runtime. Prompts for runtime if nil
 function M.set_runtime(runtime)
   local client
   for _, c in pairs(vim.lsp.get_active_clients()) do
@@ -908,15 +960,6 @@ function M.set_runtime(runtime)
         client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
       end
     )
-  end
-end
-
-
-function M.show_logs()
-  local data_dir = require('jdtls.util').get_data_dir()
-  if data_dir then
-    vim.cmd('split')
-    vim.cmd('e ' .. data_dir .. '/.log')
   end
 end
 
