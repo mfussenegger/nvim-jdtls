@@ -338,6 +338,7 @@ local function maybe_repeat(lens, config, context, opts, items)
 end
 
 
+---@param opts JdtTestOpts
 local function run(lens, config, context, opts)
   local ok, dap = pcall(require, 'dap')
   if not ok then
@@ -350,7 +351,13 @@ local function run(lens, config, context, opts)
   local junit = require('jdtls.junit')
 
   if lens.kind == TestKind.TestNG then
-    dap.run(config)
+    dap.run(config, {
+      after = function()
+        if opts.after_test then
+          opts.after_test()
+        end
+      end
+    })
     return
   end
 
@@ -373,6 +380,9 @@ local function run(lens, config, context, opts)
       server:close()
       local items = test_results.show()
       maybe_repeat(lens, config, context, opts, items)
+      if opts.after_test then
+        opts.after_test(items)
+      end
     end;
   })
 end
@@ -595,7 +605,9 @@ end
 ---@field noDebug boolean|nil If the test should run in debug mode
 
 ---@class JdtTestOpts
+---@field config nil|table Skeleton used for the |dap-configuration|
 ---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
 ---@field until_error number|nil Number of times the test should be repeated if it doesn't fail
+---@field after_test nil|function Callback triggered after test run
 
 return M
