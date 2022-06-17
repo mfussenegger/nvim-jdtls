@@ -1,3 +1,5 @@
+---@mod jdtls.dap nvim-dap support for jdtls
+
 local api = vim.api
 local uv = vim.loop
 local util = require('jdtls.util')
@@ -5,7 +7,6 @@ local resolve_classname = util.resolve_classname
 local with_java_executable = util.with_java_executable
 local M = {}
 local default_config_overrides = {}
-
 
 local function fetch_needs_preview(mainclass, project, cb, bufnr)
   local params = {
@@ -386,7 +387,8 @@ M.experimental = {
   make_config = make_config,
 }
 
-
+--- Debug the test class in the current buffer
+--- @param opts JdtTestOpts
 function M.test_class(opts)
   opts = opts or {}
   local context = make_context()
@@ -404,6 +406,8 @@ function M.test_class(opts)
 end
 
 
+--- Debug the nearest test method in the current buffer
+--- @param opts nil|JdtTestOpts
 function M.test_nearest_method(opts)
   opts = opts or {}
   local lnum = api.nvim_win_get_cursor(0)[1]
@@ -422,6 +426,8 @@ function M.test_nearest_method(opts)
 end
 
 
+--- Prompt for a test method from the current buffer to run
+---@param opts nil|JdtTestOpts
 function M.pick_test(opts)
   opts = opts or {}
   local context = make_context()
@@ -453,6 +459,9 @@ local hotcodereplace_type = {
 }
 
 
+--- Discover executable main functions in the project
+---@param opts nil|JdtMainConfigOpts See |JdtMainConfigOpts|
+---@param callback fun(configurations: table[])
 function M.fetch_main_configs(opts, callback)
   opts = opts or {}
   if type(opts) == 'function' then
@@ -505,7 +514,16 @@ function M.fetch_main_configs(opts, callback)
   end, bufnr)
 end
 
+---@class JdtMainConfigOpts
+---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
+
+
+
 local orig_configurations
+
+
+--- Discover main classes in the project and setup |dap-configuration| entries for Java for them.
+---@param opts nil|JdtSetupMainConfigOpts See |JdtSetupMainConfigOpts|
 function M.setup_dap_main_class_configs(opts)
   opts = opts or {}
   local status, dap = pcall(require, 'dap')
@@ -534,7 +552,13 @@ function M.setup_dap_main_class_configs(opts)
   end)
 end
 
+---@class JdtSetupMainConfigOpts : JdtMainConfigOpts
+---@field verbose nil|boolean Print notifications on start and once finished. Default is false.
 
+
+
+--- Register a |dap-adapter| for java. Requires nvim-dap
+---@param opts nil|JdtSetupDapOpts See |JdtSetupDapOpts|
 function M.setup_dap(opts)
   local status, dap = pcall(require, 'dap')
   if not status then
@@ -560,7 +584,18 @@ function M.setup_dap(opts)
   end
   dap.adapters.java = start_debug_adapter
 end
+---@class JdtSetupDapOpts
+---@field config_overrides JdtDapConfig These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
+---@field hotcodereplace nil|"auto"
 
 
+---@class JdtDapConfig
+---@field cwd string|nil working directory for the test
+---@field vmArgs string|nil vmArgs for the test
+---@field noDebug boolean|nil If the test should run in debug mode
+
+---@class JdtTestOpts
+---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
+---@field until_error number|nil Number of times the test should be repeated if it doesn't fail
 
 return M
