@@ -1,0 +1,97 @@
+================================================================================
+LSP extensions for Neovim and eclipse.jdt.ls                             *jdtls*
+
+M.start_or_attach()                                      *jdtls.start_or_attach*
+     Start the language server (if not started), and attach the current buffer.
+     @param config table configuration. See |vim.lsp.start_client|
+
+
+M.organize_imports()                                    *jdtls.organize_imports*
+     Organize the imports in the current buffer
+
+
+M.compile({type})                                                *jdtls.compile*
+     Compile/build the Java workspace.
+     If there are compile errors they'll be shown in the quickfix list.
+
+
+
+    Parameters: ~
+        {type}  (nil|"full"|"incremental")  
+
+
+M.update_project_config()                          *jdtls.update_project_config*
+     Update the project configuration (from Gradle or Maven).
+     In a multi-module project this will only update the configuration of the
+     module of the current buffer.
+
+
+M.javap()                                                          *jdtls.javap*
+     Run the `javap` tool in a terminal buffer.
+     Sets the classpath based on the current project.
+
+
+M.jshell()                                                        *jdtls.jshell*
+     Run the `jshell` tool in a terminal buffer.
+     Sets the classpath based on the current project.
+
+
+M.jol({mode}, {classname})                                           *jdtls.jol*
+     Run the `jol` tool in a terminal buffer to print the class layout
+     You must configure `jol_path` to point to the `jol` jar file:
+
+
+     ```
+     require('jdtls').jol_path = '/absolute/path/to/jol.jar`
+     ```
+
+
+     https://github.com/openjdk/jol
+
+
+     Must be called from a regular java source file.
+
+
+     Examples:
+     ```
+     lua require('jdtls').jol()
+     ```
+
+
+     ```
+     lua require('jdtls').jol(nil, "java.util.ImmutableCollections$List12")
+     ```
+
+
+
+    Parameters: ~
+        {mode}       (nil|"estimates"|"footprint"|"externals"|"internals")  
+        {classname}  (string|nil)                                           fully qualified class name. Defaults to the current class.
+
+
+M.open_jdt_link()                                          *jdtls.open_jdt_link*
+     Reads the uri into the current buffer
+
+
+     This requires at least one open buffer that is connected to the jdtls
+     language server.
+
+
+     nvim-jdtls by defaults configures a `BufReadCmd` event which uses this function.
+     You shouldn't need to call this manually.
+
+
+     @param uri string expected to be a `jdt://` uri
+
+
+M.set_runtime({runtime})                                     *jdtls.set_runtime*
+     Change the Java runtime.
+     This requires a `settings.java.configuration.runtimes` configuration.
+
+
+
+    Parameters: ~
+        {runtime}  (nil|string)  Java runtime. Prompts for runtime if nil
+
+
+vim:tw=78:ts=8:noet:ft=help:norl:

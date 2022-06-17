@@ -257,6 +257,9 @@ command! -buffer JdtBytecode lua require('jdtls').javap()
 command! -buffer JdtJshell lua require('jdtls').jshell()
 ```
 
+## API Reference
+
+See `:help jdtls`
 
 ## Debugger (via nvim-dap)
 
