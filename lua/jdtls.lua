@@ -699,6 +699,43 @@ function M.update_project_config()
   end)
 end
 
+--- Process changes made to the Gradle or Maven configuration of one or more projects.
+--- Requires eclipse.jdt.ls >= 1.13.0
+---
+---@param mode nil|"prompt"|"all" Whether to prompt for projects to update or update all. Defaults to "prompt"
+function M.update_projects_config(mode)
+  mode = mode or "pick"
+  local bufnr = api.nvim_get_current_buf()
+  local command = {
+    command = 'java.project.getAll',
+  }
+  util.execute_command(command, function(err, projects)
+    if err then
+      error(err.message or vim.inspect(err))
+    end
+    local selection
+    if mode == "all" then
+      selection = projects
+    elseif #projects == 1 then
+      selection = projects
+    else
+      selection = ui.pick_many(
+        projects,
+        'Projects> ',
+        function(project)
+          return vim.fn.fnamemodify(project, ':.:t')
+        end
+      )
+    end
+    if selection and next(selection) then
+      local params = {
+        identifiers = vim.tbl_map(function(project) return { uri = project } end, selection)
+      }
+      vim.lsp.buf_notify(bufnr, 'java/projectConfigurationsUpdate', params)
+    end
+  end, bufnr)
+end
+
 
 local function mk_extract(entity)
   return function(from_selection)
