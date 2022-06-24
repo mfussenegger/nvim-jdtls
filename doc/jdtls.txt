@@ -26,6 +26,16 @@ M.update_project_config()                          *jdtls.update_project_config*
      module of the current buffer.
 
 
+M.update_projects_config({mode})                  *jdtls.update_projects_config*
+     Process changes made to the Gradle or Maven configuration of one or more projects.
+     Requires eclipse.jdt.ls >= 1.13.0
+
+
+
+    Parameters: ~
+        {mode}  (nil|"prompt"|"all")  Whether to prompt for projects to update or update all. Defaults to "prompt"
+
+
 M.javap()                                                          *jdtls.javap*
      Run the `javap` tool in a terminal buffer.
      Sets the classpath based on the current project.
