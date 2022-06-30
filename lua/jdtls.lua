@@ -643,77 +643,63 @@ function M._complete_compile()
   return 'full\nincremental'
 end
 
-
---- Compile/build the Java workspace.
---- If there are compile errors they'll be shown in the quickfix list.
----
----@param type nil|"full"|"incremental"
-function M.compile(type)
+local function on_build_result(err, result)
   local CompileWorkspaceStatus = {
     FAILED = 0,
     SUCCEED = 1,
     WITHERROR = 2,
     CANCELLED = 3,
   }
-  request(0, 'java/buildWorkspace', type == 'full', function(err, result)
-    assert(not err, 'Error on `java/buildWorkspace`: ' .. vim.inspect(err))
-    if result == CompileWorkspaceStatus.SUCCEED then
-      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
-      print('Compile successfull')
+  assert(not err, 'Error trying to build project(s): ' .. vim.inspect(err))
+  if result == CompileWorkspaceStatus.SUCCEED then
+    vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
+    print('Compile successfull')
+  else
+    vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
+    local project_config_errors = {}
+    local compile_errors = {}
+    for _, d in pairs(vim.diagnostic.get(nil)) do
+      local fname = api.nvim_buf_get_name(d.bufnr)
+      local stat = vim.loop.fs_stat(fname)
+      local items
+      if (vim.endswith(fname, 'build.gradle')
+          or vim.endswith(fname, 'pom.xml')
+          or (stat and stat.type == 'directory')) then
+        items = project_config_errors
+      elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
+        items = compile_errors
+      end
+      if d.severity == vim.diagnostic.severity.ERROR and items then
+        table.insert(items, d)
+      end
+    end
+    local items = #project_config_errors > 0 and project_config_errors or compile_errors
+    vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
+    if #items > 0 then
+      print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
+      vim.cmd('copen')
     else
-      vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
-      local project_config_errors = {}
-      local compile_errors = {}
-      for _, d in pairs(vim.diagnostic.get(nil)) do
-        local fname = api.nvim_buf_get_name(d.bufnr)
-        local stat = vim.loop.fs_stat(fname)
-        local items
-        if (vim.endswith(fname, 'build.gradle')
-            or vim.endswith(fname, 'pom.xml')
-            or (stat and stat.type == 'directory')) then
-          items = project_config_errors
-        elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
-          items = compile_errors
-        end
-        if d.severity == vim.diagnostic.severity.ERROR and items then
-          table.insert(items, d)
-        end
-      end
-      local items = #project_config_errors > 0 and project_config_errors or compile_errors
-      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
-      if #items > 0 then
-        print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
-        vim.cmd('copen')
-      else
-        print('Compile error, but no error diagnostics available. Try running compile again.')
-      end
+      print('Compile error, but no error diagnostics available. Try running compile again.')
     end
-  end)
+  end
 end
 
---- Update the project configuration (from Gradle or Maven).
---- In a multi-module project this will only update the configuration of the
---- module of the current buffer.
-function M.update_project_config()
-  local params = { uri = vim.uri_from_bufnr(0) }
-  request(0, 'java/projectConfigurationUpdate', params, function(err)
-    if err then
-      print('Could not update project configuration: ' .. err.message)
-      return
-    end
-  end)
-end
 
---- Process changes made to the Gradle or Maven configuration of one or more projects.
---- Requires eclipse.jdt.ls >= 1.13.0
+--- Compile/build the Java workspace.
+--- If there are compile errors they'll be shown in the quickfix list.
 ---
----@param mode nil|"prompt"|"all" Whether to prompt for projects to update or update all. Defaults to "prompt"
-function M.update_projects_config(mode)
-  mode = mode or "pick"
-  local bufnr = api.nvim_get_current_buf()
+---@param type nil|"full"|"incremental"
+function M.compile(type)
+  request(0, 'java/buildWorkspace', type == 'full', on_build_result)
+end
+
+
+---@param mode nil|"prompt"|"all"
+local function pick_projects(mode, on_projects)
   local command = {
     command = 'java.project.getAll',
   }
+  local bufnr = api.nvim_get_current_buf()
   util.execute_command(command, function(err, projects)
     if err then
       error(err.message or vim.inspect(err))
@@ -732,15 +718,65 @@ function M.update_projects_config(mode)
         end
       )
     end
+    on_projects(selection)
+  end, bufnr)
+end
+
+
+--- Trigger a rebuild of one or more projects.
+---
+---@param opts JdtBuildProjectOpts|nil optional configuration options
+function M.build_projects(opts)
+  opts = opts or {}
+  local bufnr = api.nvim_get_current_buf()
+  pick_projects(opts.select_mode or "prompt", function(selection)
+    if selection and next(selection) then
+      local params = {
+        identifiers = vim.tbl_map(function(project) return { uri = project } end, selection),
+        isFullBuild = opts.full_build == nil and true or opts.full_build
+      }
+      vim.lsp.buf_request(bufnr, 'java/buildProjects', params, on_build_result)
+    end
+  end)
+end
+---@class JdtBuildProjectOpts
+---@field select_mode JdtProjectSelectMode Show prompt to select projects or select all. Defaults to "prompt"
+---@field full_build boolean full rebuild or incremental build. Defaults to true (full build)
+
+--- Update the project configuration (from Gradle or Maven).
+--- In a multi-module project this will only update the configuration of the
+--- module of the current buffer.
+function M.update_project_config()
+  local params = { uri = vim.uri_from_bufnr(0) }
+  request(0, 'java/projectConfigurationUpdate', params, function(err)
+    if err then
+      print('Could not update project configuration: ' .. err.message)
+      return
+    end
+  end)
+end
+
+--- Process changes made to the Gradle or Maven configuration of one or more projects.
+--- Requires eclipse.jdt.ls >= 1.13.0
+---
+---@param opts JdtUpdateProjectsOpts|nil configuration options
+function M.update_projects_config(opts)
+  opts = opts or {}
+  local bufnr = api.nvim_get_current_buf()
+  pick_projects(opts.select_mode or "prompt", function(selection)
     if selection and next(selection) then
       local params = {
         identifiers = vim.tbl_map(function(project) return { uri = project } end, selection)
       }
       vim.lsp.buf_notify(bufnr, 'java/projectConfigurationsUpdate', params)
     end
-  end, bufnr)
+  end)
 end
+---@class JdtUpdateProjectsOpts
+---@field select_mode JdtProjectSelectMode|nil show prompt to select projects or select all. Defaults to "prompt"
 
+---@alias JdtProjectSelectMode "all"|"prompt"|nil
+--
 
 local function mk_extract(entity)
   return function(from_selection)
@@ -825,7 +861,6 @@ end
 --- Must be called from a regular java source file.
 ---
 --- Examples:
---
 --- ```
 --- lua require('jdtls').jol()
 --- ```
@@ -833,7 +868,6 @@ end
 --- ```
 --- lua require('jdtls').jol(nil, "java.util.ImmutableCollections$List12")
 --- ```
----
 ---@param mode nil|"estimates"|"footprint"|"externals"|"internals"
 ---@param classname string|nil fully qualified class name. Defaults to the current class.
 function M.jol(mode, classname)
