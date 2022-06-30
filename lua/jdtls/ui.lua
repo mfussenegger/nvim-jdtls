@@ -26,6 +26,16 @@ function M.pick_one(items, prompt, label_fn)
 end
 
 
+local function index_of(xs, term)
+  for i, x in pairs(xs) do
+    if x == term then
+      return i
+    end
+  end
+  return -1
+end
+
+
 function M.pick_many(items, prompt, label_f)
   if not items or #items == 0 then
     return {}
@@ -36,11 +46,11 @@ function M.pick_many(items, prompt, label_f)
   end
 
   local choices = {}
+  local selected = {}
   for i, item in pairs(items) do
     table.insert(choices, string.format("%d. %s", i, label_f(item)))
   end
 
-  local selected = {}
   while true do
     local answer = vim.fn.input(string.format("\n%s\n%s (Esc to finish): ", table.concat(choices, "\n"), prompt))
     if answer == "" then
@@ -49,9 +59,15 @@ function M.pick_many(items, prompt, label_f)
 
     local index = tonumber(answer)
     if index ~= nil then
-      if string.find(choices[index], "*") == nil then
-        table.insert(selected, items[index])
-        choices[index] = choices[index] .. " *"
+      local choice = choices[index]
+      local item = items[index]
+      if string.find(choice, "*") == nil then
+        table.insert(selected, item)
+        choices[index] = choice .. " *"
+      else
+        choices[index] = string.gsub(choice, " %*$", "")
+        local idx = index_of(selected, item)
+        table.remove(selected, idx)
       end
     end
   end
