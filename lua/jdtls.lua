@@ -103,9 +103,14 @@ local function java_generate_constructors_prompt(_, outer_ctx)
 
     local fields = status.fields
     if fields then
+      local opts = {
+        is_selected = function(item)
+          return item.isSelected
+        end
+      }
       fields = ui.pick_many(status.fields, 'Include field to initialize by constructor(s): ', function(x)
         return string.format('%s: %s', x.name, x.type)
-      end)
+      end, opts)
     end
 
     local params = {
