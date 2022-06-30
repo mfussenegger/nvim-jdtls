@@ -20,20 +20,51 @@ M.compile({type})                                                *jdtls.compile*
         {type}  (nil|"full"|"incremental")  
 
 
+M.build_projects({opts})                                  *jdtls.build_projects*
+     Trigger a rebuild of one or more projects.
+
+
+
+    Parameters: ~
+        {opts}  (JdtBuildProjectOpts|nil)  optional configuration options
+
+
+JdtBuildProjectOpts                                        *JdtBuildProjectOpts*
+
+
+    Fields: ~
+        {select_mode}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
+        {full_build}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
+
+
 M.update_project_config()                          *jdtls.update_project_config*
      Update the project configuration (from Gradle or Maven).
      In a multi-module project this will only update the configuration of the
      module of the current buffer.
 
 
-M.update_projects_config({mode})                  *jdtls.update_projects_config*
+M.update_projects_config({opts})                  *jdtls.update_projects_config*
      Process changes made to the Gradle or Maven configuration of one or more projects.
      Requires eclipse.jdt.ls >= 1.13.0
 
 
 
     Parameters: ~
-        {mode}  (nil|"prompt"|"all")  Whether to prompt for projects to update or update all. Defaults to "prompt"
+        {opts}  (JdtUpdateProjectsOpts|nil)  configuration options
+
+
+JdtUpdateProjectsOpts                                    *JdtUpdateProjectsOpts*
+
+
+    Fields: ~
+        {select_mode}  (JdtProjectSelectMode|nil)  show prompt to select projects or select all. Defaults to "prompt"
+
+
+JdtProjectSelectMode                                      *JdtProjectSelectMode*
+
+
+    Type: ~
+        "all"|"prompt"|nil
 
 
 M.javap()                                                          *jdtls.javap*
@@ -71,8 +102,6 @@ M.jol({mode}, {classname})                                           *jdtls.jol*
      ```
      lua require('jdtls').jol(nil, "java.util.ImmutableCollections$List12")
      ```
-
-
 
     Parameters: ~
         {mode}       (nil|"estimates"|"footprint"|"externals"|"internals")  
