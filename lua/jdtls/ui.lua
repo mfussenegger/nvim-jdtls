@@ -36,7 +36,7 @@ local function index_of(xs, term)
 end
 
 
-function M.pick_many(items, prompt, label_f)
+function M.pick_many(items, prompt, label_f, opts)
   if not items or #items == 0 then
     return {}
   end
@@ -44,11 +44,21 @@ function M.pick_many(items, prompt, label_f)
   label_f = label_f or function(item)
     return item
   end
+  opts = opts or {}
 
   local choices = {}
   local selected = {}
+  local is_selected = opts.is_selected or function(_)
+    return false
+  end
   for i, item in pairs(items) do
-    table.insert(choices, string.format("%d. %s", i, label_f(item)))
+    local label = label_f(item)
+    local choice = string.format("%d. %s", i, label)
+    if is_selected(item) then
+      choice = choice .. " *"
+      table.insert(selected, item)
+    end
+    table.insert(choices, choice)
   end
 
   while true do
