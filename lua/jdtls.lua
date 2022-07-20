@@ -679,7 +679,9 @@ local function on_build_result(err, result)
       print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
       vim.cmd('copen')
     else
-      print('Compile error, but no error diagnostics available. Try running compile again.')
+      print("Compile error, but no error diagnostics available."
+        .. " Save all pending changes and try running compile again."
+        .. " If you used incremental mode, try a full rebuild.")
     end
   end
 end
