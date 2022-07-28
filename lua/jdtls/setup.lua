@@ -318,7 +318,11 @@ function M.show_logs()
   if data_dir then
     vim.cmd('split | e ' .. data_dir .. '/.metadata/.log | normal G')
   end
-  vim.cmd('vsplit | e ' .. vim.fn.stdpath('cache') .. '/lsp.log | normal G')
+  if vim.fn.has('nvim-0.8') == 1 then
+    vim.cmd('vsplit | e ' .. vim.fn.stdpath('log') .. '/lsp.log | normal G')
+  else
+    vim.cmd('vsplit | e ' .. vim.fn.stdpath('cache') .. '/lsp.log | normal G')
+  end
 end
 
 
