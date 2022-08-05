@@ -146,6 +146,7 @@ local function make_junit_request_args(lens, uri)
       fullName = classname,
       testName = methodname,
       project = lens.project,
+      projectName = lens.project,
       scope = lens.level,
       testKind = lens.kind,
     }
@@ -224,6 +225,10 @@ local function fetch_launch_args(lens, context, on_launch_args)
   util.execute_command(cmd_junit_args, function(err, launch_args)
     if err then
       print('Error retrieving launch arguments: ' .. (err.message or vim.inspect(err)))
+    elseif not launch_args then
+      error((
+        'Server must return launch_args as response to "vscode.java.test.junit.argument" command. '
+        .. 'Check server logs via `:JdtShowlogs`. Sent: ' .. vim.inspect(req_arguments)))
     else
       -- the classpath in the launch_args might be missing some classes
       -- See https://github.com/microsoft/vscode-java-test/issues/1073
