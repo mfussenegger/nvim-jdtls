@@ -4,7 +4,8 @@ local M = {}
 
 function M.execute_command(command, callback, bufnr)
   local clients = {}
-  for _, c in pairs(vim.lsp.buf_get_clients(bufnr)) do
+  local candidates = bufnr and vim.lsp.buf_get_clients(bufnr) or vim.lsp.get_active_clients()
+  for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
     if vim.tbl_contains(commands, command.command) then
@@ -13,8 +14,13 @@ function M.execute_command(command, callback, bufnr)
   end
   local num_clients = vim.tbl_count(clients)
   if num_clients == 0 then
-    vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
-    return
+    if bufnr then
+      -- User could've switched buffer to non-java file, try all clients
+      return M.execute_command(command, callback, nil)
+    else
+      vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
+      return
+    end
   end
 
   if num_clients > 1 then
