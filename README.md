@@ -2,7 +2,6 @@
 
 Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2] (>= 0.6.0) for [eclipse.jdt.ls][3].
 
-
 ## Audience
 
 This project follows the [KISS principle][kiss] and targets users with some
@@ -34,13 +33,11 @@ alternative:
   - [x] Move package, instance method, static method or type
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
-- [x] `jshell` command to open up jshell with classpath from project set
+- [x] `jshell` command to open up `jshell` with `classpath` from project set
 - [x] Debugger support via [nvim-dap][5]
-
 
 Take a look at [a demo](https://github.com/mfussenegger/nvim-jdtls/issues/3) to
 see some of the functionality in action.
-
 
 ## Plugin Installation
 
@@ -56,7 +53,7 @@ Install [eclipse.jdt.ls][3] by following their [Installation instructions](https
 ## Configuration
 
 To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
-neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
+Neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
 see `:help base-directory`).
 
 Watch out for the 💀, it indicates that you must adjust something.
@@ -172,10 +169,9 @@ local config = {
 `...` is not valid Lua in this context. It is meant as placeholder for the
 other options from the [Configuration](#configuration) section above.)
 
-
 ### nvim-lspconfig and nvim-jdtls differences
 
-Both nvim-lspconfig and nvim-jdtls use the client built into neovim:
+Both [nvim-lspconfig][9] and nvim-jdtls use the client built into neovim:
 
 ```txt
   ┌────────────┐           ┌────────────────┐
@@ -210,12 +206,10 @@ handling.
 You **must not** use both at the same time for java. You'd end up with two
 clients and two language server instances.
 
-
 ### UI picker customization
 
 **Tip**: You can get a better UI for code-actions and other functions by
 overriding the `jdtls.ui` picker. See [UI Extensions][10].
-
 
 ## Usage
 
@@ -501,12 +495,9 @@ priority.
 [5]: https://github.com/mfussenegger/nvim-dap
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
-[8]: https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line
 [9]: https://github.com/neovim/nvim-lspconfig
 [10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
 [11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
-[12]: https://download.eclipse.org/jdtls/milestones/
-[13]: https://download.eclipse.org/jdtls/snapshots/?d
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
