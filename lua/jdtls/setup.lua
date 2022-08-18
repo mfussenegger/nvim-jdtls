@@ -72,7 +72,7 @@ local function progress_report(_, result, ctx)
   -- Messages are only cleared on consumption, so protect against messages
   -- filling up infinitely if user doesn't consume them by discarding new ones.
   -- Ring buffer would be nicer, but messages.progress is a dict
-  if vim.tbl_count(client.messages.progress) > 10 then
+  if vim.tbl_count(client.messages.progress) > 100 then
     return
   end
   client.messages.progress[result.id or 'DUMMY'] = {
