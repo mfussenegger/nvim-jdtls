@@ -6,6 +6,7 @@ local ui = require('jdtls.ui')
 local util = require('jdtls.util')
 
 local with_java_executable = util.with_java_executable
+local with_classpaths = util.with_classpaths
 local resolve_classname = util.resolve_classname
 local execute_command = util.execute_command
 
@@ -790,31 +791,6 @@ end
 M.extract_constant = mk_extract('extractConstant')
 M.extract_variable = mk_extract('extractVariable')
 M.extract_method = mk_extract('extractMethod')
-
-
-local function with_classpaths(fn)
-  local is_test_file_cmd = {
-    command = 'java.project.isTestFile',
-    arguments = { vim.uri_from_bufnr(0) }
-  };
-  execute_command(is_test_file_cmd, function(err, is_test_file)
-    assert(not err, vim.inspect(err))
-    local options = vim.fn.json_encode({
-      scope = is_test_file and 'test' or 'runtime';
-    })
-    local cmd = {
-      command = 'java.project.getClasspaths';
-      arguments = { vim.uri_from_bufnr(0), options };
-    }
-    execute_command(cmd, function(err1, resp)
-      if err1 then
-        print('Error executing java.project.getClasspaths: ' .. err1.message)
-      else
-        fn(resp)
-      end
-    end)
-  end)
-end
 
 
 --- Run the `javap` tool in a terminal buffer.
