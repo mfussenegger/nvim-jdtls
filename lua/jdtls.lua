@@ -35,8 +35,20 @@ end
 
 
 local request = function(bufnr, method, params, handler)
-  vim.lsp.buf_request(bufnr, method, params, handler)
+  local client = nil
+  for _, c in pairs(vim.lsp.get_active_clients()) do
+    if c.name == 'jdtls' then
+      client = c
+      break
+    end
+  end
+  if not client then
+    vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
+  else
+    client.request(method, params, handler, bufnr)
+  end
 end
+
 local highlight_ns = api.nvim_create_namespace('jdtls_hl')
 M.jol_path = nil
 
@@ -738,7 +750,7 @@ function M.build_projects(opts)
         identifiers = vim.tbl_map(function(project) return { uri = project } end, selection),
         isFullBuild = opts.full_build == nil and true or opts.full_build
       }
-      vim.lsp.buf_request(bufnr, 'java/buildProjects', params, on_build_result)
+      request(bufnr, 'java/buildProjects', params, on_build_result)
     end
   end)
 end

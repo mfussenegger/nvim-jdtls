@@ -215,7 +215,7 @@ function M.start_or_attach(config)
     tonumber(vim.fn.executable(config.cmd[1])) == 1,
     'LSP cmd must be an executable: ' .. config.cmd[1]
   )
-  config.name = config.name or 'jdt.ls'
+  config.name = 'jdtls'
   data_dir = extract_data_dir(config.cmd)
 
   local bufnr = api.nvim_get_current_buf()
