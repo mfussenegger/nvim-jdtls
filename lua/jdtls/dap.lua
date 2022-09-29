@@ -403,7 +403,7 @@ M.experimental = {
 }
 
 --- Debug the test class in the current buffer
---- @param opts JdtTestOpts
+--- @param opts JdtTestOpts|nil
 function M.test_class(opts)
   opts = opts or {}
   local context = make_context()
