@@ -305,6 +305,7 @@ config['on_attach'] = function(client, bufnr)
   -- With `hotcodereplace = 'auto' the debug adapter will try to apply code changes
   -- you make during a debug session immediately.
   -- Remove the option if you do not want that.
+  -- You can use the `JdtHotcodeReplace` command to trigger it manually
   require('jdtls').setup_dap({ hotcodereplace = 'auto' })
 end
 ```
