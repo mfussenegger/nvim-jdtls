@@ -310,6 +310,20 @@ function M.add_commands()
   local ok, dap = pcall(require, 'dap')
   if ok and dap.adapters.java then
     api.nvim_command "command! -buffer JdtRefreshDebugConfigs lua require('jdtls.dap').setup_dap_main_class_configs({ verbose = true })"
+    local redefine_classes = function()
+      local session = dap.session()
+      if not session then
+        vim.notify('No active debug session')
+      else
+        vim.notify('Applying code changes')
+        session:request('redefineClasses', nil, function(err)
+          assert(not err, vim.inspect(err))
+        end)
+      end
+    end
+    api.nvim_create_user_command('JdtHotcodeReplace', redefine_classes, {
+      desc = "Trigger reload of changed classes for current debug session",
+    })
   end
 end
 
