@@ -126,7 +126,7 @@ nvim-dap support for jdtls                                           *jdtls.dap*
 
 M.test_class()                                            *jdtls.dap.test_class*
      Debug the test class in the current buffer
-     @param opts JdtTestOpts
+     @param opts JdtTestOpts|nil
 
 
 M.test_nearest_method()                          *jdtls.dap.test_nearest_method*
