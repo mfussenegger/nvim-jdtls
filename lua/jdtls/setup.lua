@@ -236,7 +236,7 @@ function M.start_or_attach(config)
   config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
-  local capabilities = config.capabilities or lsp.protocol.make_client_capabilities()
+  local capabilities = vim.tbl_deep_extend('keep', config.capabilities, lsp.protocol.make_client_capabilities())
   local extra_capabilities = {
     textDocument = {
       codeAction = {
