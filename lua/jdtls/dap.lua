@@ -507,7 +507,7 @@ function M.fetch_main_configs(opts, callback)
             end
             local config = {
               type = 'java';
-              name = 'Launch ' .. mainclass;
+              name = 'Launch ' .. project .. ': ' .. mainclass;
               projectName = project;
               mainClass = mainclass;
               modulePaths = paths[1];
