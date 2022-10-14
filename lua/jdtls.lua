@@ -13,6 +13,8 @@ local execute_command = util.execute_command
 local jdtls_dap = require('jdtls.dap')
 local setup = require('jdtls.setup')
 
+local offset_encoding = 'utf-16'
+
 
 
 local M = {
@@ -56,7 +58,7 @@ M.jol_path = nil
 
 local function java_apply_workspace_edit(command)
   for _, argument in ipairs(command.arguments) do
-    vim.lsp.util.apply_workspace_edit(argument, 'utf-16')
+    vim.lsp.util.apply_workspace_edit(argument, offset_encoding)
   end
 end
 
@@ -88,7 +90,7 @@ local function java_generate_to_string_prompt(_, outer_ctx)
         return
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
+        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
       end
     end)
   end)
@@ -135,7 +137,7 @@ local function java_generate_constructors_prompt(_, outer_ctx)
       if err1 then
         print("Could not execute java/generateConstructors: " .. err1.message)
       elseif edit then
-        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
+        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
       end
     end)
   end)
@@ -189,7 +191,7 @@ local function java_generate_delegate_methods_prompt(_, outer_ctx)
       if err1 then
         print('Could not execute java/generateDelegateMethods', err1.message)
       elseif workspace_edit then
-        vim.lsp.util.apply_workspace_edit(workspace_edit, 'utf-16')
+        vim.lsp.util.apply_workspace_edit(workspace_edit, offset_encoding)
       end
     end)
   end)
@@ -211,7 +213,7 @@ local function java_hash_code_equals_prompt(_, outer_ctx)
         print("Could not execute java/generateHashCodeEquals: " .. e.message)
       end
       if edit then
-        vim.lsp.util.apply_workspace_edit(edit, 'utf-16')
+        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
       end
     end)
   end)
@@ -228,7 +230,7 @@ local function handle_refactor_workspace_edit(err, result, ctx)
   end
 
   if result.edit then
-    vim.lsp.util.apply_workspace_edit(result.edit, 'utf-16')
+    vim.lsp.util.apply_workspace_edit(result.edit, offset_encoding)
   end
 
   if result.command then
@@ -509,7 +511,7 @@ local function java_action_organize_imports(_, ctx)
       return
     end
     if resp then
-      vim.lsp.util.apply_workspace_edit(resp, 'utf-16')
+      vim.lsp.util.apply_workspace_edit(resp, offset_encoding)
     end
   end)
 end
@@ -584,7 +586,7 @@ local function java_override_methods(_, context)
         print("Error getting workspace edits: " .. e2.message)
         return
       end
-      vim.lsp.util.apply_workspace_edit(result2, 'utf-16')
+      vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
     end)
   end)
 end
@@ -803,6 +805,24 @@ end
 M.extract_constant = mk_extract('extractConstant')
 M.extract_variable = mk_extract('extractVariable')
 M.extract_method = mk_extract('extractMethod')
+
+
+--- Jump to the super implementation of the method under the cursor
+function M.super_implementation()
+  local params = {
+    type = 'superImplementation',
+    position = vim.lsp.util.make_position_params(0, offset_encoding),
+  }
+  request(0, 'java/findLinks', params, function(err, result)
+    assert(not err, vim.inspect(err))
+    if result and #result == 1 then
+      vim.lsp.util.jump_to_location(result[1], offset_encoding, true)
+    else
+      assert(result == nil or #result == 0, 'Expected one or zero results for `findLinks`')
+      vim.notify('No result found')
+    end
+  end)
+end
 
 
 --- Run the `javap` tool in a terminal buffer.

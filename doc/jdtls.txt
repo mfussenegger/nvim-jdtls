@@ -29,7 +29,6 @@ M.build_projects({opts})                                  *jdtls.build_projects*
 
 JdtBuildProjectOpts                                        *JdtBuildProjectOpts*
 
-
     Fields: ~
         {select_mode}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
         {full_build}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
@@ -52,16 +51,18 @@ M.update_projects_config({opts})                  *jdtls.update_projects_config*
 
 JdtUpdateProjectsOpts                                    *JdtUpdateProjectsOpts*
 
-
     Fields: ~
         {select_mode}  (JdtProjectSelectMode|nil)  show prompt to select projects or select all. Defaults to "prompt"
 
 
 JdtProjectSelectMode                                      *JdtProjectSelectMode*
 
-
     Type: ~
         "all"|"prompt"|nil
+
+
+M.super_implementation()                            *jdtls.super_implementation*
+     Jump to the super implementation of the method under the cursor
 
 
 M.javap()                                                          *jdtls.javap*
@@ -151,7 +152,6 @@ M.fetch_main_configs({opts}, {callback})          *jdtls.dap.fetch_main_configs*
 
 JdtMainConfigOpts                                            *JdtMainConfigOpts*
 
-
     Fields: ~
         {config_overrides}  (nil|JdtDapConfig)  Overrides for the |dap-configuration|, see |JdtDapConfig|
 
@@ -164,10 +164,6 @@ M.setup_dap_main_class_configs({opts})  *jdtls.dap.setup_dap_main_class_configs*
 
 
 JdtSetupMainConfigOpts                                  *JdtSetupMainConfigOpts*
-    : JdtMainConfigOpts
-
-    Fields: ~
-        {verbose}  (nil|boolean)  Print notifications on start and once finished. Default is false.
 
 
 M.setup_dap({opts})                                        *jdtls.dap.setup_dap*
@@ -179,14 +175,12 @@ M.setup_dap({opts})                                        *jdtls.dap.setup_dap*
 
 JdtSetupDapOpts                                                *JdtSetupDapOpts*
 
-
     Fields: ~
         {config_overrides}  (JdtDapConfig)  These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
         {hotcodereplace}    (nil|"auto")
 
 
 JdtDapConfig                                                      *JdtDapConfig*
-
 
     Fields: ~
         {cwd}      (string|nil)   working directory for the test
@@ -195,7 +189,6 @@ JdtDapConfig                                                      *JdtDapConfig*
 
 
 JdtTestOpts                                                        *JdtTestOpts*
-
 
     Fields: ~
         {config}            (nil|table)         Skeleton used for the |dap-configuration|
