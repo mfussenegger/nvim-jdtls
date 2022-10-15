@@ -38,7 +38,7 @@ end
 
 local request = function(bufnr, method, params, handler)
   local client = nil
-  for _, c in pairs(vim.lsp.get_active_clients()) do
+  for _, c in pairs(vim.lsp.get_active_clients({ bufnr = bufnr })) do
     if c.name == 'jdtls' then
       client = c
       break
