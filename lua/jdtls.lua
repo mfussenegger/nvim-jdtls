@@ -658,7 +658,7 @@ function M._complete_compile()
   return 'full\nincremental'
 end
 
-local function on_build_result(err, result)
+local function on_build_result(err, result, ctx)
   local CompileWorkspaceStatus = {
     FAILED = 0,
     SUCCEED = 1,
@@ -673,7 +673,8 @@ local function on_build_result(err, result)
     vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
     local project_config_errors = {}
     local compile_errors = {}
-    for _, d in pairs(vim.diagnostic.get(nil)) do
+    local ns = vim.lsp.diagnostic.get_namespace(ctx.client_id)
+    for _, d in pairs(vim.diagnostic.get(nil, { namespace = ns })) do
       local fname = api.nvim_buf_get_name(d.bufnr)
       local stat = vim.loop.fs_stat(fname)
       local items
