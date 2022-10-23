@@ -41,16 +41,44 @@ see some of the functionality in action.
 
 ## Plugin Installation
 
-- Requires Neovim (>= 0.6.0)
+- Requires Neovim (Latest stable (recommended) or nightly)
 - nvim-jdtls is a plugin. Install it like any other Vim plugin:
-  - If using [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
-  - If using [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
+  - `git clone https://github.com/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
+  - Or with [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
+  - Or with [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
 
 ## Language Server Installation
 
 Install [eclipse.jdt.ls][3] by following their [Installation instructions](https://github.com/eclipse/eclipse.jdt.ls#installation).
 
-## Configuration
+
+## Configuration (quickstart)
+
+Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directory`):
+
+```lua
+local config = {
+    cmd = {'/path/to/jdt-language-server/bin/jdtls'},
+    root_dir = vim.fs.dirname(vim.fs.find({'.gradlew', '.git', 'mvnw'}, { upward = true })[1]),
+}
+require('jdtls').start_or_attach(config)
+```
+
+**Important**:
+
+- eclipse.jdt.ls requires Java 17
+- You'll have to teach eclipse.jdt.ls about your JDK installations by setting
+  up `runtimes` if your projects use a different Java version than the one
+  you're using for eclipse.jdt.ls itself. See `Java XY language features are
+  not available` in the troubleshooting section further below to learn how to
+  do that.
+
+This should get you started, but will create temporary eclipse data folders
+when you open a project. Please read the `Configuration (verbose)` section if
+you want more control over the configuration or want to understand how things
+work.
+
+## Configuration (verbose)
 
 To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
 Neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
@@ -282,7 +310,7 @@ require'jdtls'.test_nearest_method()
 - Clone [java-debug][6]
 - Navigate into the cloned repository (`cd java-debug`)
 - Run `./mvnw clean install`
-- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration)) as follows:
+- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration-verbose)) as follows:
 
 
 ```lua
@@ -298,7 +326,7 @@ config['init_options'] = {
 You also need to call `require('jdtls').setup_dap()` to have it register a
 `java` adapter.
 
-To do that, extend the [configuration](#Configuration):
+To do that, extend the [configuration](#Configuration-verbose):
 
 ```lua
 config['on_attach'] = function(client, bufnr)
