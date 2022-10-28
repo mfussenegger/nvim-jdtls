@@ -316,7 +316,7 @@ require'jdtls'.test_nearest_method()
 ```lua
 config['init_options'] = {
   bundles = {
-    vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar")
+    vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1)
   };
 }
 ```
@@ -363,11 +363,11 @@ To be able to debug junit tests, it is necessary to install the bundles from [vs
 
 -- This bundles definition is the same as in the previous section (java-debug installation)
 local bundles = {
-  vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar"),
+  vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1),
 };
 
 -- This is the new part
-vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar"), "\n"))
+vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar", 1), "\n"))
 config['init_options'] = {
   bundles = bundles;
 }
