@@ -111,7 +111,9 @@ end
 
 
 local function java_generate_constructors_prompt(_, outer_ctx)
-  request(0, 'java/checkConstructorsStatus', outer_ctx.params, function(err0, status, ctx)
+  local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
+  coroutine.wrap(function()
+    local err0, status = request(bufnr, 'java/checkConstructorsStatus', outer_ctx.params)
     if err0 then
       print("Could not execute java/checkConstructorsStatus: " .. err0.message)
       return
@@ -146,14 +148,13 @@ local function java_generate_constructors_prompt(_, outer_ctx)
       constructors = constructors,
       fields = fields
     }
-    request(ctx.bufnr, 'java/generateConstructors', params, function(err1, edit)
-      if err1 then
-        print("Could not execute java/generateConstructors: " .. err1.message)
-      elseif edit then
-        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
-      end
-    end)
-  end)
+    local err1, edit = request(bufnr, 'java/generateConstructors', params)
+    if err1 then
+      print("Could not execute java/generateConstructors: " .. err1.message)
+    elseif edit then
+      vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
+    end
+  end)()
 end
 
 
