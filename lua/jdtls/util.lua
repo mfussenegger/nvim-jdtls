@@ -29,13 +29,19 @@ function M.execute_command(command, callback, bufnr)
       vim.log.levels.WARN)
   end
 
-  clients[1].request('workspace/executeCommand', command, function(err, resp)
-    if callback then
-      callback(err, resp)
-    elseif err then
-      print("Could not execute code action: " .. err.message)
+  local co
+  if not callback then
+    co = coroutine.running()
+    if co then
+      callback = function(err, resp)
+        coroutine.resume(co, err, resp)
+      end
     end
-  end)
+  end
+  clients[1].request('workspace/executeCommand', command, callback)
+  if co then
+    return coroutine.yield()
+  end
 end
 
 
