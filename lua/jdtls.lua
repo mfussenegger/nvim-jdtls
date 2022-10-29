@@ -578,10 +578,17 @@ local function java_choose_imports(resp)
   return choices
 end
 
+
 local function java_override_methods(_, context)
-  request(context.bufnr, 'java/listOverridableMethods', context.params, function(e1, result1)
-    if e1 then
-      print("Error getting overridable methods: " .. e1.message)
+  local bufnr = assert(context.bufnr, '`context` must have bufnr property')
+  coroutine.wrap(function()
+    local err1, result1 = request(bufnr, 'java/listOverridableMethods', context.params)
+    if err1 then
+      vim.notify("Error getting overridable methods: " .. err1.message, vim.log.levels.WARN)
+      return
+    end
+    if not result1 or not result1.methods then
+      vim.notify("No methods to override", vim.log.levels.INFO)
       return
     end
 
@@ -599,14 +606,13 @@ local function java_override_methods(_, context)
       context = context.params,
       overridableMethods = selected
     }
-    request(context.bufnr, 'java/addOverridableMethods', params, function(e2, result2)
-      if e2 ~= nil then
-        print("Error getting workspace edits: " .. e2.message)
-        return
-      end
-      vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
-    end)
-  end)
+    local err2, result2 = request(context.bufnr, 'java/addOverridableMethods', params)
+    if err2 ~= nil then
+      print("Error getting workspace edits: " .. err2.message)
+      return
+    end
+    vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
+  end)()
 end
 
 
