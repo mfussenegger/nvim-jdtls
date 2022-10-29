@@ -214,24 +214,27 @@ end
 
 
 local function java_hash_code_equals_prompt(_, outer_ctx)
+  local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
   local params = outer_ctx.params
-  request(0, 'java/checkHashCodeEqualsStatus', params, function(_, result, ctx)
-    if not result or not result.fields or #result.fields == 0 then
-      print(string.format("The operation is not applicable to the type %", result.type))
+  coroutine.wrap(function()
+    local _, result = request(bufnr, 'java/checkHashCodeEqualsStatus', params)
+    if not result then
+      vim.notify("No result", vim.log.levels.INFO)
+      return
+    elseif not result.fields or #result.fields == 0 then
+      vim.notify(string.format("The operation is not applicable to the type %", result.type), vim.log.levels.WARN)
       return
     end
     local fields = ui.pick_many(result.fields, 'Include item in equals/hashCode?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    request(ctx.bufnr, 'java/generateHashCodeEquals', { context = params; fields = fields; }, function(e, edit)
-      if e then
-        print("Could not execute java/generateHashCodeEquals: " .. e.message)
-      end
-      if edit then
-        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
-      end
-    end)
-  end)
+    local err, edit = request(bufnr, 'java/generateHashCodeEquals', { context = params; fields = fields; })
+    if err then
+      print("Could not execute java/generateHashCodeEquals: " .. err.message)
+    elseif edit then
+      vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
+    end
+  end)()
 end
 
 
