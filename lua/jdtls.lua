@@ -737,31 +737,31 @@ end
 
 
 ---@param mode nil|"prompt"|"all"
-local function pick_projects(mode, on_projects)
+local function pick_projects(mode)
   local command = {
     command = 'java.project.getAll',
   }
   local bufnr = api.nvim_get_current_buf()
-  util.execute_command(command, function(err, projects)
-    if err then
-      error(err.message or vim.inspect(err))
-    end
-    local selection
-    if mode == "all" then
-      selection = projects
-    elseif #projects == 1 then
-      selection = projects
-    else
-      selection = ui.pick_many(
-        projects,
-        'Projects> ',
-        function(project)
-          return vim.fn.fnamemodify(project, ':.:t')
-        end
-      )
-    end
-    on_projects(selection)
-  end, bufnr)
+  assert(coroutine.running(), '`pick_projects` must be called within coroutine')
+  local err, projects = util.execute_command(command, nil, bufnr)
+  if err then
+    error(err.message or vim.inspect(err))
+  end
+  local selection
+  if mode == "all" then
+    selection = projects
+  elseif #projects == 1 then
+    selection = projects
+  else
+    selection = ui.pick_many(
+      projects,
+      'Projects> ',
+      function(project)
+        return project
+      end
+    )
+  end
+  return selection
 end
 
 
@@ -771,7 +771,8 @@ end
 function M.build_projects(opts)
   opts = opts or {}
   local bufnr = api.nvim_get_current_buf()
-  pick_projects(opts.select_mode or "prompt", function(selection)
+  coroutine.wrap(function()
+    local selection = pick_projects(opts.select_mode or "prompt")
     if selection and next(selection) then
       local params = {
         identifiers = vim.tbl_map(function(project) return { uri = project } end, selection),
@@ -779,8 +780,9 @@ function M.build_projects(opts)
       }
       request(bufnr, 'java/buildProjects', params, on_build_result)
     end
-  end)
+  end)()
 end
+
 ---@class JdtBuildProjectOpts
 ---@field select_mode JdtProjectSelectMode Show prompt to select projects or select all. Defaults to "prompt"
 ---@field full_build boolean full rebuild or incremental build. Defaults to true (full build)
@@ -793,7 +795,6 @@ function M.update_project_config()
   request(0, 'java/projectConfigurationUpdate', params, function(err)
     if err then
       print('Could not update project configuration: ' .. err.message)
-      return
     end
   end)
 end
@@ -804,15 +805,16 @@ end
 ---@param opts JdtUpdateProjectsOpts|nil configuration options
 function M.update_projects_config(opts)
   opts = opts or {}
-  local bufnr = api.nvim_get_current_buf()
-  pick_projects(opts.select_mode or "prompt", function(selection)
+  coroutine.wrap(function()
+    local bufnr = api.nvim_get_current_buf()
+    local selection = pick_projects(opts.select_mode or "prompt")
     if selection and next(selection) then
       local params = {
         identifiers = vim.tbl_map(function(project) return { uri = project } end, selection)
       }
       vim.lsp.buf_notify(bufnr, 'java/projectConfigurationsUpdate', params)
     end
-  end)
+  end)()
 end
 ---@class JdtUpdateProjectsOpts
 ---@field select_mode JdtProjectSelectMode|nil show prompt to select projects or select all. Defaults to "prompt"
