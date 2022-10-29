@@ -46,8 +46,20 @@ local request = function(bufnr, method, params, handler)
   end
   if not client then
     vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
-  else
-    client.request(method, params, handler, bufnr)
+    return
+  end
+  local co
+  if not handler then
+    co = coroutine.running()
+    if co then
+      handler = function(err, result, ctx)
+        coroutine.resume(co, err, result, ctx)
+      end
+    end
+  end
+  client.request(method, params, handler, bufnr)
+  if co then
+    return coroutine.yield()
   end
 end
 
@@ -65,12 +77,16 @@ end
 
 local function java_generate_to_string_prompt(_, outer_ctx)
   local params = outer_ctx.params
-  request(0, 'java/checkToStringStatus', params, function(err, result, ctx)
+  local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
+  coroutine.wrap(function()
+    local err, result = request(bufnr, 'java/checkToStringStatus', params)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
       return
     end
-    if not result then return end
+    if not result then
+      return
+    end
     if result.exists then
       local choice = vim.fn.inputlist({
         string.format("Method 'toString()' already exists in '%s'. Do you want to replace it?", result.type),
@@ -84,16 +100,13 @@ local function java_generate_to_string_prompt(_, outer_ctx)
     local fields = ui.pick_many(result.fields, 'Include item in toString?', function(x)
       return string.format('%s: %s', x.name, x.type)
     end)
-    request(ctx.bufnr, 'java/generateToString', { context = params; fields = fields; }, function(e, edit)
-      if e then
-        print("Could not execute java/generateToString: " .. e.message)
-        return
-      end
-      if edit then
-        vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
-      end
-    end)
-  end)
+    local e, edit = request(bufnr, 'java/generateToString', { context = params; fields = fields; })
+    if e then
+      print("Could not execute java/generateToString: " .. e.message)
+    elseif edit then
+      vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
+    end
+  end)()
 end
 
 
