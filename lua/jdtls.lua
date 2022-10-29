@@ -159,7 +159,9 @@ end
 
 
 local function java_generate_delegate_methods_prompt(_, outer_ctx)
-  request(0, 'java/checkDelegateMethodsStatus', outer_ctx.params, function(err0, status, ctx)
+  local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
+  coroutine.wrap(function()
+    local err0, status = request(bufnr, 'java/checkDelegateMethodsStatus', outer_ctx.params)
     if err0 then
       print('Could not execute java/checkDelegateMethodsStatus: ', err0.message)
       return
@@ -201,14 +203,13 @@ local function java_generate_delegate_methods_prompt(_, outer_ctx)
         methods
       ),
     }
-    request(ctx.bufnr, 'java/generateDelegateMethods', params, function(err1, workspace_edit)
-      if err1 then
-        print('Could not execute java/generateDelegateMethods', err1.message)
-      elseif workspace_edit then
-        vim.lsp.util.apply_workspace_edit(workspace_edit, offset_encoding)
-      end
-    end)
-  end)
+    local err1, workspace_edit = request(bufnr, 'java/generateDelegateMethods', params)
+    if err1 then
+      print('Could not execute java/generateDelegateMethods', err1.message)
+    elseif workspace_edit then
+      vim.lsp.util.apply_workspace_edit(workspace_edit, offset_encoding)
+    end
+  end)()
 end
 
 
