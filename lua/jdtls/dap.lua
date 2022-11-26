@@ -534,9 +534,6 @@ end
 
 
 
-local orig_configurations
-
-
 --- Discover main classes in the project and setup |dap-configuration| entries for Java for them.
 ---@param opts nil|JdtSetupMainConfigOpts See |JdtSetupMainConfigOpts|
 function M.setup_dap_main_class_configs(opts)
@@ -546,21 +543,23 @@ function M.setup_dap_main_class_configs(opts)
     print('nvim-dap is not available')
     return
   end
-  if not orig_configurations then
-    orig_configurations = vim.deepcopy(dap.configurations.java) or {}
-  end
-  local current_configurations = {}
-  for _, config in pairs(orig_configurations) do
-    table.insert(current_configurations, config)
-  end
   if opts.verbose then
     vim.notify('Fetching debug configurations')
   end
   M.fetch_main_configs(opts, function(configurations)
-    for _, config in pairs(configurations) do
-      table.insert(current_configurations, config)
+    local configs = {}
+    for _, config in ipairs(configurations) do
+        configs[config.name] = config
     end
-    dap.configurations.java = current_configurations
+    local java_configs = vim.tbl_filter(function(config)
+      -- filter out existing configs which we are about to update
+      return not configs[config.name]
+    end, dap.configurations.java or {})
+    -- add new and updated configurations
+    for _, config in pairs(configs) do
+        table.insert(java_configs, config)
+    end
+    dap.configurations.java = java_configs
     if opts.verbose then
       vim.notify(string.format('Updated %s debug configuration(s)', #configurations))
     end
