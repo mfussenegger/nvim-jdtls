@@ -4,7 +4,6 @@ local uv = vim.loop
 local path = require('jdtls.path')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
-local data_dir = nil
 
 
 local status_callback = function(_, result)
@@ -192,14 +191,20 @@ local function maybe_implicit_save()
 end
 
 
-local function extract_data_dir(cmd)
-  for i, part in pairs(cmd) do
-    -- jdtls helper script uses `--data`, java jar command uses `-data`.
-    if part == '-data' or part == '--data' then
-      data_dir = cmd[i + 1]
-      return data_dir
+local function extract_data_dir(bufnr)
+  local client = vim.tbl_filter(function(client)
+    return client.name == 'jdtls'
+  end, vim.lsp.buf_get_clients(bufnr))[1]
+
+  if client and client.config and client.config.cmd then
+    for i, part in pairs(client.config.cmd) do
+      -- jdtls helper script uses `--data`, java jar command uses `-data`.
+      if part == '-data' or part == '--data' then
+        return client.config.cmd[i + 1]
+      end
     end
   end
+
   return nil
 end
 
@@ -216,7 +221,6 @@ function M.start_or_attach(config)
     'LSP cmd must be an executable: ' .. config.cmd[1]
   )
   config.name = 'jdtls'
-  data_dir = extract_data_dir(config.cmd)
 
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
@@ -271,6 +275,7 @@ end
 
 
 function M.wipe_data_and_restart()
+  local data_dir = extract_data_dir(vim.api.nvim_get_current_buf())
   if not data_dir then
     vim.notify(
       "Data directory wasn't detected. " ..
@@ -329,6 +334,7 @@ end
 
 
 function M.show_logs()
+  local data_dir = extract_data_dir(vim.api.nvim_get_current_buf())
   if data_dir then
     vim.cmd('split | e ' .. data_dir .. '/.metadata/.log | normal G')
   end
