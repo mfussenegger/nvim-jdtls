@@ -73,7 +73,14 @@ local function enrich_dap_config(config_, on_config)
 end
 
 
-local function start_debug_adapter(callback)
+local function start_debug_adapter(callback, config)
+  -- User could trigger debug session for another project, open in another buffer
+  local jdtls = vim.tbl_filter(function(client)
+    return client.name == 'jdtls'
+      and client.config
+      and client.config.root_dir == config.cwd
+  end, vim.lsp.get_active_clients())[1]
+  local bufnr = vim.lsp.get_buffers_by_client_id(jdtls and jdtls.id)[1] or vim.api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
 
@@ -83,7 +90,7 @@ local function start_debug_adapter(callback)
       port = port;
       enrich_config = enrich_dap_config;
     })
-  end)
+  end, bufnr)
 end
 
 
@@ -486,6 +493,10 @@ function M.fetch_main_configs(opts, callback)
   end
   local configurations = {}
   local bufnr = api.nvim_get_current_buf()
+  local jdtls = vim.tbl_filter(function(client)
+    return client.name == 'jdtls'
+  end, vim.lsp.buf_get_clients(bufnr))[1]
+  local root_dir = jdtls and jdtls.config and jdtls.config.root_dir
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, vim.inspect(err))
 
@@ -506,6 +517,7 @@ function M.fetch_main_configs(opts, callback)
               return
             end
             local config = {
+              cwd = root_dir;
               type = 'java';
               name = 'Launch ' .. (project or '') .. ': ' .. mainclass;
               projectName = project;
@@ -549,11 +561,11 @@ function M.setup_dap_main_class_configs(opts)
   M.fetch_main_configs(opts, function(configurations)
     local configs = {}
     for _, config in ipairs(configurations) do
-        configs[config.name] = config
+        configs[config.cwd..config.name] = config
     end
     local java_configs = vim.tbl_filter(function(config)
       -- filter out existing configs which we are about to update
-      return not configs[config.name]
+      return not configs[config.cwd..config.name]
     end, dap.configurations.java or {})
     -- add new and updated configurations
     for _, config in pairs(configs) do
