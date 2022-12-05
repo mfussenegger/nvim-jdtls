@@ -559,19 +559,16 @@ function M.setup_dap_main_class_configs(opts)
     vim.notify('Fetching debug configurations')
   end
   M.fetch_main_configs(opts, function(configurations)
-    local configs = {}
+    local dap_configurations = dap.configurations.java or {}
     for _, config in ipairs(configurations) do
-        configs[config.cwd..config.name] = config
+      for i, existing_config in pairs(dap_configurations) do
+        if config.name == existing_config.name and config.cwd == existing_config.cwd then
+          table.remove(dap_configurations, i)
+        end
+      end
+      table.insert(dap_configurations, config)
     end
-    local java_configs = vim.tbl_filter(function(config)
-      -- filter out existing configs which we are about to update
-      return not configs[config.cwd..config.name]
-    end, dap.configurations.java or {})
-    -- add new and updated configurations
-    for _, config in pairs(configs) do
-        table.insert(java_configs, config)
-    end
-    dap.configurations.java = java_configs
+    dap.configurations.java = dap_configurations
     if opts.verbose then
       vim.notify(string.format('Updated %s debug configuration(s)', #configurations))
     end
