@@ -964,7 +964,7 @@ function M.open_jdt_link(uri)
       buf_content = {
         'Received response from server, but it was empty. Check the log file for errors', log_path}
     else
-      buf_content = vim.split(response[2], '\n', true)
+      buf_content = vim.split(response[2], '\n', { plain = true })
     end
   else
     local error_msg
@@ -988,10 +988,12 @@ function M.open_jdt_link(uri)
     vim.list_extend(buf_content, vim.split(vim.inspect(error_msg), '\n'))
     vim.list_extend(buf_content, {'', 'Check the log file for errors', log_path})
   end
-  api.nvim_buf_set_option(buf, 'modifiable', true)
+  vim.bo[buf].modifiable = true
+  vim.bo[buf].swapfile = false
+  vim.bo[buf].buftype = 'nofile'
   api.nvim_buf_set_lines(buf, 0, -1, false, buf_content)
-  api.nvim_buf_set_option(0, 'filetype', 'java')
-  api.nvim_buf_set_option(buf, 'modifiable', false)
+  vim.bo[buf].filetype = 'java'
+  vim.bo[buf].modifiable = false
 end
 
 
