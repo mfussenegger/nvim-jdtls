@@ -1,8 +1,10 @@
 ignore = {
   "631",    -- max_line_length
 }
+globals = {
+  "vim"
+}
 read_globals = {
-  "vim",
   "describe",
   "it",
   "assert",
