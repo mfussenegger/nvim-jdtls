@@ -323,6 +323,7 @@ local function make_config(lens, launch_args, config_overrides)
 end
 
 
+---@return JdtDapContext
 local function make_context()
   local bufnr = api.nvim_get_current_buf()
   return {
@@ -413,7 +414,7 @@ M.experimental = {
 --- @param opts JdtTestOpts|nil
 function M.test_class(opts)
   opts = opts or {}
-  local context = make_context()
+  local context = opts.context or make_context()
   fetch_candidates(context, function(lenses)
     local lens = get_first_class_lens(lenses)
     if not lens then
@@ -432,8 +433,8 @@ end
 --- @param opts nil|JdtTestOpts
 function M.test_nearest_method(opts)
   opts = opts or {}
-  local lnum = api.nvim_win_get_cursor(0)[1]
-  local context = make_context()
+  local context = opts.context or make_context()
+  local lnum = api.nvim_win_get_cursor(context.win)[1]
   fetch_candidates(context, function(lenses)
     local lens = get_method_lens_above_cursor(lenses, lnum)
     if not lens then
@@ -452,7 +453,7 @@ end
 ---@param opts nil|JdtTestOpts
 function M.pick_test(opts)
   opts = opts or {}
-  local context = make_context()
+  local context = opts.context or make_context()
   fetch_candidates(context, function(lenses)
     require('jdtls.ui').pick_one_async(
       lenses,
@@ -611,6 +612,10 @@ end
 ---@field config_overrides JdtDapConfig These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
 ---@field hotcodereplace? string "auto"
 
+---@class JdtDapContext
+---@field bufnr number
+---@field win number
+---@field uri string uri equal to vim.uri_from_bufnr(bufnr)
 
 ---@class JdtDapConfig
 ---@field cwd string|nil working directory for the test
@@ -622,5 +627,6 @@ end
 ---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
 ---@field until_error number|nil Number of times the test should be repeated if it doesn't fail
 ---@field after_test nil|function Callback triggered after test run
+---@field context JdtDapContext|nil context with bufnr/win in which the test is triggered
 
 return M
