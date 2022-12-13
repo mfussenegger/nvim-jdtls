@@ -323,12 +323,12 @@ local function make_config(lens, launch_args, config_overrides)
 end
 
 
+---@param bufnr? number
 ---@return JdtDapContext
-local function make_context()
-  local bufnr = api.nvim_get_current_buf()
+local function make_context(bufnr)
+  bufnr = (bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr
   return {
     bufnr = bufnr,
-    win = api.nvim_get_current_win(),
     uri = vim.uri_from_bufnr(bufnr)
   }
 end
@@ -414,7 +414,7 @@ M.experimental = {
 --- @param opts JdtTestOpts|nil
 function M.test_class(opts)
   opts = opts or {}
-  local context = opts.context or make_context()
+  local context = make_context(opts.bufnr)
   fetch_candidates(context, function(lenses)
     local lens = get_first_class_lens(lenses)
     if not lens then
@@ -433,8 +433,8 @@ end
 --- @param opts nil|JdtTestOpts
 function M.test_nearest_method(opts)
   opts = opts or {}
-  local context = opts.context or make_context()
-  local lnum = api.nvim_win_get_cursor(context.win)[1]
+  local context = make_context(opts.bufnr)
+  local lnum = opts.lnum or api.nvim_win_get_cursor(0)[1]
   fetch_candidates(context, function(lenses)
     local lens = get_method_lens_above_cursor(lenses, lnum)
     if not lens then
@@ -453,7 +453,7 @@ end
 ---@param opts nil|JdtTestOpts
 function M.pick_test(opts)
   opts = opts or {}
-  local context = opts.context or make_context()
+  local context = make_context(opts.bufnr)
   fetch_candidates(context, function(lenses)
     require('jdtls.ui').pick_one_async(
       lenses,
@@ -627,6 +627,7 @@ end
 ---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
 ---@field until_error number|nil Number of times the test should be repeated if it doesn't fail
 ---@field after_test nil|function Callback triggered after test run
----@field context JdtDapContext|nil context with bufnr/win in which the test is triggered
+---@field bufnr? number Buffer that contains the test
+---@field lnum? number 1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window.
 
 return M
