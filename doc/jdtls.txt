@@ -202,11 +202,12 @@ JdtDapConfig                                                      *JdtDapConfig*
 JdtTestOpts                                                        *JdtTestOpts*
 
     Fields: ~
-        {config}            (nil|table)          Skeleton used for the |dap-configuration|
-        {config_overrides}  (nil|JdtDapConfig)   Overrides for the |dap-configuration|, see |JdtDapConfig|
-        {until_error}       (number|nil)         Number of times the test should be repeated if it doesn't fail
-        {after_test}        (nil|function)       Callback triggered after test run
-        {context}           (JdtDapContext|nil)  context with bufnr/win in which the test is triggered
+        {config}            (nil|table)         Skeleton used for the |dap-configuration|
+        {config_overrides}  (nil|JdtDapConfig)  Overrides for the |dap-configuration|, see |JdtDapConfig|
+        {until_error}       (number|nil)        Number of times the test should be repeated if it doesn't fail
+        {after_test}        (nil|function)      Callback triggered after test run
+        {bufnr?}            (number)            Buffer that contains the test
+        {lnum?}             (number)            1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window.
 
 
 vim:tw=78:ts=8:noet:ft=help:norl:
