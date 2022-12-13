@@ -727,10 +727,11 @@ local function on_build_result(err, result, ctx)
 end
 
 
---- Compile/build the Java workspace.
+--- Compile the Java workspace
 --- If there are compile errors they'll be shown in the quickfix list.
----
----@param type nil|"full"|"incremental"
+---@param type string|nil
+---|"full"
+---|"incremental"
 function M.compile(type)
   request(0, 'java/buildWorkspace', type == 'full', on_build_result)
 end
@@ -784,8 +785,8 @@ function M.build_projects(opts)
 end
 
 ---@class JdtBuildProjectOpts
----@field select_mode JdtProjectSelectMode Show prompt to select projects or select all. Defaults to "prompt"
----@field full_build boolean full rebuild or incremental build. Defaults to true (full build)
+---@field select_mode? JdtProjectSelectMode Show prompt to select projects or select all. Defaults to "prompt"
+---@field full_build? boolean full rebuild or incremental build. Defaults to true (full build)
 
 --- Update the project configuration (from Gradle or Maven).
 --- In a multi-module project this will only update the configuration of the
@@ -816,11 +817,13 @@ function M.update_projects_config(opts)
     end
   end)()
 end
----@class JdtUpdateProjectsOpts
----@field select_mode JdtProjectSelectMode|nil show prompt to select projects or select all. Defaults to "prompt"
 
----@alias JdtProjectSelectMode "all"|"prompt"|nil
---
+---@class JdtUpdateProjectsOpts
+---@field select_mode? JdtProjectSelectMode show prompt to select projects or select all. Defaults to "prompt"
+
+---@alias JdtProjectSelectMode string
+---|"all"
+---|"prompt"
 
 local function mk_extract(entity)
   return function(from_selection)
@@ -905,8 +908,12 @@ end
 --- ```
 --- lua require('jdtls').jol(nil, "java.util.ImmutableCollections$List12")
 --- ```
----@param mode nil|"estimates"|"footprint"|"externals"|"internals"
----@param classname string|nil fully qualified class name. Defaults to the current class.
+---@param mode? string
+---|"estimates"
+---|"footprint"
+---|"externals"
+---|"internals"
+---@param classname? string fully qualified class name. Defaults to the current class.
 function M.jol(mode, classname)
   mode = mode or 'estimates'
   local jol = assert(M.jol_path, [[Path to jol must be set using `lua require('jdtls').jol_path = 'path/to/jol.jar'`]])

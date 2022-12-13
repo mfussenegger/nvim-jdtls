@@ -11,12 +11,12 @@ M.organize_imports()                                    *jdtls.organize_imports*
 
 
 M.compile({type})                                                *jdtls.compile*
-     Compile/build the Java workspace.
+     Compile the Java workspace
      If there are compile errors they'll be shown in the quickfix list.
 
-
     Parameters: ~
-        {type}  (nil|"full"|"incremental")
+        {type}  (string|nil)  |"full"
+                              |"incremental"
 
 
 M.build_projects({opts})                                  *jdtls.build_projects*
@@ -30,8 +30,8 @@ M.build_projects({opts})                                  *jdtls.build_projects*
 JdtBuildProjectOpts                                        *JdtBuildProjectOpts*
 
     Fields: ~
-        {select_mode}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
-        {full_build}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
+        {select_mode?}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
+        {full_build?}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
 
 
 M.update_project_config()                          *jdtls.update_project_config*
@@ -52,13 +52,13 @@ M.update_projects_config({opts})                  *jdtls.update_projects_config*
 JdtUpdateProjectsOpts                                    *JdtUpdateProjectsOpts*
 
     Fields: ~
-        {select_mode}  (JdtProjectSelectMode|nil)  show prompt to select projects or select all. Defaults to "prompt"
+        {select_mode?}  (JdtProjectSelectMode)  show prompt to select projects or select all. Defaults to "prompt"
 
 
 JdtProjectSelectMode                                      *JdtProjectSelectMode*
 
     Type: ~
-        "all"|"prompt"|nil
+        string
 
 
 M.super_implementation()                            *jdtls.super_implementation*
@@ -75,7 +75,7 @@ M.jshell()                                                        *jdtls.jshell*
      Sets the classpath based on the current project.
 
 
-M.jol({mode}, {classname})                                           *jdtls.jol*
+M.jol({mode?}, {classname?})                                         *jdtls.jol*
      Run the `jol` tool in a terminal buffer to print the class layout
      You must configure `jol_path` to point to the `jol` jar file:
 
@@ -97,8 +97,11 @@ M.jol({mode}, {classname})                                           *jdtls.jol*
      ```
 
     Parameters: ~
-        {mode}       (nil|"estimates"|"footprint"|"externals"|"internals")
-        {classname}  (string|nil)                                           fully qualified class name. Defaults to the current class.
+        {mode?}       (string)  |"estimates"
+                                |"footprint"
+                                |"externals"
+                                |"internals"
+        {classname?}  (string)  fully qualified class name. Defaults to the current class.
 
 
 M.open_jdt_link()                                          *jdtls.open_jdt_link*
@@ -146,8 +149,8 @@ M.fetch_main_configs({opts}, {callback})          *jdtls.dap.fetch_main_configs*
      Discover executable main functions in the project
 
     Parameters: ~
-        {opts}      (nil|JdtMainConfigOpts)  See |JdtMainConfigOpts|
-        {callback}  (fun(configurations:)    table[])
+        {opts}      (nil|JdtMainConfigOpts)        See |JdtMainConfigOpts|
+        {callback}  (fun(configurations:table[]))
 
 
 JdtMainConfigOpts                                            *JdtMainConfigOpts*
@@ -177,7 +180,7 @@ JdtSetupDapOpts                                                *JdtSetupDapOpts*
 
     Fields: ~
         {config_overrides}  (JdtDapConfig)  These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
-        {hotcodereplace}    (nil|"auto")
+        {hotcodereplace?}   (string)        "auto"
 
 
 JdtDapConfig                                                      *JdtDapConfig*

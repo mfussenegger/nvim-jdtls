@@ -609,7 +609,7 @@ function M.setup_dap(opts)
 end
 ---@class JdtSetupDapOpts
 ---@field config_overrides JdtDapConfig These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
----@field hotcodereplace nil|"auto"
+---@field hotcodereplace? string "auto"
 
 
 ---@class JdtDapConfig
