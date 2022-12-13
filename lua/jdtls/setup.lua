@@ -62,28 +62,6 @@ end
 M.restart = lsp_clients.restart
 
 
-local function progress_report(_, result, ctx)
-  local client = lsp.get_client_by_id(ctx.client_id)
-  if not client then
-    return
-  end
-
-  -- Messages are only cleared on consumption, so protect against messages
-  -- filling up infinitely if user doesn't consume them by discarding new ones.
-  -- Ring buffer would be nicer, but messages.progress is a dict
-  if vim.tbl_count(client.messages.progress) > 100 then
-    return
-  end
-  client.messages.progress[result.id or 'DUMMY'] = {
-    title = result.task,
-    message = result.subTask,
-    percentage = (result.workDone / result.totalWork) * 100,
-    done = result.complete
-  }
-  vim.cmd("doautocmd <nomodeline> User LspProgressUpdate")
-end
-
-
 local function attach_to_active_buf(bufnr, client_name)
   for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
     if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
@@ -118,7 +96,6 @@ end
 
 
 M.extendedClientCapabilities = {
-  progressReportProvider = true;
   classFileContentsSupport = true;
   generateToStringPromptSupport = true;
   hashCodeEqualsPromptSupport = true;
@@ -258,7 +235,6 @@ function M.start_or_attach(config)
     or vim.fn.getcwd()
   )
   config.handlers = config.handlers or {}
-  config.handlers['language/progressReport'] = config.handlers['language/progressReport'] or progress_report
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = vim.tbl_deep_extend('keep', config.capabilities or {}, lsp.protocol.make_client_capabilities())
@@ -286,7 +262,6 @@ function M.start_or_attach(config)
     -- the `java` property is used in other places to detect the client as the jdtls client
     -- don't remove it without updating those places
     java = {
-      progressReports = { enabled = true },
     }
   })
   config.on_init = init_with_config_notify(config.on_init)
