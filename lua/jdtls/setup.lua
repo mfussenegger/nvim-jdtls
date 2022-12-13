@@ -197,9 +197,25 @@ end
 
 
 local function extract_data_dir(bufnr)
-  local client = vim.tbl_filter(function(client)
+  local is_jdtls = function(client)
     return client.name == 'jdtls'
-  end, vim.lsp.buf_get_clients(bufnr))[1]
+  end
+  -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
+  local client = vim.tbl_filter(is_jdtls, vim.lsp.buf_get_clients(bufnr))[1]
+  if not client then
+    -- Try first matching jdtls client otherwise. In case the user is in a
+    -- different buffer like the quickfix list
+    local clients = vim.tbl_filter(is_jdtls, vim.lsp.get_active_clients())
+    if vim.tbl_count(clients) > 1 then
+      client = require('jdtls.ui').pick_one(
+        clients,
+        'Multiple jdtls clients found, pick one: ',
+        function(c) return c.config.root_dir end
+      )
+    else
+      client = clients[1]
+    end
+  end
 
   if client and client.config and client.config.cmd then
     for i, part in pairs(client.config.cmd) do
