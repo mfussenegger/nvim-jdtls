@@ -638,7 +638,10 @@ end
 
 if not vim.lsp.handlers['workspace/executeClientCommand'] then
   vim.lsp.handlers['workspace/executeClientCommand'] = function(_, params, ctx)  -- luacheck: ignore 122
-    local fn = M.commands[params.command]
+    local client = vim.lsp.get_client_by_id(ctx.client_id) or {}
+    local commands = client.commands or {}
+    local global_commands = vim.lsp.commands or M.commands
+    local fn = commands[params.command] or global_commands[params.command]
     if fn then
       local ok, result = pcall(fn, params.arguments, ctx)
       if ok then
