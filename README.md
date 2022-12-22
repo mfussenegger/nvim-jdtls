@@ -21,6 +21,7 @@ alternative:
 
 - [x] `organize_imports` function to organize imports
 - [x] `extract_variable` function to introduce a local variable
+- [x] `extract_variable_all` function to introduce a local variable and replace all occurrences.
 - [x] `extract_constant` function to extract a constant
 - [x] `extract_method` function to extract a block of code into a method
 - [x] Open class file contents

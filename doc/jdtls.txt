@@ -61,6 +61,22 @@ JdtProjectSelectMode                                      *JdtProjectSelectMode*
         string
 
 
+M.extract_constant()                                    *jdtls.extract_constant*
+     Extract a constant from the expression under the cursor
+
+
+M.extract_variable()                                    *jdtls.extract_variable*
+     Extract a variable from the expression under the cursor
+
+
+M.extract_variable_all()                            *jdtls.extract_variable_all*
+     Extract a local variable from the expression under the cursor and replace all occurrences
+
+
+M.extract_method()                                        *jdtls.extract_method*
+     Extract a method
+
+
 M.super_implementation()                            *jdtls.super_implementation*
      Jump to the super implementation of the method under the cursor
 

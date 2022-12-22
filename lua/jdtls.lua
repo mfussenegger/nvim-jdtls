@@ -828,16 +828,31 @@ end
 ---|"all"
 ---|"prompt"
 
-local function mk_extract(entity)
-  return function(from_selection)
-    local params = make_code_action_params(from_selection or false)
-    java_apply_refactoring_command({ arguments = { entity }, }, { params = params })
-  end
+
+local function extract(entity, from_selection)
+  local params = make_code_action_params(from_selection or false)
+  java_apply_refactoring_command({ arguments = { entity }, }, { params = params })
 end
 
-M.extract_constant = mk_extract('extractConstant')
-M.extract_variable = mk_extract('extractVariable')
-M.extract_method = mk_extract('extractMethod')
+--- Extract a constant from the expression under the cursor
+function M.extract_constant(from_selection)
+  extract('extractConstant', from_selection)
+end
+
+--- Extract a variable from the expression under the cursor
+function M.extract_variable(from_selection)
+  extract('extractVariable', from_selection)
+end
+
+--- Extract a local variable from the expression under the cursor and replace all occurrences
+function M.extract_variable_all(from_selection)
+  extract('extractVariableAllOccurrence', from_selection)
+end
+
+--- Extract a method
+function M.extract_method(from_selection)
+  extract('extractMethod', from_selection)
+end
 
 
 --- Jump to the super implementation of the method under the cursor
