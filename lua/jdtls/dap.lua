@@ -256,25 +256,31 @@ local function fetch_launch_args(lens, context, on_launch_args)
 end
 
 
-local function get_method_lens_above_cursor(lenses, lnum)
-  local result
-  for _, lens in pairs(lenses) do
-    if lens.level == LegacyTestLevel.Method and lens.location.range.start.line <= lnum then
-      if result == nil then
-        result = lens
-      elseif lens.location.range.start.line > result.location.range.start.line then
-        result = lens
+local function get_method_lens_above_cursor(lenses_tree, lnum)
+  local result = {
+    best_match = nil
+  }
+  local find_nearest
+  find_nearest = function(lenses)
+    for _, lens in pairs(lenses) do
+      local is_method = lens.level == LegacyTestLevel.Method or lens.testLevel == TestLevel.Method
+      local range = lens.location and lens.location.range or lens.range
+      local line = range.start.line
+      local best_match_line
+      if result.best_match then
+        local best_match = result.best_match
+        best_match_line = best_match.location and best_match.location.range.start.line or best_match.range.start.line
       end
-    elseif lens.testLevel == TestLevel.Method and lens.range.start.line <= lnum then
-      if result == nil or lens.range.start.line > result.range.start.line then
-        result = lens
+      if is_method and line <= lnum and (best_match_line == nil or line > best_match_line) then
+        result.best_match = lens
       end
-    end
-    if not result and lens.children then
-      result = get_method_lens_above_cursor(lens.children, lnum)
+      if lens.children then
+        find_nearest(lens.children)
+      end
     end
   end
-  return result
+  find_nearest(lenses_tree)
+  return result.best_match
 end
 
 
