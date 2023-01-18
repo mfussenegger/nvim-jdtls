@@ -890,7 +890,7 @@ end
 --- Sets the classpath based on the current project.
 function M.jshell()
   with_classpaths(function(result)
-    local buf = api.nvim_create_buf(false, true)
+    local buf = api.nvim_create_buf(true, true)
     local classpaths = {}
     for _, path in pairs(result.classpaths) do
       if vim.fn.filereadable(path) == 1 or vim.fn.isdirectory(path) == 1 then
