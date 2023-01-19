@@ -196,7 +196,7 @@ local function fetch_candidates(context, on_candidates)
 
   local handler = function(err, result)
     if err then
-      vim.notify('Errror fetching test candidates: ' .. (err.message or vim.inspect(err)), vim.log.levels.ERROR)
+      vim.notify('Error fetching test candidates: ' .. (err.message or vim.inspect(err)), vim.log.levels.ERROR)
     else
       on_candidates(result or {})
     end

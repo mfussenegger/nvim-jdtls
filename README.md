@@ -6,10 +6,10 @@ Extensions for the built-in [Language Server Protocol][1] support in [Neovim][2]
 
 This project follows the [KISS principle][kiss] and targets users with some
 experience with Neovim, Java and its build tools Maven or Gradle who prefer
-configuration as code over GUI configuration. Easy of use is not the main
+configuration as code over GUI configuration. Ease of use is not the main
 priority.
 
-If you prioritize easy of use over simplicity, you may want to use an
+If you prioritize ease of use over simplicity, you may want to use an
 alternative:
 
 - [coc-java](https://github.com/neoclide/coc-java)
