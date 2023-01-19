@@ -695,7 +695,7 @@ local function on_build_result(err, result, ctx)
   assert(not err, 'Error trying to build project(s): ' .. vim.inspect(err))
   if result == CompileWorkspaceStatus.SUCCEED then
     vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
-    print('Compile successfull')
+    print('Compile successful')
   else
     vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
     local project_config_errors = {}
