@@ -310,6 +310,9 @@ local function make_config(lens, launch_args, config_overrides)
     modulePaths = launch_args.modulepath;
     vmArgs = table.concat(launch_args.vmArguments, ' ');
     noDebug = false;
+    stepFilters = {
+      skipClasses = { '$JDK', 'jdk.*', 'java.*', 'javax.*', 'sun.*', 'sunw.*', 'com.sun.*' };
+    };
   }
   config = vim.tbl_extend('force', config, config_overrides or default_config_overrides)
   if lens.testKind == TestKind.TestNG or lens.kind == TestKind.TestNG then
@@ -535,6 +538,9 @@ function M.fetch_main_configs(opts, callback)
               request = 'launch';
               console = 'integratedTerminal';
               vmArgs = use_preview and '--enable-preview' or nil;
+              stepFilters = {
+                skipClasses = { '$JDK', 'jdk.*', 'java.*', 'javax.*', 'sun.*', 'sunw.*', 'com.sun.*' };
+              };
             }
             config = vim.tbl_extend('force', config, opts.config_overrides or default_config_overrides)
             table.insert(configurations, config)
