@@ -454,7 +454,7 @@ function M.test_nearest_method(opts)
   end)
 end
 
-function populate_candidates(list, lenses)
+local function populate_candidates(list, lenses)
   for _, v in pairs(lenses) do
     table.insert(list,  v)
     if v.children ~= nil then
