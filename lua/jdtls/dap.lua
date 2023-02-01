@@ -454,6 +454,14 @@ function M.test_nearest_method(opts)
   end)
 end
 
+function populate_candidates(list, lenses)
+  for _, v in pairs(lenses) do
+    table.insert(list,  v)
+    if v.children ~= nil then
+      populate_candidates(list, v.children)
+    end
+  end
+end
 
 --- Prompt for a test method from the current buffer to run
 ---@param opts nil|JdtTestOpts
@@ -461,8 +469,11 @@ function M.pick_test(opts)
   opts = opts or {}
   local context = make_context(opts.bufnr)
   fetch_candidates(context, function(lenses)
+    local candidates = {}
+    populate_candidates(candidates, lenses)
+
     require('jdtls.ui').pick_one_async(
-      lenses,
+      candidates,
       'Tests> ',
       function(lens) return lens.fullName end,
       function(lens)
