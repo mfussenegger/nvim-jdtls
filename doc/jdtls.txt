@@ -1,4 +1,4 @@
-================================================================================
+==============================================================================
 LSP extensions for Neovim and eclipse.jdt.ls                             *jdtls*
 
 M.start_or_attach()                                      *jdtls.start_or_attach*
@@ -141,7 +141,7 @@ M.set_runtime({runtime})                                     *jdtls.set_runtime*
         {runtime}  (nil|string)  Java runtime. Prompts for runtime if nil
 
 
-================================================================================
+==============================================================================
 nvim-dap support for jdtls                                           *jdtls.dap*
 
 M.test_class()                                            *jdtls.dap.test_class*
@@ -182,7 +182,12 @@ M.setup_dap_main_class_configs({opts})  *jdtls.dap.setup_dap_main_class_configs*
         {opts}  (nil|JdtSetupMainConfigOpts)  See |JdtSetupMainConfigOpts|
 
 
-JdtSetupMainConfigOpts                                  *JdtSetupMainConfigOpts*
+                                                        *JdtSetupMainConfigOpts*
+JdtSetupMainConfigOpts : JdtMainConfigOpts
+
+    Fields: ~
+        {verbose}   (nil|boolean)   Print notifications on start and once finished. Default is false.
+        {on_ready}  (nil|function)  Callback called when the configurations got updated
 
 
 M.setup_dap({opts})                                        *jdtls.dap.setup_dap*
