@@ -565,6 +565,7 @@ function M.setup_dap_main_class_configs(opts)
   if opts.verbose then
     vim.notify('Fetching debug configurations')
   end
+  local on_ready = opts.on_ready or function() end
   M.fetch_main_configs(opts, function(configurations)
     local dap_configurations = dap.configurations.java or {}
     for _, config in ipairs(configurations) do
@@ -579,11 +580,13 @@ function M.setup_dap_main_class_configs(opts)
     if opts.verbose then
       vim.notify(string.format('Updated %s debug configuration(s)', #configurations))
     end
+    on_ready()
   end)
 end
 
 ---@class JdtSetupMainConfigOpts : JdtMainConfigOpts
 ---@field verbose nil|boolean Print notifications on start and once finished. Default is false.
+---@field on_ready nil|function Callback called when the configurations got updated
 
 
 
