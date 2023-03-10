@@ -237,6 +237,12 @@ local function fetch_launch_args(lens, context, on_launch_args)
         'Server must return launch_args as response to "vscode.java.test.junit.argument" command. '
         .. 'Check server logs via `:JdtShowlogs`. Sent: ' .. vim.inspect(req_arguments)))
     else
+      -- forward/backward compat with format change in
+      -- https://github.com/microsoft/vscode-java-test/commit/5a78371ad60e86f858eace7726f0980926b6c31d
+      if launch_args.body then
+        launch_args = launch_args.body
+      end
+
       -- the classpath in the launch_args might be missing some classes
       -- See https://github.com/microsoft/vscode-java-test/issues/1073
       --
