@@ -447,17 +447,153 @@ local function move_type(command, code_action_params)
 end
 
 
+---@return {tabSize: integer, insertSpaces: boolean}
+local function format_opts()
+  return {
+    tabSize = vim.lsp.util.get_effective_tabstop(),
+    insertSpaces = vim.bo.expandtab,
+  }
+end
+
+
+---@param bufnr integer
+---@param command table
+---@param code_action_params table
+local function change_signature(bufnr, command, code_action_params)
+  local cmd_name = command.arguments[1]
+  local signature = command.arguments[3]
+  local edit_buf = api.nvim_create_buf(false, true)
+  api.nvim_create_autocmd("BufUnload", {
+    buffer = edit_buf,
+    once = true,
+    callback = function(args)
+      local lines = api.nvim_buf_get_lines(args.buf, 0, -1, true)
+      local is_delegate = false
+      local access_type = signature.modifier
+      local method_name = signature.methodName
+      local return_type = signature.returnType
+      local preview = false
+      local expect_param_next = false
+      local parameters = {}
+      local new_param_idx = #signature.parameters
+      for _, line in ipairs(lines) do
+        if vim.startswith(line, "---") then
+          break
+        elseif expect_param_next and vim.startswith(line, "- ") then
+          local matches = { line:match("%- ((%d+):) (%w+) (%w+)") }
+          if next(matches) then
+            table.insert(parameters, {
+              name = matches[4],
+              originalIndex = assert(tonumber(matches[2]), "Parameter must have originalIndex"),
+              type = matches[3],
+            })
+          else
+            matches = { line:match("%- (%w+) (%w+) ?(%w*)") }
+            if next(matches) then
+              table.insert(parameters, {
+                type = matches[1],
+                name = matches[2],
+                defaultValue = matches[3],
+                originalIndex = new_param_idx
+              })
+              new_param_idx = new_param_idx + 1
+            end
+          end
+        elseif vim.startswith(line, "Access type: ") then
+          access_type = line:sub(#"Access type: " + 1)
+        elseif vim.startswith(line, "Name: ") then
+          method_name = line:sub(#"Name: " + 1)
+        elseif vim.startswith(line, "Parameters:") then
+          expect_param_next = true
+        elseif vim.startswith(line, "Return type: ") then
+          return_type = line:sub(#"Return type: " + 1)
+        end
+      end
+      local params = {
+        command = cmd_name,
+        context = code_action_params,
+        options = format_opts(),
+        commandArguments = {
+          signature.methodIdentifier,
+          is_delegate,
+          method_name,
+          access_type,
+          return_type,
+          parameters,
+          signature.exceptions,
+          preview
+        },
+      }
+      request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    end,
+  })
+  vim.bo[edit_buf].bufhidden = "wipe"
+  local width = math.floor(vim.o.columns * 0.9)
+  local height = math.floor(vim.o.lines * 0.8)
+  local win_opts = {
+    relative = "editor",
+    style = "minimal",
+    row = math.floor((vim.o.lines - height) * 0.5),
+    col = math.floor((vim.o.columns - width) * 0.5),
+    width = width,
+    height = height,
+    border = "single",
+  }
+  api.nvim_open_win(edit_buf, true, win_opts)
+  local lines = {
+    "Access type: " .. signature.modifier,
+    "Name: " .. signature.methodName,
+    "Return type: " .. signature.returnType,
+    "Parameters:",
+  }
+  for _, param in ipairs(signature.parameters) do
+    table.insert(lines, string.format("- %d: %s %s",
+      param.originalIndex,
+      param.type,
+      param.name
+    ))
+  end
+  local comment_start = #lines + 1
+  vim.list_extend(lines, {
+    "",
+    string.rep("-", math.max(width, 3)),
+    "Labels are used to parse the values. Keep them!",
+    "Accept change & close the window:",
+    " - `<Ctrl-w> q`",
+    " - `:bd`",
+    "",
+    "Parameters:",
+    " - Order sensitive",
+    " - New param format: '- <type> <name> [defaultValue]'",
+    " - Existing param format: '- <n>: <type> <name>'",
+    " - <n> marks the original index, don't add it for new entries, don't change for moved params",
+  })
+  api.nvim_buf_set_lines(edit_buf, 0, -1, true, lines)
+  local highlights = {
+    {0, "Access type:", "Identifier"},
+    {1, "Name:", "Identifier"},
+    {2, "Return type:", "Identifier"},
+    {3, "Parameters:", "Identifier"},
+  }
+  for _, hl in ipairs(highlights) do
+    api.nvim_buf_set_extmark(edit_buf, highlight_ns, hl[1], 0, {
+      end_row = hl[1],
+      end_col = #hl[2],
+      hl_group = hl[3],
+    })
+  end
+  api.nvim_buf_set_extmark(edit_buf, highlight_ns, comment_start, 0, {
+    hl_group = "Comment",
+    end_row = #lines
+  })
+end
+
+
 local function java_apply_refactoring_command(command, outer_ctx)
   local cmd = command.arguments[1]
+  local bufnr = outer_ctx.bufnr
   local code_action_params = outer_ctx.params
-  local params = {
-    command = cmd,
-    context = code_action_params,
-    options = {
-      tabSize = vim.lsp.util.get_effective_tabstop(),
-      insertSpaces = vim.bo.expandtab,
-    }
-  }
+
   if cmd == 'moveFile' then
     return move_file(command, code_action_params)
   elseif cmd == 'moveInstanceMethod' then
@@ -466,18 +602,26 @@ local function java_apply_refactoring_command(command, outer_ctx)
     return move_static_member(command, code_action_params)
   elseif cmd == 'moveType' then
     return move_type(command, code_action_params)
+  elseif cmd == "changeSignature" then
+    return change_signature(bufnr, command, code_action_params)
   end
+
+  local params = {
+    command = cmd,
+    context = code_action_params,
+    options = format_opts(),
+  }
   if not vim.tbl_contains(setup.extendedClientCapabilities.inferSelectionSupport, cmd) then
-    request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return
   end
   local range = code_action_params.range
   if not (range.start.character == range['end'].character and range.start.line == range['end'].line) then
-    request(0, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
     return
   end
 
-  request(0, 'java/inferSelection', params, function(err, selection_info, ctx)
+  request(bufnr, 'java/inferSelection', params, function(err, selection_info, ctx)
     assert(not err, vim.inspect(err))
     if not selection_info or #selection_info == 0 then
       print('No selection found that could be extracted')
