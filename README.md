@@ -68,6 +68,7 @@ require('jdtls').start_or_attach(config)
 **Important**:
 
 - eclipse.jdt.ls requires Java 17
+- The `jdtls` script requires Python 3.9
 - You'll have to teach eclipse.jdt.ls about your JDK installations by setting
   up `runtimes` if your projects use a different Java version than the one
   you're using for eclipse.jdt.ls itself. See `Java XY language features are
