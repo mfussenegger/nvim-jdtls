@@ -1092,77 +1092,61 @@ function M.jol(mode, classname)
 end
 
 
---- Reads the uri into the current buffer
----
---- This requires at least one open buffer that is connected to the jdtls
---- language server.
+--- Open `jdt://` uri or decompile class contents and load them into the buffer
 ---
 --- nvim-jdtls by defaults configures a `BufReadCmd` event which uses this function.
 --- You shouldn't need to call this manually.
 ---
---- @param uri string expected to be a `jdt://` uri
-function M.open_jdt_link(uri)
-  local client
-  for _, c in ipairs(vim.lsp.get_active_clients()) do
-    if c.config.init_options
-      and c.config.init_options.extendedClientCapabilities
-      and c.config.init_options.extendedClientCapabilities.classFileContentsSupport then
-
-      client = c
-      break
-    end
-  end
-  assert(client, 'Must have a buffer open with a language client connected to eclipse.jdt.ls to load JDT URI')
-  local buf = api.nvim_get_current_buf()
-  local params = {
-    uri = uri
-  }
-  local response = nil
-  local cb = function(err, result)
-    response = {err, result}
-  end
-  local ok, request_id = client.request('java/classFileContents', params, cb, buf)
-  assert(ok, 'Request to `java/classFileContents` must succeed to open JDT URI. Client shutdown?')
-  local timeout_ms = M.settings.jdt_uri_timeout_ms
-  local wait_ok, reason = vim.wait(timeout_ms, function() return response end)
-  local log_path = require('jdtls.path').join(vim.fn.stdpath('cache'), 'lsp.log')
-  local buf_content
-  if wait_ok and #response == 2 and response[2] then
-    local content = response[2]
-    if content == "" then
-      buf_content = {
-        'Received response from server, but it was empty. Check the log file for errors', log_path}
-    else
-      buf_content = vim.split(response[2], '\n', { plain = true })
-    end
+---@param fname string
+function M.open_classfile(fname)
+  local uri
+  local use_cmd
+  if vim.startswith(fname, "jdt://") then
+    uri = fname
+    use_cmd = false
   else
-    local error_msg
-    if not wait_ok then
-      client.cancel_request(request_id)
-      local wait_failure = {
-        [-1] = 'timeout';
-        [-2] = 'interrupted';
-        [-3] = 'error'
-      }
-      error_msg = wait_failure[reason]
-    else
-      error_msg = response[1]
+    uri = vim.uri_from_fname(fname)
+    use_cmd = true
+    if not vim.startswith(uri, "file://") then
+      return
     end
-    buf_content = {
-      'Failed to load content for uri',
-      uri,
-      '',
-      'Error was: ',
-    }
-    vim.list_extend(buf_content, vim.split(vim.inspect(error_msg), '\n'))
-    vim.list_extend(buf_content, {'', 'Check the log file for errors', log_path})
   end
+  local buf = api.nvim_get_current_buf()
   vim.bo[buf].modifiable = true
   vim.bo[buf].swapfile = false
   vim.bo[buf].buftype = 'nofile'
-  api.nvim_buf_set_lines(buf, 0, -1, false, buf_content)
+  -- This triggers FileType event which should fire up the lsp client if not already running
   vim.bo[buf].filetype = 'java'
-  vim.bo[buf].modifiable = false
+  local timeout_ms = M.settings.jdt_uri_timeout_ms
+  vim.wait(timeout_ms, function()
+    return next(vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })) ~= nil
+  end)
+  local client = vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })[1]
+  assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
+
+  local content
+  local function handler(err, result)
+    assert(not err, vim.inspect(err))
+    content = result
+    api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(result, "\n", { plain = true }))
+    vim.bo[buf].modifiable = false
+  end
+
+  if use_cmd then
+    local command = {
+      command = "java.decompile",
+      arguments = { uri }
+    }
+    execute_command(command, handler)
+  else
+    local params = {
+      uri = uri
+    }
+    client.request("java/classFileContents", params, handler, buf)
+  end
+  -- Need to block. Otherwise logic could run that sets the cursor to a position
+  -- that's still missing.
+  vim.wait(timeout_ms, function() return content ~= nil end)
 end
 
 
