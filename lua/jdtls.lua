@@ -88,12 +88,12 @@ local function java_generate_to_string_prompt(_, outer_ctx)
       return
     end
     if result.exists then
-      local choice = vim.fn.inputlist({
-        string.format("Method 'toString()' already exists in '%s'. Do you want to replace it?", result.type),
-        "1. Replace",
-        "2. Cancel"
-      })
-      if choice < 1 or choice == 2 then
+      local prompt = string.format(
+        "Method 'toString()' already exists in '%s'. Do you want to replace it?",
+        result.type
+      )
+      local choice = ui.pick_one({"Replace", "Cancel"}, prompt, tostring)
+      if choice == "Cancel" then
         return
       end
     end
