@@ -1213,7 +1213,7 @@ function M.set_runtime(runtime)
       runtimes,
       'Runtime> ',
       function(r)
-        return r.name
+        return r.name .. ' (' .. r.path .. ')'
       end,
       function(selected_runtime)
         if not selected_runtime then
