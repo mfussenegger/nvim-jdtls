@@ -32,6 +32,7 @@ alternative:
   - [x] Extract variables or methods
   - [x] Generate delegate methods
   - [x] Move package, instance method, static method or type
+  - [x] Signature refactoring
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
 - [x] `jshell` command to open up `jshell` with `classpath` from project set
