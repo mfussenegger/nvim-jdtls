@@ -1044,7 +1044,7 @@ function M.jshell()
     local cp = table.concat(classpaths, ':')
     with_java_executable(resolve_classname(), '', function(java_exec)
       api.nvim_win_set_buf(0, buf)
-      local jshell = vim.fn.fnamemodify(java_exec, ':p:h') .. '/jshell'
+      local jshell = java_exec and (vim.fn.fnamemodify(java_exec, ":p:h") .. '/jshell') or "jshell"
       vim.fn.termopen(jshell, { env = { ["CLASSPATH"] = cp }})
     end)
   end)
