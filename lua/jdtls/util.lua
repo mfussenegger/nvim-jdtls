@@ -4,7 +4,7 @@ local M = {}
 
 function M.execute_command(command, callback, bufnr)
   local clients = {}
-  local candidates = bufnr and vim.lsp.buf_get_clients(bufnr) or vim.lsp.get_active_clients()
+  local candidates = vim.lsp.get_active_clients({ bufnr = bufnr })
   for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
@@ -38,7 +38,7 @@ function M.execute_command(command, callback, bufnr)
       end
     end
   end
-  clients[1].request('workspace/executeCommand', command, callback)
+  clients[1].request('workspace/executeCommand', command, callback, bufnr)
   if co then
     return coroutine.yield()
   end
@@ -63,27 +63,34 @@ end
 
 
 function M.with_classpaths(fn)
-  local is_test_file_cmd = {
-    command = 'java.project.isTestFile',
-    arguments = { vim.uri_from_bufnr(0) }
-  };
-  M.execute_command(is_test_file_cmd, function(err, is_test_file)
-    assert(not err, vim.inspect(err))
-    local options = vim.fn.json_encode({
-      scope = is_test_file and 'test' or 'runtime';
-    })
+  local bufnr = api.nvim_get_current_buf()
+  local uri = vim.uri_from_bufnr(bufnr)
+  coroutine.wrap(function()
+    local is_test_file_cmd = {
+      command = 'java.project.isTestFile',
+      arguments = { uri }
+    };
+    local options
+    if vim.startswith(uri, "jdt://") then
+      options = vim.fn.json_encode({ scope = "runtime" })
+    else
+      local err, is_test_file = M.execute_command(is_test_file_cmd, nil, bufnr)
+      assert(not err, vim.inspect(err))
+      options = vim.fn.json_encode({
+        scope = is_test_file and 'test' or 'runtime';
+      })
+    end
     local cmd = {
       command = 'java.project.getClasspaths';
-      arguments = { vim.uri_from_bufnr(0), options };
+      arguments = { uri, options };
     }
-    M.execute_command(cmd, function(err1, resp)
-      if err1 then
-        print('Error executing java.project.getClasspaths: ' .. err1.message)
-      else
-        fn(resp)
-      end
-    end)
-  end)
+    local err1, resp = M.execute_command(cmd, nil, bufnr)
+    if err1 then
+      print('Error executing java.project.getClasspaths: ' .. err1.message)
+    else
+      fn(resp)
+    end
+  end)()
 end
 
 
