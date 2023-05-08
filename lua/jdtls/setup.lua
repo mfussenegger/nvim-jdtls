@@ -214,10 +214,6 @@ function M.start_or_attach(config)
     'Config must have a `cmd` property and that must be a table. Got: '
       .. table.concat(config.cmd, ' ')
   )
-  assert(
-    tonumber(vim.fn.executable(config.cmd[1])) == 1,
-    'LSP cmd must be an executable: ' .. config.cmd[1]
-  )
   config.name = 'jdtls'
 
   local bufnr = api.nvim_get_current_buf()
