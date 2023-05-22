@@ -62,14 +62,16 @@ end
 M.restart = lsp_clients.restart
 
 
-local function attach_to_active_buf(bufnr, client_name)
+local function attach_to_active_buf(bufnr, client_name, infer_bufnr)
   for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
     if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
-      local clients = lsp.buf_get_clients(buf.bufnr)
-      for _, client in ipairs(clients) do
-        if client.config.name == client_name then
-          lsp.buf_attach_client(bufnr, client.id)
-          return true
+      if not infer_bufnr or infer_bufnr <= 0 or infer_bufnr == buf.bufnr then
+        local clients = lsp.buf_get_clients(buf.bufnr)
+        for _, client in pairs(clients) do
+          if client.config.name == client_name then
+            lsp.buf_attach_client(bufnr, client.id)
+            return true
+          end
         end
       end
     end
@@ -221,7 +223,11 @@ function M.start_or_attach(config)
   -- Won't be able to get the correct root path for jdt:// URIs
   -- So need to connect to an existing client
   if vim.startswith(bufname, 'jdt://') then
-    if attach_to_active_buf(bufnr, config.name) then
+    -- try infer bufnr to be attach for multi clients
+    -- in most cases, it jumps from another buffer, if not, use the current buffer
+    local infer_bufnr = vim.fn.bufnr('#', -1)
+    infer_bufnr = infer_bufnr > 0 and infer_bufnr or bufnr
+    if attach_to_active_buf(bufnr, config.name, infer_bufnr) then
       return
     end
   end
