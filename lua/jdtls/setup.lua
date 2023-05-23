@@ -63,20 +63,34 @@ M.restart = lsp_clients.restart
 
 
 local function attach_to_active_buf(bufnr, client_name)
-  for _, buf in pairs(vim.fn.getbufinfo({bufloaded=true})) do
-    if api.nvim_buf_get_option(buf.bufnr, 'filetype') == 'java' then
-      local clients = lsp.buf_get_clients(buf.bufnr)
-      for _, client in ipairs(clients) do
-        if client.config.name == client_name then
-          lsp.buf_attach_client(bufnr, client.id)
-          return true
-        end
-      end
+
+  local function try_attach(buf)
+    if vim.bo[buf].filetype ~= "java" then
+      return false
+    end
+    local clients = vim.lsp.get_active_clients({ bufnr = buf, name = client_name })
+    local _, client = next(clients)
+    if client then
+      lsp.buf_attach_client(bufnr, client.id)
+      return true
+    end
+    return false
+  end
+
+  ---@diagnostic disable-next-line: param-type-mismatch
+  local altbuf = vim.fn.bufnr("#", -1)
+  if altbuf and altbuf > 0 and try_attach(altbuf) then
+    return true
+  end
+  for _, buf in ipairs(api.nvim_list_bufs()) do
+    if api.nvim_buf_is_loaded(buf) and try_attach(buf) then
+      return true
     end
   end
   print('No active LSP client found to use for jdt:// document')
   return false
 end
+
 
 function M.find_root(markers, bufname)
   bufname = bufname or api.nvim_buf_get_name(api.nvim_get_current_buf())
