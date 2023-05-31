@@ -61,11 +61,18 @@ end
 
 M.restart = lsp_clients.restart
 
+local function may_jdtls_buf(bufnr)
+  if vim.bo[bufnr].filetype == "java" then
+    return true
+  end
+  local fname = api.nvim_buf_get_name(bufnr)
+  return vim.endswith(fname, "build.gradle") or vim.endswith(fname, "pom.xml")
+end
 
 local function attach_to_active_buf(bufnr, client_name)
 
   local function try_attach(buf)
-    if vim.bo[buf].filetype ~= "java" then
+    if not may_jdtls_buf(buf) then
       return false
     end
     local clients = vim.lsp.get_active_clients({ bufnr = buf, name = client_name })
