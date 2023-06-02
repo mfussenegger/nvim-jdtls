@@ -830,6 +830,127 @@ function M.organize_imports()
 end
 
 
+local maximum_resolve_depth = 10
+
+--- Show type hierarchy information of a class or method on the quickfix list
+--- If there is only one result, jump to it.
+---@param options table|nil additional options
+---     - reuse_win: (boolean) Jump to existing window if buffer is already open.
+---     - on_list: (function) handler for list results.
+function M.java_type_hierarchy(opts)
+  local function resolve_command(result)
+    return {
+      command = 'java.navigate.resolveTypeHierarchy',
+      arguments = {
+        vim.fn.json_encode(result), -- toResolve: TypeHierarchyItem
+        '1', -- direction: Children(0), Parents(1), Both(2)
+        '1', -- resolveDepth
+      },
+    }
+  end
+
+  local hierarchy = {}
+  local depth = 0
+  local open_type_hierarchy
+
+  local function resolve_handler(err, result, ctx)
+    assert(not err, vim.inspect(err))
+    depth = depth + 1
+
+    local parents = vim.tbl_filter(function(parent)
+      -- Filtering out SymbolKind.Null items
+      return parent.kind ~= vim.lsp.protocol.SymbolKind.Null
+    end, result.parents)
+
+    if #parents > 0 and depth > maximum_resolve_depth then
+      vim.notify(string.format('Type hierarchy: maximum resolve depth is %d.', maximum_resolve_depth),
+        vim.log.levels.WARN)
+    elseif #parents > 0 then
+      local parent_classes = vim.tbl_filter(function(parent)
+        return parent.kind == vim.lsp.protocol.SymbolKind.Class
+      end, parents)
+
+      assert(#parent_classes <= 1, 'Type hierarchy: more than one parent class')
+
+      local parent = parent_classes[1]
+      if not parent then
+        assert(#parents == 1, string.format('Type hierarchy: could not determine parent with result %s',
+          vim.inspect(result)))
+        -- Symbol at point is a SymbolKind.Method, parent is a SymbolKind.Interface
+        parent = parents[1]
+      end
+
+      for _, parent in ipairs(parents) do
+        table.insert(hierarchy, parent)
+      end
+      execute_command(resolve_command(parent), resolve_handler)
+      return
+    end
+
+    if #hierarchy > 0 then
+      local root = hierarchy[#hierarchy]
+      if root.detail..'.'..root.name == 'java.lang.Object' then
+        table.remove(hierarchy) -- Pop the top
+      end
+    end
+
+    if #hierarchy == 0 then return print('Type hierarchy: no results.') end
+
+    local locations = vim.tbl_map(function(parent)
+      return { uri = parent.uri, range = parent.selectionRange }
+    end, hierarchy)
+
+    local title = string.format('Type hierarchy: %s.%s', open_type_hierarchy.detail, open_type_hierarchy.name)
+    if vim.tbl_get(open_type_hierarchy, 'data', 'method_name') then
+      title = string.format('%s.%s', title, open_type_hierarchy.data.method_name)
+    end
+
+    hierarchy = nil
+    depth = nil
+    open_type_hierarchy = nil
+
+    local items = {}
+    for _, location in ipairs(locations) do -- Preserving table order
+      table.insert(items, vim.lsp.util.locations_to_items({ location }, offset_encoding)[1])
+    end
+
+    if opts.on_list then
+      assert(type(opts.on_list) == 'function', 'on_list is not a function')
+      opts.on_list({ title = title, items = items, context = ctx })
+      return
+    end
+
+    if #locations == 1  then
+      vim.lsp.util.jump_to_location(locations[1], offset_encoding, opts.reuse_win)
+      return
+    end
+
+    vim.fn.setqflist({}, ' ', { title = title, items = items, context = ctx })
+    vim.api.nvim_command('botright copen')
+  end
+
+  opts = opts or {}
+  local position = vim.lsp.util.make_position_params(0, offset_encoding)
+  local command = {
+    command = 'java.navigate.openTypeHierarchy',
+    arguments = {
+      vim.fn.json_encode(position), -- textParams: TextDocumentPositionParams
+      '1', -- direction: Children(0), Parents(1), Both(2)
+      '0', -- resolveDepth
+    },
+  }
+  execute_command(command, function(err, result)
+    assert(not err, vim.inspect(err))
+    if not result then
+      return vim.notify('Type hierarchy: openTypeHierarchy returned no results',
+        vim.log.levels.ERROR)
+    end
+    open_type_hierarchy = result
+    execute_command(resolve_command(result), resolve_handler)
+  end)
+end
+
+
 ---@private
 function M._complete_compile()
   return 'full\nincremental'
