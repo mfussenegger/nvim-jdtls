@@ -4,6 +4,8 @@ local uv = vim.loop
 local path = require('jdtls.path')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
+-- manage latest jdtls buf
+local latest_jdtls_buf = nil
 
 
 local status_callback = function(_, result)
@@ -85,7 +87,7 @@ local function attach_to_active_buf(bufnr, client_name)
   end
 
   ---@diagnostic disable-next-line: param-type-mismatch
-  local altbuf = vim.fn.bufnr("#", -1)
+  local altbuf = latest_jdtls_buf and latest_jdtls_buf or vim.fn.bufnr("#")
   if altbuf and altbuf > 0 and try_attach(altbuf) then
     return true
   end
@@ -237,6 +239,16 @@ function M.start_or_attach(config)
   )
   config.name = 'jdtls'
 
+  -- wrap on_attach for record latest jdtls buf
+  local user_on_attch = config.on_attach
+  config.on_attach = function(...)
+    local on_attach_bufnr = select(2, ...)
+    latest_jdtls_buf = on_attach_bufnr
+    if user_on_attch then
+      user_on_attch(...)
+    end
+  end
+
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
   -- Won't be able to get the correct root path for jdt:// URIs
@@ -355,6 +367,15 @@ function M.show_logs()
     vim.cmd('vsplit | e ' .. vim.fn.stdpath('log') .. '/lsp.log | normal G')
   else
     vim.cmd('vsplit | e ' .. vim.fn.stdpath('cache') .. '/lsp.log | normal G')
+  end
+end
+
+
+function M.record_latest_jdtls_buf()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local clients = vim.lsp.get_active_clients({ bufnr = bufnr, name = "jdtls" })
+  if clients and #clients > 0 then
+    latest_jdtls_buf = bufnr
   end
 end
 
