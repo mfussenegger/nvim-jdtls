@@ -7,7 +7,8 @@ local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 
 
 local status_callback = function(_, result)
-  api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
+  api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None',
+                                string.sub(result.message, 1, vim.v.echospace)))
 end
 
 
