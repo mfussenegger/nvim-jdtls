@@ -37,13 +37,8 @@ end
 
 
 local request = function(bufnr, method, params, handler)
-  local client = nil
-  for _, c in pairs(vim.lsp.get_active_clients({ bufnr = bufnr })) do
-    if c.name == 'jdtls' then
-      client = c
-      break
-    end
-  end
+  local clients = vim.lsp.get_active_clients({ bufnr = bufnr, name = "jdtls" })
+  local _, client = next(clients)
   if not client then
     vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
     return
