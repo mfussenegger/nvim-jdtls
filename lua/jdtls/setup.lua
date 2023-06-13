@@ -304,14 +304,15 @@ function M.wipe_data_and_restart()
     end
     vim.schedule(function()
       lsp_clients.stop()
-      vim.defer_fn(function()
-        vim.fn.delete(data_dir, 'rf')
-        for _, buf in pairs(api.nvim_list_bufs()) do
-          if vim.bo[buf].filetype == 'java' then
-            api.nvim_buf_call(buf, function() vim.cmd('e!') end)
-          end
+      vim.wait(30000, function()
+        return vim.tbl_count(vim.lsp.get_active_clients({ name = "jdtls" })) == 0
+      end)
+      vim.fn.delete(data_dir, 'rf')
+      for _, buf in pairs(api.nvim_list_bufs()) do
+        if vim.bo[buf].filetype == 'java' then
+          api.nvim_buf_call(buf, function() vim.cmd('e!') end)
         end
-      end, 200)
+      end
     end)
   end)
 end
