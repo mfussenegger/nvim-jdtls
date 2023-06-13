@@ -282,7 +282,17 @@ local function move_file(command, code_action_params)
     ui.pick_one_async(
       destinations,
       'Target package> ',
-      function(x) return x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName end,
+      function(x)
+        local name = x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName
+        if string.find(x.path, "src/main") then
+          name = "main » " .. name
+        elseif string.find(x.path, "src/test") then
+          name = "test » " .. name
+        else
+          name = x.path .. " » " .. name
+        end
+        return name
+      end,
       function(x)
         local move_params = {
           moveKind = 'moveResource',
