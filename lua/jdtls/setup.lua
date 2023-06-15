@@ -64,7 +64,8 @@ end
 M.restart = lsp_clients.restart
 
 local function may_jdtls_buf(bufnr)
-  if vim.bo[bufnr].filetype == "java" then
+  local ft = vim.api.nvim_buf_get_option(bufnr, "filetype")
+  if ft == "java" then
     return true
   end
   local fname = api.nvim_buf_get_name(bufnr)
@@ -319,7 +320,8 @@ function M.wipe_data_and_restart()
       vim.defer_fn(function()
         vim.fn.delete(data_dir, 'rf')
         for _, buf in pairs(api.nvim_list_bufs()) do
-          if vim.bo[buf].filetype == 'java' then
+          local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+          if ft == 'java' then
             api.nvim_buf_call(buf, function() vim.cmd('e!') end)
           end
         end
