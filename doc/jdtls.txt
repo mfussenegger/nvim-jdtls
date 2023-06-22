@@ -66,7 +66,7 @@ jdtls.extract.opts                                          *jdtls.extract.opts*
     |"prompt"
 
     Type: ~
-        {from_selection?:boolean,name?:string|fun():string}
+        {visual?:boolean,name?:string|fun():string}
 
 
 M.extract_constant({opts?})                             *jdtls.extract_constant*

@@ -979,7 +979,7 @@ end
 ---|"prompt"
 
 
----@alias jdtls.extract.opts {from_selection?: boolean, name?: string|fun(): string}
+---@alias jdtls.extract.opts {visual?: boolean, name?: string|fun(): string}
 
 
 ---@param entity string
@@ -989,10 +989,10 @@ local function extract(entity, opts)
   if type(opts) == "boolean" then
     -- bwc, param changed from boolean to table
     opts = {
-      from_selection = opts
+      visual = opts
     }
   end
-  local params = make_code_action_params(opts.from_selection or false)
+  local params = make_code_action_params(opts.visual or false)
   local command = { arguments = { entity }, }
   local after_refactor = function()
     local name = opts.name
