@@ -588,7 +588,8 @@ local function change_signature(bufnr, command, code_action_params)
 end
 
 
-local function java_apply_refactoring_command(command, outer_ctx)
+---@param after_refactor? function
+local function java_apply_refactoring_command(command, outer_ctx, after_refactor)
   local cmd = command.arguments[1]
   local bufnr = outer_ctx.bufnr
   local code_action_params = outer_ctx.params
@@ -610,13 +611,19 @@ local function java_apply_refactoring_command(command, outer_ctx)
     context = code_action_params,
     options = format_opts(),
   }
+  local apply_refactor = function(err, result, ctx)
+    handle_refactor_workspace_edit(err, result, ctx)
+    if after_refactor then
+      after_refactor()
+    end
+  end
   if not vim.tbl_contains(setup.extendedClientCapabilities.inferSelectionSupport, cmd) then
-    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, apply_refactor)
     return
   end
   local range = code_action_params.range
   if not (range.start.character == range['end'].character and range.start.line == range['end'].line) then
-    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, apply_refactor)
     return
   end
 
@@ -628,7 +635,7 @@ local function java_apply_refactoring_command(command, outer_ctx)
     end
     if #selection_info == 1 then
       params.commandArguments = selection_info
-      request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+      request(ctx.bufnr, 'java/getRefactorEdit', params, apply_refactor)
     else
       ui.pick_one_async(
         selection_info,
@@ -637,7 +644,7 @@ local function java_apply_refactoring_command(command, outer_ctx)
         function(selection)
           if not selection then return end
           params.commandArguments = {selection}
-          request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+          request(ctx.bufnr, 'java/getRefactorEdit', params, apply_refactor)
         end
       )
     end
@@ -972,29 +979,55 @@ end
 ---|"prompt"
 
 
-local function extract(entity, from_selection)
-  local params = make_code_action_params(from_selection or false)
-  java_apply_refactoring_command({ arguments = { entity }, }, { params = params })
+---@alias jdtls.extract.opts {from_selection?: boolean, name?: string|fun(): string}
+
+
+---@param entity string
+---@param opts? jdtls.extract.opts
+local function extract(entity, opts)
+  opts = opts or {}
+  if type(opts) == "boolean" then
+    -- bwc, param changed from boolean to table
+    opts = {
+      from_selection = opts
+    }
+  end
+  local params = make_code_action_params(opts.from_selection or false)
+  local command = { arguments = { entity }, }
+  local after_refactor = function()
+    local name = opts.name
+    if type(name) == "function" then
+      name = name()
+    end
+    if type(name) == "string" then
+      vim.lsp.buf.rename(name, { name = "jdtls" })
+    end
+  end
+  java_apply_refactoring_command(command, { params = params }, after_refactor)
 end
 
 --- Extract a constant from the expression under the cursor
-function M.extract_constant(from_selection)
-  extract('extractConstant', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_constant(opts)
+  extract('extractConstant', opts)
 end
 
 --- Extract a variable from the expression under the cursor
-function M.extract_variable(from_selection)
-  extract('extractVariable', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_variable(opts)
+  extract('extractVariable', opts)
 end
 
 --- Extract a local variable from the expression under the cursor and replace all occurrences
-function M.extract_variable_all(from_selection)
-  extract('extractVariableAllOccurrence', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_variable_all(opts)
+  extract('extractVariableAllOccurrence', opts)
 end
 
 --- Extract a method
-function M.extract_method(from_selection)
-  extract('extractMethod', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_method(opts)
+  extract('extractMethod', opts)
 end
 
 
