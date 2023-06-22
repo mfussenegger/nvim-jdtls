@@ -120,19 +120,6 @@ local function configuration_handler(err, result, ctx, config)
 end
 
 
-local function init_with_config_notify(original_init)
-  return function(...)
-    local client = select(1, ...)
-    if client.config.settings then
-      client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
-    end
-    if original_init then
-      original_init(...)
-    end
-  end
-end
-
-
 local function maybe_implicit_save()
   -- 💀
   -- If the client is attached to a buffer that doesn't exist on the filesystem,
@@ -248,7 +235,6 @@ function M.start_or_attach(config)
     java = {
     }
   })
-  config.on_init = init_with_config_notify(config.on_init)
   maybe_implicit_save()
   vim.lsp.start(config)
 end
