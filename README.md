@@ -265,22 +265,18 @@ nnoremap <leader>df <Cmd>lua require'jdtls'.test_class()<CR>
 nnoremap <leader>dn <Cmd>lua require'jdtls'.test_nearest_method()<CR>
 ```
 
+`nvim-jdtls` also adds several commands if the server starts up correctly:
 
-Some methods are better exposed via commands. As a shortcut you can also call
-`:lua require('jdtls.setup').add_commands()` to declare these.
+- `JdtCompile`
+- `JdtSetRuntime`
+- `JdtUpdateConfig`
+- `JdtUpdateDebugConfig` (if `dap` and java-debug bundles are available)
+- `JdtUpdateHotcode`     (if `dap` and java-debug bundles are available)
+- `JdtBytecode`
+- `JdtJol`
+- `JdtJshell`
+- `JdtRestart`
 
-It's recommended to call `add_commands` within the `on_attach` handler that can be set on the `config` table which is passed to `start_or_attach`.
-If you use jdtls together with nvim-dap, call `add_commands` *after* `setup_dap` to ensure it includes debugging related commands. (More about this is in the debugger setup section further below)
-
-
-```vimL
-command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)
-command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_set_runtime JdtSetRuntime lua require('jdtls').set_runtime(<f-args>)
-command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()
-command! -buffer JdtJol lua require('jdtls').jol()
-command! -buffer JdtBytecode lua require('jdtls').javap()
-command! -buffer JdtJshell lua require('jdtls').jshell()
-```
 
 ## API Reference
 
@@ -326,26 +322,15 @@ config['init_options'] = {
 
 ### nvim-dap setup
 
-You also need to call `require('jdtls').setup_dap()` to have it register a
-`java` adapter.
+`nvim-jdtls` will automatically register a `java` debug adapter with nvim-dap,
+if nvim-dap is available.
 
-To do that, extend the [configuration](#Configuration-verbose):
-
-```lua
-config['on_attach'] = function(client, bufnr)
-  -- With `hotcodereplace = 'auto' the debug adapter will try to apply code changes
-  -- you make during a debug session immediately.
-  -- Remove the option if you do not want that.
-  -- You can use the `JdtHotcodeReplace` command to trigger it manually
-  require('jdtls').setup_dap({ hotcodereplace = 'auto' })
-end
-```
 
 ### nvim-dap configuration
 
 `nvim-jdtls` includes functionality to discover main classes and create `nvim-dap` configuration entries for them.
 
-To discover the main classes you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtRefreshDebugConfigs` command. It will only discover classes once eclipse.jdt.ls fully loaded the project. Depending on the project that may take a while. Because of that, calling `require('jdtls.dap').setup_dap_main_class_configs()` as part of an `on_attach` handler may not work well.
+To discover the main classes you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtUpdateDebugConfigs` command. It will only discover classes once eclipse.jdt.ls fully loaded the project. Depending on the project that may take a while. Because of that, calling `require('jdtls.dap').setup_dap_main_class_configs()` as part of an `on_attach` handler may not work well.
 
 For manual configuration see [nvim-dap Adapter Installation Wiki](https://github.com/mfussenegger/nvim-dap/wiki/Java).
 
