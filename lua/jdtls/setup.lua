@@ -12,55 +12,21 @@ local status_callback = function(_, result)
 end
 
 
-local lsp_clients = {}
-do
-  local client_id_by_root_dir = {}
-
-  function lsp_clients.start(config)
-      local bufnr = api.nvim_get_current_buf()
-      local root_dir = uv.fs_realpath(config.root_dir)
-      local client_id = client_id_by_root_dir[root_dir]
-      -- client could have died on us; so check if alive
-      if client_id then
-        local client = lsp.get_client_by_id(client_id)
-        if not client or client.is_stopped() then
-          client_id = nil
-        end
-      end
-      if not client_id then
-        client_id = lsp.start_client(config)
-        client_id_by_root_dir[root_dir] = client_id
-      end
-      lsp.buf_attach_client(bufnr, client_id)
-  end
-
-  function lsp_clients.stop()
-    for root_dir, client_id in pairs(client_id_by_root_dir) do
-      local client = lsp.get_client_by_id(client_id)
-      if client then
-        client.stop()
-        client_id_by_root_dir[root_dir] = nil
-      end
-    end
-  end
-
-  function lsp_clients.restart()
-    for root_dir, client_id in pairs(client_id_by_root_dir) do
-      local client = lsp.get_client_by_id(client_id)
-      if client then
-        local bufs = lsp.get_buffers_by_client_id(client_id)
-        client.stop()
-        client_id = lsp.start_client(client.config)
-        client_id_by_root_dir[root_dir] = client_id
-        for _, buf in pairs(bufs) do
-          lsp.buf_attach_client(buf, client_id)
-        end
+M.restart = function()
+  for _, client in lsp.get_active_clients({ name = "jdtls" }) do
+    local bufs = lsp.get_buffers_by_client_id(client.id)
+    client.stop()
+    vim.wait(30000, function()
+      return lsp.get_client_by_id(client.id) == nil
+    end)
+    local client_id = lsp.start_client(client.config)
+    if client_id then
+      for _, buf in ipairs(bufs) do
+        lsp.buf_attach_client(buf, client_id)
       end
     end
   end
 end
-
-M.restart = lsp_clients.restart
 
 local function may_jdtls_buf(bufnr)
   if vim.bo[bufnr].filetype == "java" then
@@ -71,7 +37,6 @@ local function may_jdtls_buf(bufnr)
 end
 
 local function attach_to_active_buf(bufnr, client_name)
-
   local function try_attach(buf)
     if not may_jdtls_buf(buf) then
       return false
@@ -195,16 +160,14 @@ local function maybe_implicit_save()
 end
 
 
+---@return string?, lsp.Client?
 local function extract_data_dir(bufnr)
-  local is_jdtls = function(client)
-    return client.name == 'jdtls'
-  end
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
-  local client = vim.tbl_filter(is_jdtls, vim.lsp.buf_get_clients(bufnr))[1]
+  local client = vim.lsp.get_active_clients({ name = "jdtls", bufnr = bufnr })[1]
   if not client then
     -- Try first matching jdtls client otherwise. In case the user is in a
     -- different buffer like the quickfix list
-    local clients = vim.tbl_filter(is_jdtls, vim.lsp.get_active_clients())
+    local clients = vim.lsp.get_active_clients({ name = "jdtls" })
     if vim.tbl_count(clients) > 1 then
       client = require('jdtls.ui').pick_one(
         clients,
@@ -217,15 +180,18 @@ local function extract_data_dir(bufnr)
   end
 
   if client and client.config and client.config.cmd then
-    for i, part in pairs(client.config.cmd) do
-      -- jdtls helper script uses `--data`, java jar command uses `-data`.
-      if part == '-data' or part == '--data' then
-        return client.config.cmd[i + 1]
+    local cmd = client.config.cmd
+    if type(cmd) == "table" then
+      for i, part in pairs(cmd) do
+        -- jdtls helper script uses `--data`, java jar command uses `-data`.
+        if part == '-data' or part == '--data' then
+          return client.config.cmd[i + 1], client
+        end
       end
     end
   end
 
-  return nil
+  return nil, nil
 end
 
 
@@ -284,13 +250,13 @@ function M.start_or_attach(config)
   })
   config.on_init = init_with_config_notify(config.on_init)
   maybe_implicit_save()
-  lsp_clients.start(config)
+  vim.lsp.start(config)
 end
 
 
 function M.wipe_data_and_restart()
-  local data_dir = extract_data_dir(vim.api.nvim_get_current_buf())
-  if not data_dir then
+  local data_dir, client = extract_data_dir(vim.api.nvim_get_current_buf())
+  if not data_dir or not client then
     vim.notify(
       "Data directory wasn't detected. " ..
       "You must call `start_or_attach` at least once and the cmd must include a `-data` parameter (or `--data` if using the official `jdtls` wrapper)")
@@ -304,14 +270,16 @@ function M.wipe_data_and_restart()
       return
     end
     vim.schedule(function()
-      lsp_clients.stop()
+      local bufs = vim.lsp.get_buffers_by_client_id(client.id)
+      client.stop()
       vim.wait(30000, function()
-        return vim.tbl_count(vim.lsp.get_active_clients({ name = "jdtls" })) == 0
+        return vim.lsp.get_client_by_id(client.id) == nil
       end)
       vim.fn.delete(data_dir, 'rf')
-      for _, buf in pairs(api.nvim_list_bufs()) do
-        if vim.bo[buf].filetype == 'java' then
-          api.nvim_buf_call(buf, function() vim.cmd('e!') end)
+      local client_id = lsp.start_client(client.config)
+      if client_id then
+        for _, buf in ipairs(bufs) do
+          lsp.buf_attach_client(buf, client_id)
         end
       end
     end)
