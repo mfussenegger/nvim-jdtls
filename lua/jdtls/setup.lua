@@ -182,7 +182,62 @@ local function extract_data_dir(bufnr)
 end
 
 
-function M.start_or_attach(config)
+---@param client lsp.Client
+---@param opts jdtls.start.opts
+local function add_commands(client, bufnr, opts)
+  local function create_cmd(name, command, cmdopts)
+    api.nvim_buf_create_user_command(bufnr, name, command, cmdopts or {})
+  end
+  create_cmd("JdtCompile", "lua require('jdtls').compile(<f-args>)", {
+    nargs = "?",
+    complete = "custom,v:lua.require'jdtls'._complete_compile"
+  })
+  create_cmd("JdtSetRuntime", "lua require('jdtls').set_runtime(<f-args>)", {
+    nargs = "?",
+    complete = "custom,v:lua.require'jdtls'._complete_set_runtime"
+  })
+  create_cmd("JdtUpdateConfig", "lua require('jdtls').update_project_config()")
+  create_cmd("JdtJol", "lua require('jdtls').jol(<f-args>)", {
+    nargs = "*"
+  })
+  create_cmd("JdtBytecode", "lua require('jdtls').javap()")
+  create_cmd("JdtJshell", "lua require('jdtls').jshell()")
+  create_cmd("JdtRestart", "lua require('jdtls.setup').restart()")
+  local ok, dap = pcall(require, 'dap')
+  if ok then
+    local command_provider = client.server_capabilities.executeCommandProvider or {}
+    local commands = command_provider.commands or {}
+    if not vim.tbl_contains(commands, "vscode.java.startDebugSession") then
+      return
+    end
+
+    require("jdtls.dap").setup_dap(opts.dap or {})
+    api.nvim_command "command! -buffer JdtUpdateDebugConfig lua require('jdtls.dap').setup_dap_main_class_configs({ verbose = true })"
+    local redefine_classes = function()
+      local session = dap.session()
+      if not session then
+        vim.notify('No active debug session')
+      else
+        vim.notify('Applying code changes')
+        session:request('redefineClasses', nil, function(err)
+          assert(not err, vim.inspect(err))
+        end)
+      end
+    end
+    api.nvim_create_user_command('JdtUpdateHotcode', redefine_classes, {
+      desc = "Trigger reload of changed classes for current debug session",
+    })
+  end
+end
+
+
+---@class jdtls.start.opts
+---@field dap? JdtSetupDapOpts
+
+
+---@param opts? jdtls.start.opts
+function M.start_or_attach(config, opts)
+  opts = opts or {}
   assert(config, 'config is required')
   assert(
     config.cmd and type(config.cmd) == 'table',
@@ -190,6 +245,13 @@ function M.start_or_attach(config)
       .. table.concat(config.cmd, ' ')
   )
   config.name = 'jdtls'
+  local on_attach = config.on_attach
+  config.on_attach = function(client, bufnr)
+    if on_attach then
+      on_attach(client, bufnr)
+    end
+    add_commands(client, bufnr, opts)
+  end
 
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
@@ -273,32 +335,8 @@ function M.wipe_data_and_restart()
 end
 
 
+---@deprecated not needed, start automatically adds commands
 function M.add_commands()
-  vim.cmd [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)]]
-  vim.cmd [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_set_runtime JdtSetRuntime lua require('jdtls').set_runtime(<f-args>)]]
-  vim.cmd [[command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()]]
-  vim.cmd [[command! -buffer -nargs=* JdtJol lua require('jdtls').jol(<f-args>)]]
-  vim.cmd [[command! -buffer JdtBytecode lua require('jdtls').javap()]]
-  vim.cmd [[command! -buffer JdtJshell lua require('jdtls').jshell()]]
-  vim.cmd [[command! -buffer JdtRestart lua require('jdtls.setup').restart()]]
-  local ok, dap = pcall(require, 'dap')
-  if ok and dap.adapters.java then
-    api.nvim_command "command! -buffer JdtRefreshDebugConfigs lua require('jdtls.dap').setup_dap_main_class_configs({ verbose = true })"
-    local redefine_classes = function()
-      local session = dap.session()
-      if not session then
-        vim.notify('No active debug session')
-      else
-        vim.notify('Applying code changes')
-        session:request('redefineClasses', nil, function(err)
-          assert(not err, vim.inspect(err))
-        end)
-      end
-    end
-    api.nvim_create_user_command('JdtHotcodeReplace', redefine_classes, {
-      desc = "Trigger reload of changed classes for current debug session",
-    })
-  end
 end
 
 
