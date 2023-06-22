@@ -61,20 +61,40 @@ JdtProjectSelectMode                                      *JdtProjectSelectMode*
         string
 
 
-M.extract_constant()                                    *jdtls.extract_constant*
+jdtls.extract.opts                                          *jdtls.extract.opts*
+    |"all"
+    |"prompt"
+
+    Type: ~
+        {from_selection?:boolean,name?:string|fun():string}
+
+
+M.extract_constant({opts?})                             *jdtls.extract_constant*
      Extract a constant from the expression under the cursor
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_variable()                                    *jdtls.extract_variable*
+
+M.extract_variable({opts?})                             *jdtls.extract_variable*
      Extract a variable from the expression under the cursor
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_variable_all()                            *jdtls.extract_variable_all*
+
+M.extract_variable_all({opts?})                     *jdtls.extract_variable_all*
      Extract a local variable from the expression under the cursor and replace all occurrences
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_method()                                        *jdtls.extract_method*
+
+M.extract_method({opts?})                                 *jdtls.extract_method*
      Extract a method
+
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
 
 M.super_implementation()                            *jdtls.super_implementation*
