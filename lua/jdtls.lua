@@ -284,14 +284,8 @@ local function move_file(command, code_action_params)
       'Target package> ',
       function(x)
         local name = x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName
-        if string.find(x.path, "src/main") then
-          name = "main » " .. name
-        elseif string.find(x.path, "src/test") then
-          name = "test » " .. name
-        else
-          name = x.path .. " » " .. name
-        end
-        return name
+        local sourceset = string.match(x.path, "src/(%a+)/")
+        return (sourceset and sourceset or x.path) .. " » " .. name
       end,
       function(x)
         local move_params = {
