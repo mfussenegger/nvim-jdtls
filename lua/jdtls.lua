@@ -761,7 +761,9 @@ local function java_override_methods(_, context)
       print("Error getting workspace edits: " .. err2.message)
       return
     end
-    vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
+    if result2 then
+      vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
+    end
   end)()
 end
 
@@ -777,6 +779,28 @@ M.commands = {
   ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
   ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
   ['java.action.overrideMethodsPrompt'] = java_override_methods;
+  ['_java.test.askClientForChoice'] = function(args)
+    local prompt = args[1]
+    local choices = args[2]
+    local pick_many = args[3]
+    return require("jdtls.tests")._ask_client_for_choice(prompt, choices, pick_many)
+  end,
+  ['_java.test.advancedAskClientForChoice'] = function(args)
+    local prompt = args[1]
+    local choices = args[2]
+    -- local advanced_action = args[3]
+    local pick_many = args[4]
+    return require("jdtls.tests")._ask_client_for_choice(prompt, choices, pick_many)
+  end,
+  ['_java.test.askClientForInput'] = function(args)
+    local prompt = args[1]
+    local default = args[2]
+    local result = vim.fn.input({
+      prompt = prompt .. ': ',
+      default = default
+    })
+    return result and result or vim.NIL
+  end,
 }
 
 if vim.lsp.commands then

@@ -37,6 +37,8 @@ alternative:
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
 - [x] `jshell` command to open up `jshell` with `classpath` from project set
 - [x] Debugger support via [nvim-dap][5]
+- [x] Optional vscode-java-test extensions
+  - [x] Generate tests via `require("jdtls.tests").generate()`
 
 Take a look at [a demo](https://github.com/mfussenegger/nvim-jdtls/issues/3) to
 see some of the functionality in action.
