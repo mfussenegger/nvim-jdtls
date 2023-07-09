@@ -39,6 +39,7 @@ alternative:
 - [x] Debugger support via [nvim-dap][5]
 - [x] Optional vscode-java-test extensions
   - [x] Generate tests via `require("jdtls.tests").generate()`
+  - [x] Jump to tests or subjects via `require("jdtls.tests").goto_subjects()`
 
 Take a look at [a demo](https://github.com/mfussenegger/nvim-jdtls/issues/3) to
 see some of the functionality in action.
