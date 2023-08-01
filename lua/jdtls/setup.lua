@@ -13,7 +13,7 @@ end
 
 
 M.restart = function()
-  for _, client in lsp.get_active_clients({ name = "jdtls" }) do
+  for _, client in ipairs(lsp.get_active_clients({ name = "jdtls" })) do
     local bufs = lsp.get_buffers_by_client_id(client.id)
     client.stop()
     vim.wait(30000, function()
