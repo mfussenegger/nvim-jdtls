@@ -32,7 +32,7 @@ local M = {
 --- Start the language server (if not started), and attach the current buffer.
 --- @param config table configuration. See |vim.lsp.start_client|
 function M.start_or_attach(config)
-  setup.start_or_attach(config)
+  return setup.start_or_attach(config)
 end
 
 

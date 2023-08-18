@@ -39,29 +39,35 @@ end
 local function attach_to_active_buf(bufnr, client_name)
   local function try_attach(buf)
     if not may_jdtls_buf(buf) then
-      return false
+      return nil
     end
     local clients = vim.lsp.get_active_clients({ bufnr = buf, name = client_name })
     local _, client = next(clients)
     if client then
       lsp.buf_attach_client(bufnr, client.id)
-      return true
+      return client.id
     end
-    return false
+    return nil
   end
 
   ---@diagnostic disable-next-line: param-type-mismatch
   local altbuf = vim.fn.bufnr("#", -1)
-  if altbuf and altbuf > 0 and try_attach(altbuf) then
-    return true
+  if altbuf and altbuf > 0 then
+    local client_id = try_attach(altbuf)
+    if client_id then
+      return client_id
+    end
   end
   for _, buf in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_is_loaded(buf) and try_attach(buf) then
-      return true
+    if api.nvim_buf_is_loaded(buf) then
+      local client_id = try_attach(buf)
+      if client_id then
+        return client_id
+      end
     end
   end
   print('No active LSP client found to use for jdt:// document')
-  return false
+  return nil
 end
 
 
@@ -258,9 +264,7 @@ function M.start_or_attach(config, opts)
   -- Won't be able to get the correct root path for jdt:// URIs
   -- So need to connect to an existing client
   if vim.startswith(bufname, 'jdt://') then
-    if attach_to_active_buf(bufnr, config.name) then
-      return
-    end
+    return attach_to_active_buf(bufnr, config.name)
   end
 
   config.root_dir = (config.root_dir
@@ -298,7 +302,7 @@ function M.start_or_attach(config, opts)
     }
   })
   maybe_implicit_save()
-  vim.lsp.start(config)
+  return vim.lsp.start(config)
 end
 
 
