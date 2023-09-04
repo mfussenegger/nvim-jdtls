@@ -43,8 +43,13 @@ function M.mk_test_results(bufnr)
     parse(buf, tests)
   end
   local function get_test_line_nr(lenses, name)
+    if lenses.fullName == name then
+        return lenses.range.start.line
+    end
     for _, v in ipairs(lenses) do
+      -- log.warn(v)
       if v.fullName == name then
+        -- log.warn(v)
         return v.range.start.line
       end
     end
