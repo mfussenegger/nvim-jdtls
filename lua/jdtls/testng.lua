@@ -44,12 +44,10 @@ function M.mk_test_results(bufnr)
   end
   local function get_test_line_nr(lenses, name)
     if lenses.fullName == name then
-        return lenses.range.start.line
+      return lenses.range.start.line
     end
     for _, v in ipairs(lenses) do
-      -- log.warn(v)
       if v.fullName == name then
-        -- log.warn(v)
         return v.range.start.line
       end
     end
@@ -57,7 +55,6 @@ function M.mk_test_results(bufnr)
   end
   return {
     show = function(lens)
-      local items = {}
       local repl = require('dap.repl')
 
       -- error = '✘',
@@ -68,34 +65,31 @@ function M.mk_test_results(bufnr)
       local failed = {}
       for _, test in ipairs(tests) do
         local lnum = get_test_line_nr(lenses, test.attributes.name)
-        if lnum == nil then
-          goto continue
+        if lnum ~= nil then
+          local testName = vim.split(test.attributes.name, '#')[2]
+          if test.name == 'testFailed' then
+            table.insert(failed, {
+              bufnr = bufnr,
+              lnum = lnum,
+              col = 0,
+              severity = vim.diagnostic.severity.ERROR,
+              source = 'testng',
+              message = test.attributes.message,
+              user_data = {}
+            })
+            repl.append('❌ ' .. testName .. ' failed')
+            repl.append(test.attributes.message)
+            repl.append(test.attributes.trace)
+          elseif test.name == 'testFinished' then
+            local text = { '✔️ ' }
+            vim.api.nvim_buf_set_extmark(bufnr, ns, lnum, 0, {
+              virt_text = { text },
+            })
+            repl.append('✔️  ' .. testName .. ' passed')
+          end
         end
-        local testName = vim.split(test.attributes.name, '#')[2]
-        if test.name == 'testFailed' then
-          table.insert(failed, {
-            bufnr = bufnr,
-            lnum = lnum,
-            col = 0,
-            severity = vim.diagnostic.severity.ERROR,
-            source = 'testng',
-            message = test.attributes.message,
-            user_data = {}
-          })
-          repl.append('❌ ' .. testName .. ' failed')
-          repl.append(test.attributes.message)
-          repl.append(test.attributes.trace)
-        elseif test.name == 'testFinished' then
-          local text = { '✔️ ' }
-          vim.api.nvim_buf_set_extmark(bufnr, ns, lnum, 0, {
-            virt_text = { text },
-          })
-          repl.append('✔️  ' .. testName .. ' passed')
-        end
-          ::continue::
       end
       vim.diagnostic.set(ns, bufnr, failed, {})
-      return items
     end,
     mk_reader = function(sock)
       return vim.schedule_wrap(mk_buf_loop(sock, handle_buffer))
