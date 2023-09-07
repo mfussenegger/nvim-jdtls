@@ -3,19 +3,15 @@ local M = {}
 
 local function parse(content, tests)
   local lines = vim.split(content, '\n')
-  local test = nil
   for _, line in ipairs(lines) do
     if vim.startswith(line, '@@<TestRunner-') then
       line = line.sub(line, 15)
       line = line:sub(1, -13)
-      test = vim.json.decode(line)
+      local test = vim.json.decode(line)
       if test.name ~= 'testStarted' then
         table.insert(tests, test)
       end
     end
-  end
-  if test then
-    table.insert(tests, test)
   end
 end
 
