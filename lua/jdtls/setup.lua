@@ -298,7 +298,7 @@ function M.start_or_attach(config, opts)
     }
   })
   maybe_implicit_save()
-  vim.lsp.start(config)
+  return vim.lsp.start(config, opts)
 end
 
 
