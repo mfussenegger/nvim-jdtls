@@ -5,6 +5,9 @@ local path = require('jdtls.path')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+
 
 local status_callback = function(_, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None',
@@ -13,7 +16,7 @@ end
 
 
 M.restart = function()
-  for _, client in ipairs(lsp.get_active_clients({ name = "jdtls" })) do
+  for _, client in ipairs(get_clients({ name = "jdtls" })) do
     local bufs = lsp.get_buffers_by_client_id(client.id)
     client.stop()
     vim.wait(30000, function()
@@ -41,7 +44,7 @@ local function attach_to_active_buf(bufnr, client_name)
     if not may_jdtls_buf(buf) then
       return false
     end
-    local clients = vim.lsp.get_active_clients({ bufnr = buf, name = client_name })
+    local clients = get_clients({ bufnr = buf, name = client_name })
     local _, client = next(clients)
     if client then
       lsp.buf_attach_client(bufnr, client.id)
@@ -105,17 +108,19 @@ local function configuration_handler(err, result, ctx, config)
   local client_id = ctx.client_id
   local bufnr = 0
   local client = lsp.get_client_by_id(client_id)
-  -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
-  -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
-  -- This ensures the language-server will use the latest version of the options
-  client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
-    java = {
-      format = {
-        insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
-        tabSize = lsp.util.get_effective_tabstop(bufnr)
+  if client then
+    -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
+    -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
+    -- This ensures the language-server will use the latest version of the options
+    client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
+      java = {
+        format = {
+          insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
+          tabSize = lsp.util.get_effective_tabstop(bufnr)
+        }
       }
-    }
-  })
+    })
+  end
   return lsp.handlers['workspace/configuration'](err, result, ctx, config)
 end
 
@@ -140,7 +145,9 @@ local function maybe_implicit_save()
     end
     local stat = vim.loop.fs_stat(fname)
     if not stat then
-      vim.fn.mkdir(vim.fn.expand('%:p:h'), 'p')
+      local filepath = vim.fn.expand('%:p:h')
+      assert(type(filepath) == "string")
+      vim.fn.mkdir(filepath, 'p')
       vim.cmd('w')
     end
   end
@@ -150,12 +157,13 @@ end
 ---@return string?, lsp.Client?
 local function extract_data_dir(bufnr)
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
-  local client = vim.lsp.get_active_clients({ name = "jdtls", bufnr = bufnr })[1]
+  local client = get_clients({ name = "jdtls", bufnr = bufnr })[1]
   if not client then
     -- Try first matching jdtls client otherwise. In case the user is in a
     -- different buffer like the quickfix list
-    local clients = vim.lsp.get_active_clients({ name = "jdtls" })
+    local clients = get_clients({ name = "jdtls" })
     if vim.tbl_count(clients) > 1 then
+      ---@diagnostic disable-next-line: cast-local-type
       client = require('jdtls.ui').pick_one(
         clients,
         'Multiple jdtls clients found, pick one: ',
