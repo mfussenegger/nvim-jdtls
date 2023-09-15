@@ -244,7 +244,7 @@ function M.start_or_attach(config, opts)
     'Config must have a `cmd` property and that must be a table. Got: '
       .. table.concat(config.cmd, ' ')
   )
-  config.name = 'jdtls'
+  config.name = config.name or 'jdtls'
   local on_attach = config.on_attach
   config.on_attach = function(client, bufnr)
     if on_attach then
