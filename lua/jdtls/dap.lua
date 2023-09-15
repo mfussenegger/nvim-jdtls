@@ -308,6 +308,17 @@ local function get_first_class_lens(lenses)
   end
 end
 
+local function testng_runner()
+  local vscode_runner = 'com.microsoft.java.test.runner-jar-with-dependencies.jar'
+  local bundles = vim.lsp.get_active_clients({name='jdtls'})[1].config.init_options.bundles
+  for _, jar_path in pairs(bundles) do
+    local parts = vim.split(jar_path, '/')
+    if parts[#parts] == vscode_runner then
+      return jar_path
+    end
+  end
+  return false
+end
 
 local function make_config(lens, launch_args, config_overrides)
   local config = {
@@ -324,17 +335,29 @@ local function make_config(lens, launch_args, config_overrides)
   }
   config = vim.tbl_extend('force', config, config_overrides or default_config_overrides)
   if lens.testKind == TestKind.TestNG or lens.kind == TestKind.TestNG then
-    config.mainClass = 'com.microsoft.java.test.runner.Launcher'
-    -- id is in the format <project>@<class>#<method>
-    local parts = vim.split(lens.id, '@')
-    parts  = vim.split(parts[2], '#')
-    config.args = string.format('testng %s', lens.fullName)
-    table.insert(config.classPaths, os.getenv 'HOME' .. '/.local/share/nvim/mason/packages/java-test/extension/server/com.microsoft.java.test.runner-jar-with-dependencies.jar');
+    local jar = testng_runner()
+    if jar then
+      config.mainClass = 'com.microsoft.java.test.runner.Launcher'
+      config.args = string.format('testng %s', lens.fullName)
+      table.insert(config.classPaths, jar);
+    else
+      print("Could not find vscode test runner for testng. Add it to init_options.bundles for better integration.")
+      config.mainClass = 'org.testng.TestNG'
+      -- id is in the format <project>@<class>#<method>
+      local parts = vim.split(lens.id, '@')
+      parts  = vim.split(parts[2], '#')
+      if #parts > 1 then
+        config.args = string.format('-testclass %s -methods %s.%s', parts[1], parts[1], parts[2])
+      else
+        config.args = string.format('-testclass %s', parts[1])
+      end
+    end
   else
     config.args = table.concat(launch_args.programArguments, ' ');
   end
   return config
 end
+
 
 
 ---@param bufnr? integer
