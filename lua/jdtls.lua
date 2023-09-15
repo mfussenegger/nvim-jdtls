@@ -15,6 +15,8 @@ local setup = require('jdtls.setup')
 
 local offset_encoding = 'utf-16'
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
 
 
 local M = {
@@ -30,14 +32,16 @@ local M = {
 }
 
 --- Start the language server (if not started), and attach the current buffer.
---- @param config table configuration. See |vim.lsp.start_client|
+---
+---@param config table configuration. See |vim.lsp.start_client|
+---@return integer? client_id
 function M.start_or_attach(config)
-  setup.start_or_attach(config)
+  return setup.start_or_attach(config)
 end
 
 
 local request = function(bufnr, method, params, handler)
-  local clients = vim.lsp.get_active_clients({ bufnr = bufnr, name = "jdtls" })
+  local clients = get_clients({ bufnr = bufnr, name = "jdtls" })
   local _, client = next(clients)
   if not client then
     vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
@@ -1175,9 +1179,9 @@ function M.open_classfile(fname)
   vim.bo[buf].filetype = 'java'
   local timeout_ms = M.settings.jdt_uri_timeout_ms
   vim.wait(timeout_ms, function()
-    return next(vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })) ~= nil
+    return next(get_clients({ name = "jdtls", bufnr = buf })) ~= nil
   end)
-  local client = vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })[1]
+  local client = get_clients({ name = "jdtls", bufnr = buf })[1]
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
 
   local content
@@ -1209,7 +1213,7 @@ end
 ---@private
 function M._complete_set_runtime()
   local client
-  for _, c in pairs(vim.lsp.get_active_clients()) do
+  for _, c in pairs(get_clients()) do
     if c.config.settings.java then
       client = c
       break
@@ -1228,7 +1232,7 @@ end
 ---@param runtime nil|string Java runtime. Prompts for runtime if nil
 function M.set_runtime(runtime)
   local client
-  for _, c in pairs(vim.lsp.get_active_clients()) do
+  for _, c in pairs(get_clients()) do
     if c.config.settings.java then
       client = c
       break
