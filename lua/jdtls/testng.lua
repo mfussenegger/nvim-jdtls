@@ -63,6 +63,7 @@ function M.mk_test_results(bufnr)
         local lnum = get_test_line_nr(lenses, test.attributes.name)
         if lnum ~= nil then
           local testName = vim.split(test.attributes.name, '#')[2]
+          local message = test.attributes.message or 'test failed'
           if test.name == 'testFailed' then
             table.insert(failed, {
               bufnr = bufnr,
@@ -70,11 +71,11 @@ function M.mk_test_results(bufnr)
               col = 0,
               severity = vim.diagnostic.severity.ERROR,
               source = 'testng',
-              message = test.attributes.message,
+              message = message,
               user_data = {}
             })
             repl.append('❌ ' .. testName .. ' failed')
-            repl.append(test.attributes.message)
+            repl.append(message)
             repl.append(test.attributes.trace)
           elseif test.name == 'testFinished' then
             local text = { '✔️ ' }
