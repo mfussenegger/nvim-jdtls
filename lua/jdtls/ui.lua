@@ -13,6 +13,11 @@ function M.pick_one_async(items, prompt, label_fn, cb)
 end
 
 
+---@generic T
+---@param items T[]
+---@param prompt string
+---@param label_fn fun(item: T): string
+---@result T|nil
 function M.pick_one(items, prompt, label_fn)
   local choices = {prompt}
   for i, item in ipairs(items) do

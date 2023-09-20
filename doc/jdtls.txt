@@ -1,9 +1,13 @@
 ==============================================================================
 LSP extensions for Neovim and eclipse.jdt.ls                             *jdtls*
 
-M.start_or_attach()                                      *jdtls.start_or_attach*
+M.start_or_attach({config})                              *jdtls.start_or_attach*
      Start the language server (if not started), and attach the current buffer.
-     @param config table configuration. See |vim.lsp.start_client|
+
+
+    Parameters: ~
+        {config}  (table)  configuration. See |vim.lsp.start_client|
+                           @return integer? client_id
 
 
 M.organize_imports()                                    *jdtls.organize_imports*
@@ -61,20 +65,40 @@ JdtProjectSelectMode                                      *JdtProjectSelectMode*
         string
 
 
-M.extract_constant()                                    *jdtls.extract_constant*
+jdtls.extract.opts                                          *jdtls.extract.opts*
+    |"all"
+    |"prompt"
+
+    Type: ~
+        {visual?:boolean,name?:string|fun():string}
+
+
+M.extract_constant({opts?})                             *jdtls.extract_constant*
      Extract a constant from the expression under the cursor
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_variable()                                    *jdtls.extract_variable*
+
+M.extract_variable({opts?})                             *jdtls.extract_variable*
      Extract a variable from the expression under the cursor
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_variable_all()                            *jdtls.extract_variable_all*
+
+M.extract_variable_all({opts?})                     *jdtls.extract_variable_all*
      Extract a local variable from the expression under the cursor and replace all occurrences
 
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
-M.extract_method()                                        *jdtls.extract_method*
+
+M.extract_method({opts?})                                 *jdtls.extract_method*
      Extract a method
+
+    Parameters: ~
+        {opts?}  (jdtls.extract.opts)
 
 
 M.super_implementation()                            *jdtls.super_implementation*
@@ -228,6 +252,24 @@ JdtTestOpts                                                        *JdtTestOpts*
         {after_test}        (nil|function)      Callback triggered after test run
         {bufnr?}            (number)            Buffer that contains the test
         {lnum?}             (number)            1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window.
+
+
+==============================================================================
+Functions which require vscode-java-test                           *jdtls.tests*
+
+M.generate()                                              *jdtls.tests.generate*
+     Generate tests for the current class
+     @param opts? {bufnr: integer}
+
+
+M.goto_subjects()                                    *jdtls.tests.goto_subjects*
+     Go to the related subjects
+     If in a test file, this will jump to classes the test might cover
+     If in a non-test file, this will jump to related tests.
+
+     If no candidates are found, this calls `generate()`
+
+     @param opts? {goto_tests: boolean}
 
 
 vim:tw=78:ts=8:noet:ft=help:norl:

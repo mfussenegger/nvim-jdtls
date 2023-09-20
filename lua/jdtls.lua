@@ -15,6 +15,8 @@ local setup = require('jdtls.setup')
 
 local offset_encoding = 'utf-16'
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
 
 
 local M = {
@@ -30,20 +32,17 @@ local M = {
 }
 
 --- Start the language server (if not started), and attach the current buffer.
---- @param config table configuration. See |vim.lsp.start_client|
+---
+---@param config table configuration. See |vim.lsp.start_client|
+---@return integer? client_id
 function M.start_or_attach(config)
-  setup.start_or_attach(config)
+  return setup.start_or_attach(config)
 end
 
 
 local request = function(bufnr, method, params, handler)
-  local client = nil
-  for _, c in pairs(vim.lsp.get_active_clients({ bufnr = bufnr })) do
-    if c.name == 'jdtls' then
-      client = c
-      break
-    end
-  end
+  local clients = get_clients({ bufnr = bufnr, name = "jdtls" })
+  local _, client = next(clients)
   if not client then
     vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
     return
@@ -287,7 +286,11 @@ local function move_file(command, code_action_params)
     ui.pick_one_async(
       destinations,
       'Target package> ',
-      function(x) return x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName end,
+      function(x)
+        local name = x.project .. ' » ' .. (x.isParentOfSelectedFile and '* ' or '') .. x.displayName
+        local sourceset = string.match(x.path, "src/(%a+)/")
+        return (sourceset and sourceset or x.path) .. " » " .. name
+      end,
       function(x)
         local move_params = {
           moveKind = 'moveResource',
@@ -589,7 +592,8 @@ local function change_signature(bufnr, command, code_action_params)
 end
 
 
-local function java_apply_refactoring_command(command, outer_ctx)
+---@param after_refactor? function
+local function java_apply_refactoring_command(command, outer_ctx, after_refactor)
   local cmd = command.arguments[1]
   local bufnr = outer_ctx.bufnr
   local code_action_params = outer_ctx.params
@@ -611,13 +615,19 @@ local function java_apply_refactoring_command(command, outer_ctx)
     context = code_action_params,
     options = format_opts(),
   }
+  local apply_refactor = function(err, result, ctx)
+    handle_refactor_workspace_edit(err, result, ctx)
+    if after_refactor then
+      after_refactor()
+    end
+  end
   if not vim.tbl_contains(setup.extendedClientCapabilities.inferSelectionSupport, cmd) then
-    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, apply_refactor)
     return
   end
   local range = code_action_params.range
   if not (range.start.character == range['end'].character and range.start.line == range['end'].line) then
-    request(bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+    request(bufnr, 'java/getRefactorEdit', params, apply_refactor)
     return
   end
 
@@ -629,7 +639,7 @@ local function java_apply_refactoring_command(command, outer_ctx)
     end
     if #selection_info == 1 then
       params.commandArguments = selection_info
-      request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+      request(ctx.bufnr, 'java/getRefactorEdit', params, apply_refactor)
     else
       ui.pick_one_async(
         selection_info,
@@ -638,7 +648,7 @@ local function java_apply_refactoring_command(command, outer_ctx)
         function(selection)
           if not selection then return end
           params.commandArguments = {selection}
-          request(ctx.bufnr, 'java/getRefactorEdit', params, handle_refactor_workspace_edit)
+          request(ctx.bufnr, 'java/getRefactorEdit', params, apply_refactor)
         end
       )
     end
@@ -755,7 +765,9 @@ local function java_override_methods(_, context)
       print("Error getting workspace edits: " .. err2.message)
       return
     end
-    vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
+    if result2 then
+      vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
+    end
   end)()
 end
 
@@ -771,6 +783,28 @@ M.commands = {
   ['java.action.generateConstructorsPrompt'] = java_generate_constructors_prompt;
   ['java.action.generateDelegateMethodsPrompt'] = java_generate_delegate_methods_prompt;
   ['java.action.overrideMethodsPrompt'] = java_override_methods;
+  ['_java.test.askClientForChoice'] = function(args)
+    local prompt = args[1]
+    local choices = args[2]
+    local pick_many = args[3]
+    return require("jdtls.tests")._ask_client_for_choice(prompt, choices, pick_many)
+  end,
+  ['_java.test.advancedAskClientForChoice'] = function(args)
+    local prompt = args[1]
+    local choices = args[2]
+    -- local advanced_action = args[3]
+    local pick_many = args[4]
+    return require("jdtls.tests")._ask_client_for_choice(prompt, choices, pick_many)
+  end,
+  ['_java.test.askClientForInput'] = function(args)
+    local prompt = args[1]
+    local default = args[2]
+    local result = vim.fn.input({
+      prompt = prompt .. ': ',
+      default = default
+    })
+    return result and result or vim.NIL
+  end,
 }
 
 if vim.lsp.commands then
@@ -973,29 +1007,55 @@ end
 ---|"prompt"
 
 
-local function extract(entity, from_selection)
-  local params = make_code_action_params(from_selection or false)
-  java_apply_refactoring_command({ arguments = { entity }, }, { params = params })
+---@alias jdtls.extract.opts {visual?: boolean, name?: string|fun(): string}
+
+
+---@param entity string
+---@param opts? jdtls.extract.opts
+local function extract(entity, opts)
+  opts = opts or {}
+  if type(opts) == "boolean" then
+    -- bwc, param changed from boolean to table
+    opts = {
+      visual = opts
+    }
+  end
+  local params = make_code_action_params(opts.visual or false)
+  local command = { arguments = { entity }, }
+  local after_refactor = function()
+    local name = opts.name
+    if type(name) == "function" then
+      name = name()
+    end
+    if type(name) == "string" then
+      vim.lsp.buf.rename(name, { name = "jdtls" })
+    end
+  end
+  java_apply_refactoring_command(command, { params = params }, after_refactor)
 end
 
 --- Extract a constant from the expression under the cursor
-function M.extract_constant(from_selection)
-  extract('extractConstant', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_constant(opts)
+  extract('extractConstant', opts)
 end
 
 --- Extract a variable from the expression under the cursor
-function M.extract_variable(from_selection)
-  extract('extractVariable', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_variable(opts)
+  extract('extractVariable', opts)
 end
 
 --- Extract a local variable from the expression under the cursor and replace all occurrences
-function M.extract_variable_all(from_selection)
-  extract('extractVariableAllOccurrence', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_variable_all(opts)
+  extract('extractVariableAllOccurrence', opts)
 end
 
 --- Extract a method
-function M.extract_method(from_selection)
-  extract('extractMethod', from_selection)
+---@param opts? jdtls.extract.opts
+function M.extract_method(opts)
+  extract('extractMethod', opts)
 end
 
 
@@ -1119,9 +1179,9 @@ function M.open_classfile(fname)
   vim.bo[buf].filetype = 'java'
   local timeout_ms = M.settings.jdt_uri_timeout_ms
   vim.wait(timeout_ms, function()
-    return next(vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })) ~= nil
+    return next(get_clients({ name = "jdtls", bufnr = buf })) ~= nil
   end)
-  local client = vim.lsp.get_active_clients({ name = "jdtls", bufnr = buf })[1]
+  local client = get_clients({ name = "jdtls", bufnr = buf })[1]
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
 
   local content
@@ -1153,7 +1213,7 @@ end
 ---@private
 function M._complete_set_runtime()
   local client
-  for _, c in pairs(vim.lsp.get_active_clients()) do
+  for _, c in pairs(get_clients()) do
     if c.config.settings.java then
       client = c
       break
@@ -1172,7 +1232,7 @@ end
 ---@param runtime nil|string Java runtime. Prompts for runtime if nil
 function M.set_runtime(runtime)
   local client
-  for _, c in pairs(vim.lsp.get_active_clients()) do
+  for _, c in pairs(get_clients()) do
     if c.config.settings.java then
       client = c
       break

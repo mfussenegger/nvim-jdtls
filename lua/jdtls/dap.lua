@@ -8,6 +8,9 @@ local with_java_executable = util.with_java_executable
 local M = {}
 local default_config_overrides = {}
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+
 local function fetch_needs_preview(mainclass, project, cb, bufnr)
   local params = {
     command = 'vscode.java.checkProjectSettings',
@@ -79,7 +82,7 @@ local function start_debug_adapter(callback, config)
     return client.name == 'jdtls'
       and client.config
       and client.config.root_dir == config.cwd
-  end, vim.lsp.get_active_clients())[1]
+  end, get_clients())[1]
   local bufnr = vim.lsp.get_buffers_by_client_id(jdtls and jdtls.id)[1] or vim.api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
@@ -120,7 +123,7 @@ local TestLevel = {
 }
 
 
-local function make_junit_request_args(lens, uri)
+local function make_request_args(lens, uri)
   local methodname = ''
   local name_parts = vim.split(lens.fullName, '#')
   local classname = name_parts[1]
@@ -173,7 +176,7 @@ local function fetch_candidates(context, on_candidates)
   local params = {
     arguments = { context.uri };
   }
-  for _, c in pairs(vim.lsp.buf_get_clients()) do
+  for _, c in ipairs(get_clients({ bufnr = context.bufnr })) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
     if vim.tbl_contains(commands, cmd_codelens) then
@@ -224,7 +227,7 @@ end
 
 
 local function fetch_launch_args(lens, context, on_launch_args)
-  local req_arguments = make_junit_request_args(lens, context.uri)
+  local req_arguments = make_request_args(lens, context.uri)
   local cmd_junit_args = {
     command = 'vscode.java.test.junit.argument';
     arguments = { vim.fn.json_encode(req_arguments) };
@@ -236,6 +239,8 @@ local function fetch_launch_args(lens, context, on_launch_args)
       error((
         'Server must return launch_args as response to "vscode.java.test.junit.argument" command. '
         .. 'Check server logs via `:JdtShowlogs`. Sent: ' .. vim.inspect(req_arguments)))
+    elseif launch_args.errorMessage then
+      vim.notify(launch_args.errorMessage, vim.log.levels.WARN)
     else
       -- forward/backward compat with format change in
       -- https://github.com/microsoft/vscode-java-test/commit/5a78371ad60e86f858eace7726f0980926b6c31d
@@ -274,7 +279,7 @@ local function get_method_lens_above_cursor(lenses_tree, lnum)
       local line = range.start.line
       local best_match_line
       if result.best_match then
-        local best_match = result.best_match
+        local best_match = assert(result.best_match)
         best_match_line = best_match.location and best_match.location.range.start.line or best_match.range.start.line
       end
       if is_method and line <= lnum and (best_match_line == nil or line > best_match_line) then
@@ -303,6 +308,29 @@ local function get_first_class_lens(lenses)
   end
 end
 
+--- Return path to com.microsoft.java.test.runner-jar-with-dependencies.jar if found in bundles
+---
+---@return string? path
+local function testng_runner()
+  local vscode_runner = 'com.microsoft.java.test.runner-jar-with-dependencies.jar'
+  local client = get_clients({name='jdtls'})[1]
+  local bundles = client and client.config.init_options.bundles or {}
+  for _, jar_path in pairs(bundles) do
+    local parts = vim.split(jar_path, '/')
+    if parts[#parts] == vscode_runner then
+      return jar_path
+    end
+    local basepath = vim.fs.dirname(jar_path)
+    if basepath then
+      for name, _ in vim.fs.dir(basepath) do
+        if name == vscode_runner then
+          return vim.fs.joinpath(basepath, name)
+        end
+      end
+    end
+  end
+  return nil
+end
 
 local function make_config(lens, launch_args, config_overrides)
   local config = {
@@ -319,14 +347,25 @@ local function make_config(lens, launch_args, config_overrides)
   }
   config = vim.tbl_extend('force', config, config_overrides or default_config_overrides)
   if lens.testKind == TestKind.TestNG or lens.kind == TestKind.TestNG then
-    config.mainClass = 'org.testng.TestNG'
-    -- id is in the format <project>@<class>#<method>
-    local parts = vim.split(lens.id, '@')
-    parts  = vim.split(parts[2], '#')
-    if #parts > 1 then
-      config.args = string.format('-testclass %s -methods %s.%s', parts[1], parts[1], parts[2])
+    local jar = testng_runner()
+    if jar then
+      config.mainClass = 'com.microsoft.java.test.runner.Launcher'
+      config.args = string.format('testng %s', lens.fullName)
+      table.insert(config.classPaths, jar);
     else
-      config.args = string.format('-testclass %s', parts[1])
+      local msg = (
+        "Using basic TestNG integration. "
+        .. "For better test results add com.microsoft.java.test.runner-jar-with-dependencies.jar to one of the `bundles` folders")
+      vim.notify(msg)
+      config.mainClass = 'org.testng.TestNG'
+      -- id is in the format <project>@<class>#<method>
+      local parts = vim.split(lens.id, '@')
+      parts  = vim.split(parts[2], '#')
+      if #parts > 1 then
+        config.args = string.format('-testclass %s -methods %s.%s', parts[1], parts[1], parts[2])
+      else
+        config.args = string.format('-testclass %s', parts[1])
+      end
     end
   else
     config.args = table.concat(launch_args.programArguments, ' ');
@@ -335,10 +374,11 @@ local function make_config(lens, launch_args, config_overrides)
 end
 
 
----@param bufnr? number
+
+---@param bufnr? integer
 ---@return JdtDapContext
 local function make_context(bufnr)
-  bufnr = (bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr
+  bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
   return {
     bufnr = bufnr,
     uri = vim.uri_from_bufnr(bufnr)
@@ -373,27 +413,55 @@ local function run(lens, config, context, opts)
   config = vim.tbl_extend('force', config, opts.config or {})
   local test_results
   local server = nil
-  local junit = require('jdtls.junit')
 
-  if lens.kind == TestKind.TestNG then
-    dap.run(config, {
-      after = function()
+  if lens.kind == TestKind.TestNG or lens.testKind == TestKind.TestNG  then
+    local testng = require('jdtls.testng')
+    local run_opts = {}
+    if config.mainClass == "com.microsoft.java.test.runner.Launcher" then
+      function run_opts.before(conf)
+        server = assert(uv.new_tcp(), "uv.new_tcp() must return handle")
+        test_results = testng.mk_test_results(context.bufnr)
+        server:bind('127.0.0.1', 0)
+        server:listen(128, function(err2)
+          assert(not err2, err2)
+          local sock = assert(vim.loop.new_tcp(), "uv.new_tcp must return handle")
+          server:accept(sock)
+          sock:read_start(test_results.mk_reader(sock))
+        end)
+        conf.args = string.format('%s %s', server:getsockname().port, conf.args)
+        return conf
+      end
+
+      function run_opts.after()
+        if server then
+          server:shutdown()
+          server:close()
+        end
+        test_results.show(lens, context)
         if opts.after_test then
           opts.after_test()
         end
       end
-    })
+    else
+      function run_opts.after()
+        if opts.after_test then
+          opts.after_test()
+        end
+      end
+    end
+    dap.run(config, run_opts)
     return
   end
 
+  local junit = require('jdtls.junit')
   dap.run(config, {
     before = function(conf)
-      server = uv.new_tcp()
+      server = assert(uv.new_tcp(), "uv.new_tcp() must return handle")
       test_results = junit.mk_test_results(context.bufnr)
       server:bind('127.0.0.1', 0)
       server:listen(128, function(err2)
         assert(not err2, err2)
-        local sock = vim.loop.new_tcp()
+        local sock = assert(vim.loop.new_tcp(), "uv.new_tcp must return handle")
         server:accept(sock)
         sock:read_start(test_results.mk_reader(sock))
       end)
@@ -401,8 +469,10 @@ local function run(lens, config, context, opts)
       return conf
     end;
     after = function()
-      server:shutdown()
-      server:close()
+      if server then
+        server:shutdown()
+        server:close()
+      end
       local items = test_results.show()
       maybe_repeat(lens, config, context, opts, items)
       if opts.after_test then
@@ -474,6 +544,7 @@ end
 function M.pick_test(opts)
   opts = opts or {}
   local context = make_context(opts.bufnr)
+
   fetch_candidates(context, function(lenses)
     local candidates = {}
     populate_candidates(candidates, lenses)
@@ -517,9 +588,7 @@ function M.fetch_main_configs(opts, callback)
   end
   local configurations = {}
   local bufnr = api.nvim_get_current_buf()
-  local jdtls = vim.tbl_filter(function(client)
-    return client.name == 'jdtls'
-  end, vim.lsp.buf_get_clients(bufnr))[1]
+  local jdtls = get_clients({ bufnr = bufnr, name = "jdtls"})[1]
   local root_dir = jdtls and jdtls.config and jdtls.config.root_dir
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, vim.inspect(err))
@@ -587,7 +656,7 @@ function M.setup_dap_main_class_configs(opts)
     local dap_configurations = dap.configurations.java or {}
     for _, config in ipairs(configurations) do
       for i, existing_config in pairs(dap_configurations) do
-        if config.name == existing_config.name and config.cwd == existing_config.cwd then
+        if config.name == existing_config.name and config.cwd == existing_config["cwd"] then
           table.remove(dap_configurations, i)
         end
       end

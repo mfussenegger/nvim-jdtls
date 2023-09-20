@@ -7,61 +7,31 @@ local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 -- manage latest jdtls buf
 local latest_jdtls_buf = nil
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+
 
 local status_callback = function(_, result)
-  api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None', result.message))
+  api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None',
+                                string.sub(result.message, 1, vim.v.echospace)))
 end
 
 
-local lsp_clients = {}
-do
-  local client_id_by_root_dir = {}
-
-  function lsp_clients.start(config)
-      local bufnr = api.nvim_get_current_buf()
-      local root_dir = uv.fs_realpath(config.root_dir)
-      local client_id = client_id_by_root_dir[root_dir]
-      -- client could have died on us; so check if alive
-      if client_id then
-        local client = lsp.get_client_by_id(client_id)
-        if not client or client.is_stopped() then
-          client_id = nil
-        end
-      end
-      if not client_id then
-        client_id = lsp.start_client(config)
-        client_id_by_root_dir[root_dir] = client_id
-      end
-      lsp.buf_attach_client(bufnr, client_id)
-  end
-
-  function lsp_clients.stop()
-    for root_dir, client_id in pairs(client_id_by_root_dir) do
-      local client = lsp.get_client_by_id(client_id)
-      if client then
-        client.stop()
-        client_id_by_root_dir[root_dir] = nil
-      end
-    end
-  end
-
-  function lsp_clients.restart()
-    for root_dir, client_id in pairs(client_id_by_root_dir) do
-      local client = lsp.get_client_by_id(client_id)
-      if client then
-        local bufs = lsp.get_buffers_by_client_id(client_id)
-        client.stop()
-        client_id = lsp.start_client(client.config)
-        client_id_by_root_dir[root_dir] = client_id
-        for _, buf in pairs(bufs) do
-          lsp.buf_attach_client(buf, client_id)
-        end
+M.restart = function()
+  for _, client in ipairs(get_clients({ name = "jdtls" })) do
+    local bufs = lsp.get_buffers_by_client_id(client.id)
+    client.stop()
+    vim.wait(30000, function()
+      return lsp.get_client_by_id(client.id) == nil
+    end)
+    local client_id = lsp.start_client(client.config)
+    if client_id then
+      for _, buf in ipairs(bufs) do
+        lsp.buf_attach_client(buf, client_id)
       end
     end
   end
 end
-
-M.restart = lsp_clients.restart
 
 local function may_jdtls_buf(bufnr)
   local ft = vim.api.nvim_buf_get_option(bufnr, "filetype")
@@ -72,33 +42,39 @@ local function may_jdtls_buf(bufnr)
   return vim.endswith(fname, "build.gradle") or vim.endswith(fname, "pom.xml")
 end
 
+---@return integer? client_id
 local function attach_to_active_buf(bufnr, client_name)
-
   local function try_attach(buf)
     if not may_jdtls_buf(buf) then
-      return false
+      return nil
     end
-    local clients = vim.lsp.get_active_clients({ bufnr = buf, name = client_name })
+    local clients = get_clients({ bufnr = buf, name = client_name })
     local _, client = next(clients)
     if client then
       lsp.buf_attach_client(bufnr, client.id)
-      return true
+      return client.id
     end
-    return false
+    return nil
   end
 
   ---@diagnostic disable-next-line: param-type-mismatch
   local altbuf = latest_jdtls_buf and latest_jdtls_buf or vim.fn.bufnr("#")
-  if altbuf and altbuf > 0 and try_attach(altbuf) then
-    return true
+  if altbuf and altbuf > 0 then
+    local client_id = try_attach(altbuf)
+    if client_id then
+      return client_id
+    end
   end
   for _, buf in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_is_loaded(buf) and try_attach(buf) then
-      return true
+    if api.nvim_buf_is_loaded(buf) then
+      local client_id = try_attach(buf)
+      if client_id then
+        return client_id
+      end
     end
   end
   print('No active LSP client found to use for jdt:// document')
-  return false
+  return nil
 end
 
 
@@ -142,31 +118,20 @@ local function configuration_handler(err, result, ctx, config)
   local client_id = ctx.client_id
   local bufnr = 0
   local client = lsp.get_client_by_id(client_id)
-  -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
-  -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
-  -- This ensures the language-server will use the latest version of the options
-  client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
-    java = {
-      format = {
-        insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
-        tabSize = lsp.util.get_effective_tabstop(bufnr)
+  if client then
+    -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
+    -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
+    -- This ensures the language-server will use the latest version of the options
+    client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
+      java = {
+        format = {
+          insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
+          tabSize = lsp.util.get_effective_tabstop(bufnr)
+        }
       }
-    }
-  })
-  return lsp.handlers['workspace/configuration'](err, result, ctx, config)
-end
-
-
-local function init_with_config_notify(original_init)
-  return function(...)
-    local client = select(1, ...)
-    if client.config.settings then
-      client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
-    end
-    if original_init then
-      original_init(...)
-    end
+    })
   end
+  return lsp.handlers['workspace/configuration'](err, result, ctx, config)
 end
 
 
@@ -190,24 +155,25 @@ local function maybe_implicit_save()
     end
     local stat = vim.loop.fs_stat(fname)
     if not stat then
-      vim.fn.mkdir(vim.fn.expand('%:p:h'), 'p')
+      local filepath = vim.fn.expand('%:p:h')
+      assert(type(filepath) == "string")
+      vim.fn.mkdir(filepath, 'p')
       vim.cmd('w')
     end
   end
 end
 
 
+---@return string?, lsp.Client?
 local function extract_data_dir(bufnr)
-  local is_jdtls = function(client)
-    return client.name == 'jdtls'
-  end
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
-  local client = vim.tbl_filter(is_jdtls, vim.lsp.buf_get_clients(bufnr))[1]
+  local client = get_clients({ name = "jdtls", bufnr = bufnr })[1]
   if not client then
     -- Try first matching jdtls client otherwise. In case the user is in a
     -- different buffer like the quickfix list
-    local clients = vim.tbl_filter(is_jdtls, vim.lsp.get_active_clients())
+    local clients = get_clients({ name = "jdtls" })
     if vim.tbl_count(clients) > 1 then
+      ---@diagnostic disable-next-line: cast-local-type
       client = require('jdtls.ui').pick_one(
         clients,
         'Multiple jdtls clients found, pick one: ',
@@ -219,19 +185,78 @@ local function extract_data_dir(bufnr)
   end
 
   if client and client.config and client.config.cmd then
-    for i, part in pairs(client.config.cmd) do
-      -- jdtls helper script uses `--data`, java jar command uses `-data`.
-      if part == '-data' or part == '--data' then
-        return client.config.cmd[i + 1]
+    local cmd = client.config.cmd
+    if type(cmd) == "table" then
+      for i, part in pairs(cmd) do
+        -- jdtls helper script uses `--data`, java jar command uses `-data`.
+        if part == '-data' or part == '--data' then
+          return client.config.cmd[i + 1], client
+        end
       end
     end
   end
 
-  return nil
+  return nil, nil
 end
 
 
-function M.start_or_attach(config)
+---@param client lsp.Client
+---@param opts jdtls.start.opts
+local function add_commands(client, bufnr, opts)
+  local function create_cmd(name, command, cmdopts)
+    api.nvim_buf_create_user_command(bufnr, name, command, cmdopts or {})
+  end
+  create_cmd("JdtCompile", "lua require('jdtls').compile(<f-args>)", {
+    nargs = "?",
+    complete = "custom,v:lua.require'jdtls'._complete_compile"
+  })
+  create_cmd("JdtSetRuntime", "lua require('jdtls').set_runtime(<f-args>)", {
+    nargs = "?",
+    complete = "custom,v:lua.require'jdtls'._complete_set_runtime"
+  })
+  create_cmd("JdtUpdateConfig", "lua require('jdtls').update_project_config()")
+  create_cmd("JdtJol", "lua require('jdtls').jol(<f-args>)", {
+    nargs = "*"
+  })
+  create_cmd("JdtBytecode", "lua require('jdtls').javap()")
+  create_cmd("JdtJshell", "lua require('jdtls').jshell()")
+  create_cmd("JdtRestart", "lua require('jdtls.setup').restart()")
+  local ok, dap = pcall(require, 'dap')
+  if ok then
+    local command_provider = client.server_capabilities.executeCommandProvider or {}
+    local commands = command_provider.commands or {}
+    if not vim.tbl_contains(commands, "vscode.java.startDebugSession") then
+      return
+    end
+
+    require("jdtls.dap").setup_dap(opts.dap or {})
+    api.nvim_command "command! -buffer JdtUpdateDebugConfig lua require('jdtls.dap').setup_dap_main_class_configs({ verbose = true })"
+    local redefine_classes = function()
+      local session = dap.session()
+      if not session then
+        vim.notify('No active debug session')
+      else
+        vim.notify('Applying code changes')
+        session:request('redefineClasses', nil, function(err)
+          assert(not err, vim.inspect(err))
+        end)
+      end
+    end
+    api.nvim_create_user_command('JdtUpdateHotcode', redefine_classes, {
+      desc = "Trigger reload of changed classes for current debug session",
+    })
+  end
+end
+
+
+---@class jdtls.start.opts
+---@field dap? JdtSetupDapOpts
+
+
+---@param opts? jdtls.start.opts
+---@return integer? client_id
+function M.start_or_attach(config, opts)
+  opts = opts or {}
   assert(config, 'config is required')
   assert(
     config.cmd and type(config.cmd) == 'table',
@@ -239,6 +264,13 @@ function M.start_or_attach(config)
       .. table.concat(config.cmd, ' ')
   )
   config.name = 'jdtls'
+  local on_attach = config.on_attach
+  config.on_attach = function(client, bufnr)
+    if on_attach then
+      on_attach(client, bufnr)
+    end
+    add_commands(client, bufnr, opts)
+  end
 
   -- wrap on_attach for record latest jdtls buf
   local user_on_attch = config.on_attach
@@ -255,8 +287,9 @@ function M.start_or_attach(config)
   -- Won't be able to get the correct root path for jdt:// URIs
   -- So need to connect to an existing client
   if vim.startswith(bufname, 'jdt://') then
-    if attach_to_active_buf(bufnr, config.name) then
-      return
+    local client_id = attach_to_active_buf(bufnr, config.name)
+    if client_id then
+      return client_id
     end
   end
 
@@ -294,15 +327,14 @@ function M.start_or_attach(config)
     java = {
     }
   })
-  config.on_init = init_with_config_notify(config.on_init)
   maybe_implicit_save()
-  lsp_clients.start(config)
+  return vim.lsp.start(config)
 end
 
 
 function M.wipe_data_and_restart()
-  local data_dir = extract_data_dir(vim.api.nvim_get_current_buf())
-  if not data_dir then
+  local data_dir, client = extract_data_dir(vim.api.nvim_get_current_buf())
+  if not data_dir or not client then
     vim.notify(
       "Data directory wasn't detected. " ..
       "You must call `start_or_attach` at least once and the cmd must include a `-data` parameter (or `--data` if using the official `jdtls` wrapper)")
@@ -316,47 +348,25 @@ function M.wipe_data_and_restart()
       return
     end
     vim.schedule(function()
-      lsp_clients.stop()
-      vim.defer_fn(function()
-        vim.fn.delete(data_dir, 'rf')
-        for _, buf in pairs(api.nvim_list_bufs()) do
-          local ft = vim.api.nvim_buf_get_option(buf, "filetype")
-          if ft == 'java' then
-            api.nvim_buf_call(buf, function() vim.cmd('e!') end)
-          end
+      local bufs = vim.lsp.get_buffers_by_client_id(client.id)
+      client.stop()
+      vim.wait(30000, function()
+        return vim.lsp.get_client_by_id(client.id) == nil
+      end)
+      vim.fn.delete(data_dir, 'rf')
+      local client_id = lsp.start_client(client.config)
+      if client_id then
+        for _, buf in ipairs(bufs) do
+          lsp.buf_attach_client(buf, client_id)
         end
-      end, 200)
+      end
     end)
   end)
 end
 
 
+---@deprecated not needed, start automatically adds commands
 function M.add_commands()
-  vim.cmd [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_compile JdtCompile lua require('jdtls').compile(<f-args>)]]
-  vim.cmd [[command! -buffer -nargs=? -complete=custom,v:lua.require'jdtls'._complete_set_runtime JdtSetRuntime lua require('jdtls').set_runtime(<f-args>)]]
-  vim.cmd [[command! -buffer JdtUpdateConfig lua require('jdtls').update_project_config()]]
-  vim.cmd [[command! -buffer -nargs=* JdtJol lua require('jdtls').jol(<f-args>)]]
-  vim.cmd [[command! -buffer JdtBytecode lua require('jdtls').javap()]]
-  vim.cmd [[command! -buffer JdtJshell lua require('jdtls').jshell()]]
-  vim.cmd [[command! -buffer JdtRestart lua require('jdtls.setup').restart()]]
-  local ok, dap = pcall(require, 'dap')
-  if ok and dap.adapters.java then
-    api.nvim_command "command! -buffer JdtRefreshDebugConfigs lua require('jdtls.dap').setup_dap_main_class_configs({ verbose = true })"
-    local redefine_classes = function()
-      local session = dap.session()
-      if not session then
-        vim.notify('No active debug session')
-      else
-        vim.notify('Applying code changes')
-        session:request('redefineClasses', nil, function(err)
-          assert(not err, vim.inspect(err))
-        end)
-      end
-    end
-    api.nvim_create_user_command('JdtHotcodeReplace', redefine_classes, {
-      desc = "Trigger reload of changed classes for current debug session",
-    })
-  end
 end
 
 
