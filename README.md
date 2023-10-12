@@ -339,6 +339,46 @@ For manual configuration see [nvim-dap Adapter Installation Wiki](https://github
 
 To get an overview of all available `attach` and `launch` options, take a look at [java-debug options](https://github.com/microsoft/vscode-java-debug#options). Keep in mind that any `java.debug` options are settings of the vscode-java client extension and not understood by the debug-adapter itself.
 
+Auto start debug:
+```
+    require("jdtls.dap").setup_dap_main_class_configs {
+      on_ready = function()
+        require("dap").continue()
+      end,
+    }
+```
+Or start debug when first open file:
+```
+local start = false
+local function handle_progress(_, result, context)
+  local value = result.value
+  if value.kind == "begin" and value.message == "Initialize Workspace" then
+    start = true
+  end
+  if value.kind == "end" and value.message == "Building" and start then
+    require("jdtls.dap").setup_dap_main_class_configs {
+      on_ready = function()
+        require("dap").continue()
+      end,
+    }
+    start = false
+  end
+end
+local function init()
+  if vim.lsp.handlers["$/progress"] then
+    -- There was already a handler, execute it too
+    local old = vim.lsp.handlers["$/progress"]
+    vim.lsp.handlers["$/progress"] = function(...)
+      old(...)
+      handle_progress(...)
+    end
+  else
+    vim.lsp.handlers["$/progress"] = handle_progress
+  end
+end
+```
+and add `init()` after `require("jdtls").start_or_attach(config)`
+
 ### vscode-java-test installation
 
 To be able to debug junit tests, it is necessary to install the bundles from [vscode-java-test][7]:
