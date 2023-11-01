@@ -483,7 +483,7 @@ local function change_signature(bufnr, command, code_action_params)
         if vim.startswith(line, "---") then
           break
         elseif expect_param_next and vim.startswith(line, "- ") then
-          local matches = { line:match("%- ((%d+):) (%w+) (%w+)") }
+          local matches = { line:match("%- ((%d+):) ([^ ]+) (%w+)") }
           if next(matches) then
             table.insert(parameters, {
               name = matches[4],
@@ -491,7 +491,7 @@ local function change_signature(bufnr, command, code_action_params)
               type = matches[3],
             })
           else
-            matches = { line:match("%- (%w+) (%w+) ?(%w*)") }
+            matches = { line:match("%- (%w+) ([^ ]+) ?(%w*)") }
             if next(matches) then
               table.insert(parameters, {
                 type = matches[1],
