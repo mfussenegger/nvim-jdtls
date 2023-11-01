@@ -33,10 +33,12 @@ local M = {
 
 --- Start the language server (if not started), and attach the current buffer.
 ---
----@param config table configuration. See |vim.lsp.start_client|
----@return integer? client_id
-function M.start_or_attach(config)
-  return setup.start_or_attach(config)
+---@param config table<string, any> configuration. See |vim.lsp.start_client|
+---@param opts? jdtls.start.opts
+---@param start_opts? lsp.StartOpts options passed to vim.lsp.start
+---@return integer|nil client_id
+function M.start_or_attach(config, opts, start_opts)
+  return setup.start_or_attach(config, opts, start_opts)
 end
 
 
