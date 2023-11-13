@@ -251,9 +251,13 @@ end
 ---@field dap? JdtSetupDapOpts
 
 
+--- Start the language server (if not started), and attach the current buffer.
+---
+---@param config table<string, any> configuration. See |vim.lsp.start_client|
 ---@param opts? jdtls.start.opts
+---@param start_opts? lsp.StartOpts options passed to vim.lsp.start
 ---@return integer? client_id
-function M.start_or_attach(config, opts)
+function M.start_or_attach(config, opts, start_opts)
   opts = opts or {}
   assert(config, 'config is required')
   assert(
@@ -316,7 +320,7 @@ function M.start_or_attach(config, opts)
     }
   })
   maybe_implicit_save()
-  return vim.lsp.start(config)
+  return vim.lsp.start(config, start_opts)
 end
 
 

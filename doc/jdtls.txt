@@ -1,13 +1,18 @@
 ==============================================================================
 LSP extensions for Neovim and eclipse.jdt.ls                             *jdtls*
 
-M.start_or_attach({config})                              *jdtls.start_or_attach*
+                                                         *jdtls.start_or_attach*
+M.start_or_attach({config}, {opts?}, {start_opts?})
      Start the language server (if not started), and attach the current buffer.
 
 
     Parameters: ~
-        {config}  (table)  configuration. See |vim.lsp.start_client|
-                           @return integer? client_id
+        {config}       (table<string,any>)  configuration. See |vim.lsp.start_client|
+        {opts?}        (jdtls.start.opts)
+        {start_opts?}  (lsp.StartOpts)      options passed to vim.lsp.start
+
+    Returns: ~
+        (integer|nil)  client_id
 
 
 M.organize_imports()                                    *jdtls.organize_imports*
