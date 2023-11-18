@@ -1190,7 +1190,9 @@ function M.open_classfile(fname)
   local function handler(err, result)
     assert(not err, vim.inspect(err))
     content = result
-    api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(result, "\n", { plain = true }))
+    local normalized = string.gsub(result, '\r\n', '\n')
+    local source_lines = vim.split(normalized, "\n", { plain = true })
+    api.nvim_buf_set_lines(buf, 0, -1, false, source_lines)
     vim.bo[buf].modifiable = false
   end
 
