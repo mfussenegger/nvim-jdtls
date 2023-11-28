@@ -199,7 +199,8 @@ local function fetch_candidates(context, on_candidates)
 
   local handler = function(err, result)
     if err then
-      vim.notify('Error fetching test candidates: ' .. (err.message or vim.inspect(err)), vim.log.levels.ERROR)
+      local message = vim.tbl_get(err, 'data', 'cause', 'message') or err.message
+      vim.notify('Error fetching test candidates: ' .. (message or vim.inspect(err)), vim.log.levels.ERROR)
     else
       on_candidates(result or {})
     end
