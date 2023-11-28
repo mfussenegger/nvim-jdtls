@@ -493,7 +493,7 @@ local function change_signature(bufnr, command, code_action_params)
               type = matches[3],
             })
           else
-            matches = { line:match("%- (%w+) ([^ ]+) ?(%w*)") }
+            matches = { line:match("%- (%w+) ([^ ]+) ?(.*)") }
             if next(matches) then
               table.insert(parameters, {
                 type = matches[1],
