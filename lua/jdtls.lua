@@ -1160,7 +1160,9 @@ end
 --- You shouldn't need to call this manually.
 ---
 ---@param fname string
-function M.open_classfile(fname)
+---@param opts? { bufnr: integer }
+function M.open_classfile(fname, opts)
+  opts = opts or {}
   local uri
   local use_cmd
   if vim.startswith(fname, "jdt://") then
@@ -1173,7 +1175,7 @@ function M.open_classfile(fname)
       return
     end
   end
-  local buf = api.nvim_get_current_buf()
+  local buf = opts.bufnr or api.nvim_get_current_buf()
   vim.bo[buf].modifiable = true
   vim.bo[buf].swapfile = false
   vim.bo[buf].buftype = 'nofile'

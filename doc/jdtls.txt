@@ -149,7 +149,7 @@ M.jol({mode?}, {classname?})                                         *jdtls.jol*
         {classname?}  (string)  fully qualified class name. Defaults to the current class.
 
 
-M.open_classfile({fname})                                 *jdtls.open_classfile*
+M.open_classfile({fname}, {opts?})                        *jdtls.open_classfile*
      Open `jdt://` uri or decompile class contents and load them into the buffer
 
      nvim-jdtls by defaults configures a `BufReadCmd` event which uses this function.
@@ -158,6 +158,9 @@ M.open_classfile({fname})                                 *jdtls.open_classfile*
 
     Parameters: ~
         {fname}  (string)
+	{opts?}  ({ bufnr: integer })
+		 • *bufnr*: the buffer to which the decompiled class contents
+		 needs to be filled. Defaults to current buffer if not provided.
 
 
 M.set_runtime({runtime})                                     *jdtls.set_runtime*
