@@ -602,6 +602,10 @@ function M.fetch_main_configs(opts, callback)
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, vim.inspect(err))
 
+    mainclasses = vim.tbl_filter(function(mc)
+      return mc.mainClass and mc.projectName
+    end, mainclasses)
+
     local remaining = #mainclasses
     if remaining == 0 then
       callback(configurations)
