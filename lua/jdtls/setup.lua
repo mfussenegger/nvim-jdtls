@@ -293,22 +293,37 @@ function M.start_or_attach(config, opts, start_opts)
   config.handlers['language/status'] = config.handlers['language/status'] or status_callback
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
   local capabilities = vim.tbl_deep_extend('keep', config.capabilities or {}, lsp.protocol.make_client_capabilities())
+  local extra_code_action_literals = {
+    "source.generate.toString",
+    "source.generate.hashCodeEquals",
+    "source.organizeImports",
+  }
+  local code_action_literals = vim.tbl_get(
+    capabilities,
+    "textDocument",
+    "codeAction",
+    "codeActionLiteralSupport",
+    "codeActionKind",
+    "valueSet"
+  ) or {}
+  for _, extra_literal in ipairs(extra_code_action_literals) do
+    if not vim.tbl_contains(code_action_literals, extra_literal) then
+      table.insert(code_action_literals, extra_literal)
+    end
+  end
   local extra_capabilities = {
     textDocument = {
       codeAction = {
         codeActionLiteralSupport = {
           codeActionKind = {
-            valueSet = {
-                "source.generate.toString",
-                "source.generate.hashCodeEquals",
-                "source.organizeImports",
-            };
+            valueSet = code_action_literals
           };
         };
       }
     }
   }
-  config.capabilities = vim.tbl_deep_extend('keep', capabilities, extra_capabilities)
+  config.capabilities = vim.tbl_deep_extend('force', capabilities, extra_capabilities)
+
   config.init_options = config.init_options or {}
   config.init_options.extendedClientCapabilities = (
     config.init_options.extendedClientCapabilities or vim.deepcopy(M.extendedClientCapabilities)
