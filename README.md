@@ -326,7 +326,9 @@ config['init_options'] = {
 ### nvim-dap setup
 
 `nvim-jdtls` will automatically register a `java` debug adapter with nvim-dap,
-if nvim-dap is available.
+if nvim-dap is available. For this to happen, nvim-dap needs to be loaded *before*
+`nvim-jdtls`. Use the appropriate option in your package manager (i.e.
+`dependencies` for `Lazy`, `requires` for `packer`).
 
 
 ### nvim-dap configuration
