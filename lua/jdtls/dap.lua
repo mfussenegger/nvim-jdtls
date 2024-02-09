@@ -46,10 +46,15 @@ local function enrich_dap_config(config_, on_config)
     assert(not err, err and (err.message or vim.inspect(err)))
 
     if not config.projectName then
-      for _, entry in ipairs(mainclasses) do
-        if entry.mainClass == config.mainClass then
-          config.projectName = entry.projectName
-          break
+      if not mainclasses then
+        local msg = "Could not resolve classpaths. Project may have compile errors or unresolved dependencies"
+        vim.notify(msg, vim.log.levels.WARN)
+      else
+        for _, entry in ipairs(mainclasses) do
+          if entry.mainClass == config.mainClass then
+            config.projectName = entry.projectName
+            break
+          end
         end
       end
     end
@@ -62,13 +67,17 @@ local function enrich_dap_config(config_, on_config)
       }
       util.execute_command(params, function(err1, paths)
         assert(not err1, err1 and (err1.message or vim.inspect(err1)))
-        config.modulePaths = config.modulePaths or paths[1]
-        config.classPaths = config.classPaths or vim.tbl_filter(
-          function(x)
-            return vim.fn.isdirectory(x) == 1 or vim.fn.filereadable(x) == 1
-          end,
-          paths[2]
-        )
+        if paths then
+          config.modulePaths = config.modulePaths or paths[1]
+          config.classPaths = config.classPaths or vim.tbl_filter(
+            function(x)
+              return vim.fn.isdirectory(x) == 1 or vim.fn.filereadable(x) == 1
+            end,
+            paths[2]
+          )
+        else
+          vim.notify("Could not resolve classpaths. Project may have compile errors or unresolved dependencies", vim.log.levels.WARN)
+        end
         on_config(config)
       end, bufnr)
     end, bufnr)
