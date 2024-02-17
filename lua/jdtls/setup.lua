@@ -212,7 +212,11 @@ local function add_commands(client, bufnr, opts)
     nargs = "?",
     complete = "custom,v:lua.require'jdtls'._complete_set_runtime"
   })
-  create_cmd("JdtUpdateConfig", "lua require('jdtls').update_project_config()")
+  create_cmd("JdtUpdateConfig", function(args)
+    require("jdtls").update_projects_config(args.bang and { select_mode = "all" } or {})
+  end, {
+    bang = true
+  })
   create_cmd("JdtJol", "lua require('jdtls').jol(<f-args>)", {
     nargs = "*"
   })
