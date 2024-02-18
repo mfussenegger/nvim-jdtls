@@ -51,6 +51,8 @@ see some of the functionality in action.
   - `git clone https://github.com/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
   - Or with [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
   - Or with [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
+  - Or any other plugin manager
+
 
 ## Language Server Installation
 
@@ -327,6 +329,9 @@ config['init_options'] = {
 
 `nvim-jdtls` will automatically register a `java` debug adapter with nvim-dap,
 if nvim-dap is available.
+
+If you're using a plugin manager with explicit dependency manager, make sure
+that `nvim-dap` is listed as dependency for `nvim-jdtls` for this to work.
 
 
 ### nvim-dap configuration
