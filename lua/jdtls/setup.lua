@@ -120,14 +120,19 @@ local function configuration_handler(err, result, ctx, config)
     -- This isn't done in start_or_attach because a user could use a plugin like editorconfig to configure tabsize/spaces
     -- That plugin may run after `start_or_attach` which is why we defer the setting lookup.
     -- This ensures the language-server will use the latest version of the options
-    client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, {
+    local new_settings = {
       java = {
         format = {
-          insertSpaces = api.nvim_buf_get_option(bufnr, 'expandtab'),
+          insertSpaces = vim.bo[bufnr].expandtab,
           tabSize = lsp.util.get_effective_tabstop(bufnr)
         }
       }
-    })
+    }
+    if client.settings then
+      client.settings.java = vim.tbl_deep_extend('keep', client.settings.java or {}, new_settings.java)
+    else
+      client.config.settings = vim.tbl_deep_extend('keep', client.config.settings or {}, new_settings)
+    end
   end
   return lsp.handlers['workspace/configuration'](err, result, ctx, config)
 end
