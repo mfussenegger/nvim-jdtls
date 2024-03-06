@@ -1,10 +1,13 @@
 local api = vim.api
 local M = {}
 
+---@diagnostic disable-next-line: deprecated
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+
 
 function M.execute_command(command, callback, bufnr)
   local clients = {}
-  local candidates = vim.lsp.get_active_clients({ bufnr = bufnr })
+  local candidates = get_clients({ bufnr = bufnr })
   for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
@@ -45,20 +48,64 @@ function M.execute_command(command, callback, bufnr)
 end
 
 
+---@param mainclass string
+---@param project string
+---@param fn fun(java_exec: string)
+---@param bufnr integer?
 function M.with_java_executable(mainclass, project, fn, bufnr)
   vim.validate({
     mainclass = { mainclass, 'string' }
   })
-  M.execute_command({
-    command = 'vscode.java.resolveJavaExecutable',
-    arguments = { mainclass, project }
-  }, function(err, java_exec)
-    if err then
-      print('Could not resolve java executable: ' .. err.message)
-    else
-      fn(java_exec)
+
+  bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
+
+  local client = get_clients({ name = "jdtls", bufnr = bufnr, method = "workspace/executeCommand" })[1]
+  if not client then
+    print("No jdtls client found")
+    return
+  end
+
+  local provider = client.server_capabilities.executeCommandProvider or {}
+  local supported_commands = provider.commands or {}
+  local resolve_java_executable = "vscode.java.resolveJavaExecutable"
+
+  ---@type lsp.ExecuteCommandParams
+  local params
+  local on_response
+  if vim.tbl_contains(supported_commands, resolve_java_executable) then
+    params = {
+      command = resolve_java_executable,
+      arguments = { mainclass, project }
+    }
+    ---@param err lsp.ResponseError?
+    on_response = function(err, java_exec)
+      if err then
+        print('Could not resolve java executable: ' .. err.message)
+      else
+        fn(java_exec)
+      end
     end
-  end, bufnr)
+  else
+    local setting = "org.eclipse.jdt.ls.core.vm.location"
+    params = {
+      command = "java.project.getSettings",
+      arguments = {
+        vim.uri_from_bufnr(bufnr),
+        {
+          setting
+        }
+      }
+    }
+    ---@param err lsp.ResponseError?
+    on_response = function(err, settings)
+      if err then
+        print('Could not resolve java executable from settings: ' .. err.message)
+      else
+        fn(settings[setting] .. "/bin/java")
+      end
+    end
+  end
+  client.request("workspace/executeCommand", params, on_response, bufnr)
 end
 
 
