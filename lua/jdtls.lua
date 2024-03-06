@@ -1095,6 +1095,7 @@ end
 --- Run the `jshell` tool in a terminal buffer.
 --- Sets the classpath based on the current project.
 function M.jshell()
+  local bufnr = api.nvim_get_current_buf()
   with_classpaths(function(result)
     local buf = api.nvim_create_buf(true, true)
     local classpaths = {}
@@ -1108,7 +1109,7 @@ function M.jshell()
       api.nvim_win_set_buf(0, buf)
       local jshell = java_exec and (vim.fn.fnamemodify(java_exec, ":p:h") .. '/jshell') or "jshell"
       vim.fn.termopen(jshell, { env = { ["CLASSPATH"] = cp }})
-    end)
+    end, bufnr)
   end)
 end
 
