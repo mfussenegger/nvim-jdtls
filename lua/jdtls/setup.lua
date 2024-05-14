@@ -167,7 +167,7 @@ local function maybe_implicit_save()
 end
 
 
----@return string?, lsp.Client?
+---@return string?, vim.lsp.Client?
 local function extract_data_dir(bufnr)
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
   local client = get_clients({ name = "jdtls", bufnr = bufnr })[1]
@@ -264,7 +264,7 @@ end
 ---
 ---@param config table<string, any> configuration. See |vim.lsp.start_client|
 ---@param opts? jdtls.start.opts
----@param start_opts? lsp.StartOpts options passed to vim.lsp.start
+---@param start_opts? vim.lsp.start.Opts? options passed to vim.lsp.start
 ---@return integer? client_id
 function M.start_or_attach(config, opts, start_opts)
   opts = opts or {}
@@ -370,7 +370,12 @@ function M.wipe_data_and_restart()
         return vim.lsp.get_client_by_id(client.id) == nil
       end)
       vim.fn.delete(data_dir, 'rf')
-      local client_id = lsp.start_client(client.config)
+      local client_id
+      if vim.bo.filetype == "java" then
+        client_id = lsp.start(client.config)
+      else
+        client_id = vim.lsp.start_client(client.config)
+      end
       if client_id then
         for _, buf in ipairs(bufs) do
           lsp.buf_attach_client(buf, client_id)
