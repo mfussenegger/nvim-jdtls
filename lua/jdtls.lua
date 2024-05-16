@@ -35,7 +35,7 @@ local M = {
 ---
 ---@param config table<string, any> configuration. See |vim.lsp.start_client|
 ---@param opts? jdtls.start.opts
----@param start_opts? lsp.StartOpts options passed to vim.lsp.start
+---@param start_opts? vim.lsp.start.Opts options passed to vim.lsp.start
 ---@return integer|nil client_id
 function M.start_or_attach(config, opts, start_opts)
   return setup.start_or_attach(config, opts, start_opts)
@@ -877,7 +877,6 @@ local function on_build_result(err, result, ctx)
     vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
     print('Compile successful')
   else
-    vim.tbl_add_reverse_lookup(CompileWorkspaceStatus)
     local project_config_errors = {}
     local compile_errors = {}
     local ns = vim.lsp.diagnostic.get_namespace(ctx.client_id)
@@ -899,7 +898,13 @@ local function on_build_result(err, result, ctx)
     local items = #project_config_errors > 0 and project_config_errors or compile_errors
     vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
     if #items > 0 then
-      print(string.format('Compile error. (%s)', CompileWorkspaceStatus[result]))
+      local reverse_status = {
+        [0] = "FAILED",
+        [1] = "SUCCEEDED",
+        [2] = "WITHERROR",
+        [3] = "CANCELLED",
+      }
+      print(string.format('Compile error. (%s)', reverse_status[result]))
       vim.cmd('copen')
     else
       print("Compile error, but no error diagnostics available."
