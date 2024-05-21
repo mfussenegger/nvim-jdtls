@@ -161,6 +161,16 @@ local config = {
   init_options = {
     bundles = {}
   },
+  -- 💀
+  -- Override this table in order to support extra capabilities like completion, snippet etc.
+  -- Example:
+  -- If you are using https://github.com/hrsh7th/nvim-cmp you would extend jdtls capabilities like this:
+  -- capabilities = require("cmp_nvim_lsp").default_capabilities()
+  capabilities = {}
+  -- 💀
+  -- Provide your custom `on_attach` function where you can run custom code after jdtls attaches
+  -- to the buffer.
+  on_attach = nil
 }
 -- This starts a new client & server,
 -- or attaches to an existing client & server depending on the `root_dir`.
