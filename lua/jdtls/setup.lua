@@ -74,7 +74,7 @@ local function attach_to_active_buf(bufnr, client_name)
   return nil
 end
 
-local function find_root(source, markers)
+function M.find_root(markers, source)
   source = source or api.nvim_buf_get_name(api.nvim_get_current_buf())
   local dirname = vim.fn.fnamemodify(source, ':p:h')
   local getparent = function(p)
@@ -87,15 +87,6 @@ local function find_root(source, markers)
       end
     end
     dirname = getparent(dirname)
-  end
-end
-
-
-function M.find_root(markers, bufname)
-  if vim.fs.root then
-    return vim.fs.root(bufname or 0, markers)
-  else
-    return find_root(bufname, markers)
   end
 end
 
