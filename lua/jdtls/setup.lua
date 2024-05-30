@@ -293,6 +293,12 @@ function M.start_or_attach(config, opts, start_opts)
     end
   end
 
+  local uri = vim.uri_from_bufnr(bufnr)
+  -- jdtls requires files to exist on the filesystem; it doesn't play well with scratch buffers
+  if not vim.startswith(uri, "file://") or vim.bo[bufnr].buftype ~= "" then
+    return
+  end
+
   config.root_dir = (config.root_dir
     or M.find_root({'.git', 'gradlew', 'mvnw'}, bufname)
     or vim.fn.getcwd()
