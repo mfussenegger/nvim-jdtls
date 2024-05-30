@@ -202,7 +202,7 @@ local function extract_data_dir(bufnr)
 end
 
 
----@param client lsp.Client
+---@param client vim.lsp.Client
 ---@param opts jdtls.start.opts
 local function add_commands(client, bufnr, opts)
   local function create_cmd(name, command, cmdopts)

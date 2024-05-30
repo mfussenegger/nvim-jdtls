@@ -657,6 +657,10 @@ function M.setup_dap_main_class_configs(opts)
     print('nvim-dap is not available')
     return
   end
+  if dap.providers and dap.providers.configs then
+    -- If users call this manually disable the automatic discovery on dap.continue()
+    dap.providers.configs["jdtls"] = nil
+  end
   if opts.verbose then
     vim.notify('Fetching debug configurations')
   end
@@ -711,6 +715,32 @@ function M.setup_dap(opts)
     end
   end
   dap.adapters.java = start_debug_adapter
+
+  if dap.providers and dap.providers.configs then
+    dap.providers.configs["jdtls"] = function (bufnr)
+      if vim.bo[bufnr].filetype ~= "java" then
+        return {}
+      end
+      local co = coroutine.running()
+      local resumed = false
+      vim.defer_fn(function()
+        if not resumed then
+          resumed = true
+          coroutine.resume(co, {})
+          vim.schedule(function()
+            vim.notify("Discovering main classes took too long", vim.log.levels.INFO)
+          end)
+        end
+      end, 2000)
+      M.fetch_main_configs(nil, function(configs)
+        if not resumed then
+          resumed = true
+          coroutine.resume(co, configs)
+        end
+      end)
+      return coroutine.yield()
+    end
+  end
 end
 ---@class JdtSetupDapOpts
 ---@field config_overrides JdtDapConfig These will be used as default overrides for |jdtls.dap.test_class|, |jdtls.dap.test_nearest_method| and discovered main classes
