@@ -1,5 +1,5 @@
 local M = {}
-
+local ns = vim.api.nvim_create_namespace('junit')
 
 local MessageId = {
   TestStart = '%TESTS',
@@ -11,7 +11,6 @@ local MessageId = {
   IGNORE_TEST_PREFIX = '@Ignore: ',
   ASSUMPTION_FAILED_TEST_PREFIX = '@AssumptionFailure: ',
 }
-
 
 local function parse_test_case(line)
   local matches = vim.fn.matchlist(line, '\\v\\d+,(\\@AssumptionFailure: |\\@Ignore: )?(.*)(\\[\\d+\\])?\\((.*)\\)')
@@ -64,7 +63,6 @@ end
 
 M.__parse = parse
 
-
 local function mk_buf_loop(sock, handle_buffer)
   local buffer = ''
   return function(err, chunk)
@@ -78,22 +76,52 @@ local function mk_buf_loop(sock, handle_buffer)
   end
 end
 
-
 function M.mk_test_results(bufnr)
+  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
   local tests = {}
+
   local handle_buffer = function(buf)
     parse(buf, tests)
   end
+
+  local function get_test_start_line_num(lenses, test)
+    if test.method ~= nil then
+      for _, v in ipairs(lenses) do
+        if vim.startswith(v.label, test.method) then
+          return v.range.start.line
+        end
+      end
+    end
+    return nil
+  end
+
   return {
-    show = function()
+    show = function(lens)
       local items = {}
       local repl = require('dap.repl')
       local num_failures = 0
+      local lenses = lens.children or lens
+      local failures = {}
+      local error_symbol = '❌'
+      local success_symbol = '✔️ '
       for _, test in ipairs(tests) do
+        local start_line_num = get_test_start_line_num(lenses, test)
         if test.failed then
           num_failures = num_failures + 1
+          if start_line_num ~= nil then
+            table.insert(failures, {
+              bufnr = bufnr,
+              lnum = start_line_num,
+              col = 0,
+              severity = vim.diagnostic.severity.ERROR,
+              source = 'junit',
+              message = error_symbol .. ' Test Failed',
+              user_data = {},
+            })
+          end
+
           if test.method then
-            repl.append('❌' .. test.method, '$')
+            repl.append(error_symbol .. ' ' .. test.method, '$')
           end
           for _, msg in ipairs(test.traces) do
             local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%a%p]*:%d+)%)')
@@ -106,15 +134,21 @@ function M.mk_test_results(bufnr)
               table.insert(items, {
                 bufnr = bufnr,
                 lnum = lnum,
-                text = test.method .. ' ' .. trace
+                text = test.method .. ' ' .. trace,
               })
             end
             repl.append(msg, '$')
           end
         else
-          repl.append('✔️ ' .. test.method, '$')
+          if start_line_num ~= nil then
+            vim.api.nvim_buf_set_extmark(bufnr, ns, start_line_num, 0, {
+              virt_text = { { '\t\t' .. success_symbol } },
+            })
+          end
+          repl.append(success_symbol .. ' ' .. test.method, '$')
         end
       end
+      vim.diagnostic.set(ns, bufnr, failures, {})
 
       if num_failures > 0 then
         vim.fn.setqflist({}, 'r', {
@@ -124,18 +158,17 @@ function M.mk_test_results(bufnr)
         print(
           'Tests finished. Results printed to dap-repl.',
           #items > 0 and 'Errors added to quickfix list' or '',
-          string.format('(❌%d / %d)', num_failures, #tests)
+          string.format('(%s %d / %d)', error_symbol, num_failures, #tests)
         )
       else
-        print('Tests finished. Results printed to dap-repl. All', #tests, 'succeeded')
+        print('Tests finished. Results printed to dap-repl.', success_symbol, #tests, 'succeeded')
       end
       return items
-    end;
+    end,
     mk_reader = function(sock)
       return vim.schedule_wrap(mk_buf_loop(sock, handle_buffer))
-    end;
+    end,
   }
 end
-
 
 return M
