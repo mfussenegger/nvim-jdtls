@@ -78,6 +78,7 @@ end
 
 function M.mk_test_results(bufnr)
   vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+  vim.diagnostic.reset(ns, bufnr)
   local tests = {}
 
   local handle_buffer = function(buf)
@@ -86,9 +87,15 @@ function M.mk_test_results(bufnr)
 
   local function get_test_start_line_num(lenses, test)
     if test.method ~= nil then
-      for _, v in ipairs(lenses) do
-        if vim.startswith(v.label, test.method) then
-          return v.range.start.line
+      if #lenses > 0 then
+        for _, v in ipairs(lenses) do
+          if vim.startswith(v.label, test.method) then
+            return v.range.start.line
+          end
+        end
+      else
+        if vim.startswith(lenses.label, test.method) then
+          return lenses.range.start.line
         end
       end
     end
@@ -109,25 +116,22 @@ function M.mk_test_results(bufnr)
         if test.failed then
           num_failures = num_failures + 1
           if start_line_num ~= nil then
-            table.insert(failures, {
-              bufnr = bufnr,
-              lnum = start_line_num,
-              col = 0,
-              severity = vim.diagnostic.severity.ERROR,
-              source = 'junit',
-              message = error_symbol .. ' Test Failed',
-              user_data = {},
+            vim.api.nvim_buf_set_extmark(bufnr, ns, start_line_num, 0, {
+              virt_text = { { '\t\t' .. error_symbol } },
             })
           end
 
           if test.method then
             repl.append(error_symbol .. ' ' .. test.method, '$')
           end
+          local testMatch
           for _, msg in ipairs(test.traces) do
-            local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%a%p]*:%d+)%)')
+            local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%w%p]*:%d+)%)')
             if match then
+              testMatch = true
               local lnum = vim.split(match, ':')[2]
               local trace = table.concat(test.traces, '\n')
+              local cause = trace:sub(1, trace:find(msg, 1, true) - 1)
               if #trace > 140 then
                 trace = trace:sub(1, 140) .. '...'
               end
@@ -136,8 +140,36 @@ function M.mk_test_results(bufnr)
                 lnum = lnum,
                 text = test.method .. ' ' .. trace,
               })
+              table.insert(failures, {
+                bufnr = bufnr,
+                lnum = tonumber(lnum) - 1,
+                col = 0,
+                severity = vim.diagnostic.severity.ERROR,
+                source = 'junit',
+                message = cause,
+              })
+              break
             end
             repl.append(msg, '$')
+          end
+          if not testMatch then
+            for _, msg in ipairs(test.traces) do
+              local match = msg:match(string.format('at %s', test.fq_class) .. '[%w%p]+%(([%a%p]*:%d+)%)')
+              if match then
+                local lnum = vim.split(match, ':')[2]
+                local trace = table.concat(test.traces, '\n')
+                local cause = trace:sub(1, trace:find(msg, 1, true) - 1)
+                table.insert(failures, {
+                  bufnr = bufnr,
+                  lnum = tonumber(lnum) - 1,
+                  col = 0,
+                  severity = vim.diagnostic.severity.ERROR,
+                  source = 'junit',
+                  message = cause,
+                })
+                break
+              end
+            end
           end
         else
           if start_line_num ~= nil then
