@@ -295,7 +295,7 @@ function M.start_or_attach(config, opts, start_opts)
 
   local uri = vim.uri_from_bufnr(bufnr)
   -- jdtls requires files to exist on the filesystem; it doesn't play well with scratch buffers
-  if not vim.startswith(uri, "file://") or vim.bo[bufnr].buftype ~= "" then
+  if not vim.startswith(uri, "file://") then
     return
   end
 
