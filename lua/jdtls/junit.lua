@@ -109,6 +109,7 @@ function M.mk_test_results(bufnr)
       local num_failures = 0
       local lenses = lens.children or lens
       local failures = {}
+      local results = {}
       local error_symbol = '❌'
       local success_symbol = '✔️ '
       for _, test in ipairs(tests) do
@@ -116,8 +117,9 @@ function M.mk_test_results(bufnr)
         if test.failed then
           num_failures = num_failures + 1
           if start_line_num ~= nil then
-            vim.api.nvim_buf_set_extmark(bufnr, ns, start_line_num, 0, {
-              virt_text = { { '\t\t' .. error_symbol } },
+            table.insert(results, {
+              lnum = start_line_num,
+              success = false
             })
           end
 
@@ -156,6 +158,7 @@ function M.mk_test_results(bufnr)
             for _, msg in ipairs(test.traces) do
               local match = msg:match(string.format('at %s', test.fq_class) .. '[%w%p]+%(([%a%p]*:%d+)%)')
               if match then
+                testMatch = true
                 local lnum = vim.split(match, ':')[2]
                 local trace = table.concat(test.traces, '\n')
                 local cause = trace:sub(1, trace:find(msg, 1, true) - 1)
@@ -171,16 +174,52 @@ function M.mk_test_results(bufnr)
               end
             end
           end
+          if not testMatch then
+            local cause = test.traces[1] .. '\n'
+            if #test.traces > 2 then
+              cause = cause .. test.traces[2] .. '\n'
+            end
+            table.insert(failures, {
+              bufnr = bufnr,
+              -- Generic error. Avoid overlay conflicts with virtual text
+              lnum = start_line_num - 1,
+              col = 0,
+              severity = vim.diagnostic.severity.ERROR,
+              source = 'junit',
+              message = cause,
+            })
+          end
         else
           if start_line_num ~= nil then
-            vim.api.nvim_buf_set_extmark(bufnr, ns, start_line_num, 0, {
-              virt_text = { { '\t\t' .. success_symbol } },
+            table.insert(results, {
+              lnum = start_line_num,
+              success = true
             })
           end
           repl.append(success_symbol .. ' ' .. test.method, '$')
         end
       end
       vim.diagnostic.set(ns, bufnr, failures, {})
+
+      local unique_lnums = {}
+      -- Traverse in reverse order to preserve the mark position in case of Repeated/Parameterized Tests
+      -- right_align doesn't seems to work correctly when set to false
+      for i = #results, 1, -1 do
+        local result = results[i]
+        local symbol = result.success and success_symbol or error_symbol
+        vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
+          virt_text = { { symbol } },
+          invalidate = true
+        })
+        unique_lnums[result.lnum] = true
+      end
+      for key, _ in pairs(unique_lnums) do
+        local indent = '\t'
+        vim.api.nvim_buf_set_extmark(bufnr, ns, key, 0, {
+          virt_text = { { indent } },
+          invalidate = true
+        })
+      end
 
       if num_failures > 0 then
         vim.fn.setqflist({}, 'r', {
