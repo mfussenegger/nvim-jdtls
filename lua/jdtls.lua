@@ -840,17 +840,11 @@ end
 
 
 local function make_code_action_params(from_selection)
-  local params
   if from_selection then
-    params = vim.lsp.util.make_given_range_params()
+    return vim.lsp.util.make_given_range_params()
   else
-    params = vim.lsp.util.make_range_params()
+    return vim.lsp.util.make_range_params()
   end
-  local bufnr = api.nvim_get_current_buf()
-  params.context = {
-    diagnostics = vim.lsp.diagnostic.get_line_diagnostics(bufnr),
-  }
-  return params
 end
 
 
