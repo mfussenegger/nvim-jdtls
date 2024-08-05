@@ -840,11 +840,16 @@ end
 
 
 local function make_code_action_params(from_selection)
+  local params
   if from_selection then
-    return vim.lsp.util.make_given_range_params()
+    params = vim.lsp.util.make_given_range_params()
   else
-    return vim.lsp.util.make_range_params()
+    params = vim.lsp.util.make_range_params()
   end
+  params.context = {
+    diagnostics = {}
+  }
+  return params
 end
 
 
