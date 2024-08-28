@@ -11,6 +11,19 @@ local MessageId = {
   IGNORE_TEST_PREFIX = '@Ignore: ',
   ASSUMPTION_FAILED_TEST_PREFIX = '@AssumptionFailure: ',
 }
+--
+-- Default symbols that will be used if not configured
+local config = {
+  success_symbol = '✔️ ',
+  error_symbol = '❌'
+}
+
+function M.setup(testsConfig)
+  testsConfig = testsConfig or {}
+  config.success_symbol = testsConfig.success_symbol or config.success_symbol
+  config.error_symbol = testsConfig.error_symbol or config.error_symbol
+end
+
 
 local function parse_test_case(line)
   local matches = vim.fn.matchlist(line, '\\v\\d+,(\\@AssumptionFailure: |\\@Ignore: )?(.*)(\\[\\d+\\])?\\((.*)\\)')
@@ -130,8 +143,6 @@ function M.mk_test_results(bufnr)
       local lenses = lens.children or lens
       local failures = {}
       local results = {}
-      local error_symbol = '❌'
-      local success_symbol = '✔️ '
       for _, test in ipairs(tests) do
         local start_line_num = get_test_start_line_num(lenses, test)
         if test.failed then
@@ -144,7 +155,7 @@ function M.mk_test_results(bufnr)
           end
 
           if test.method then
-            repl.append(error_symbol .. ' ' .. test.method, '$')
+            repl.append(config.error_symbol .. ' ' .. test.method, '$')
           end
           local testMatch
           for _, msg in ipairs(test.traces) do
@@ -215,7 +226,7 @@ function M.mk_test_results(bufnr)
               success = true
             })
           end
-          repl.append(success_symbol .. ' ' .. test.method, '$')
+          repl.append(config.success_symbol .. ' ' .. test.method, '$')
         end
       end
       vim.diagnostic.set(ns, bufnr, failures, {})
@@ -225,7 +236,7 @@ function M.mk_test_results(bufnr)
       -- right_align doesn't seems to work correctly when set to false
       for i = #results, 1, -1 do
         local result = results[i]
-        local symbol = result.success and success_symbol or error_symbol
+        local symbol = result.success and config.success_symbol or config.error_symbol
         vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
           virt_text = { { symbol } },
           invalidate = true
@@ -248,10 +259,10 @@ function M.mk_test_results(bufnr)
         print(
           'Tests finished. Results printed to dap-repl.',
           #items > 0 and 'Errors added to quickfix list' or '',
-          string.format('(%s %d / %d)', error_symbol, num_failures, #tests)
+          string.format('(%s %d / %d)', config.error_symbol, num_failures, #tests)
         )
       else
-        print('Tests finished. Results printed to dap-repl.', success_symbol, #tests, 'succeeded')
+        print('Tests finished. Results printed to dap-repl.', config.success_symbol, #tests, 'succeeded')
       end
       return items, tests
     end,
