@@ -252,6 +252,17 @@ local function add_commands(client, bufnr, opts)
       desc = "Trigger reload of changed classes for current debug session",
     })
   end
+  create_cmd("JdtUpdateMavenActiveProfiles", function (o)
+	  local active_profiles = o.args
+    require("jdtls.project_settings").set_maven_active_profiles(active_profiles, bufnr)
+  end, {
+    nargs = 1,
+  })
+  create_cmd("JdtShowMavenActiveProfiles", function (_)
+    require("jdtls.project_settings").show_maven_active_profiles(bufnr)
+  end, {
+    nargs = 0,
+  })
 end
 
 
