@@ -205,6 +205,8 @@ end
 ---@param client vim.lsp.Client
 ---@param opts jdtls.start.opts
 local function add_commands(client, bufnr, opts)
+
+  ---@param name string
   local function create_cmd(name, command, cmdopts)
     api.nvim_buf_create_user_command(bufnr, name, command, cmdopts or {})
   end
@@ -252,14 +254,42 @@ local function add_commands(client, bufnr, opts)
       desc = "Trigger reload of changed classes for current debug session",
     })
   end
+  local selected_profiles = "org.eclipse.m2e.core.selectedProfiles"
+  local util = require("jdtls.util")
   create_cmd("JdtUpdateMavenActiveProfiles", function (o)
-	  local active_profiles = o.args
-    require("jdtls.project_settings").set_maven_active_profiles(active_profiles, bufnr)
+    local active_profiles = o.args
+    local settings = {
+      [selected_profiles] = active_profiles
+    }
+    local params = {
+      command = "java.project.updateSettings",
+      arguments = { vim.uri_from_bufnr(bufnr), settings },
+    }
+    util.execute_command(params)
   end, {
-    nargs = 1,
+    nargs = "?",
   })
   create_cmd("JdtShowMavenActiveProfiles", function (_)
-    require("jdtls.project_settings").show_maven_active_profiles(bufnr)
+    local params = {
+      command = "java.project.getSettings",
+      arguments = {
+        vim.uri_from_bufnr(bufnr),
+        { selected_profiles },
+      },
+    }
+    local function on_response(err, resp)
+      if err then
+        vim.notify("Could not resolve active maven profiles: " .. vim.inspect(err), vim.log.levels.WARN)
+      else
+        local profiles = resp[selected_profiles]
+        if profiles and profiles ~= "" then
+          vim.notify("Active profiles: " .. profiles, vim.log.levels.INFO)
+        else
+          vim.notify("No active profiles", vim.log.levels.INFO)
+        end
+      end
+    end
+    util.execute_command(params, on_response, bufnr)
   end, {
     nargs = 0,
   })
