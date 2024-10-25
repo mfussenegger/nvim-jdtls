@@ -234,7 +234,7 @@ function M.mk_test_results(bufnr)
       else
         print('Tests finished. Results printed to dap-repl.', success_symbol, #tests, 'succeeded')
       end
-      return items
+      return items, tests
     end,
     mk_reader = function(sock)
       return vim.schedule_wrap(mk_buf_loop(sock, handle_buffer))
