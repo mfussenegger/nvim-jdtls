@@ -482,10 +482,10 @@ local function run(lens, config, context, opts)
         server:shutdown()
         server:close()
       end
-      local items = test_results.show(lens)
+      local items, tests = test_results.show(lens)
       maybe_repeat(lens, config, context, opts, items)
       if opts.after_test then
-        opts.after_test(items)
+        opts.after_test(items, tests)
       end
     end;
   })
