@@ -9,9 +9,38 @@ local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
 local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
 
 
-local status_callback = function(_, result)
+M._service_ready = false
+M._service_ready_co = {}
+
+function M.service_ready_handler(_, msg)
+  if "ServiceReady" == msg.type then
+    M._service_ready = true
+    for _, co in ipairs(M._co) do
+      coroutine.resume(co)
+    end
+    M._service_ready_co = {}
+  end
+end
+
+---@param cb function
+function M.wait_service_ready(cb)
+  if M._service_ready then
+    return cb()
+  end
+  local pco = coroutine.running()
+  local co = coroutine.create(function()
+    local resp = cb()
+    coroutine.resume(pco, resp)
+    return resp
+  end)
+  table.insert(M._service_ready_co, co)
+  return coroutine.yield()
+end
+
+local status_callback = function(err, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None',
                                 string.sub(result.message, 1, vim.v.echospace)))
+  M.service_ready_handler(err, result)
 end
 
 
