@@ -807,6 +807,19 @@ M.commands = {
     })
     return result and result or vim.NIL
   end,
+  ["java.show.references"] = function(args)
+    local arguments = args.arguments
+    -- arg1 -> uri
+    -- arg2 -> position
+    local locations = arguments[3]
+    local items = vim.lsp.util.locations_to_items(locations, "utf-16")
+    local list = {
+      title = "References",
+      items = items,
+    }
+    vim.fn.setqflist({}, ' ', list)
+    vim.cmd("botright copen")
+  end
 }
 
 if vim.lsp.commands then
