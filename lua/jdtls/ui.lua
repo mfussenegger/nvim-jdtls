@@ -19,27 +19,24 @@ end
 ---@param label_fn fun(item: T): string
 ---@result T|nil
 function M.pick_one(items, prompt, label_fn)
-  local choices = {prompt}
-  for i, item in ipairs(items) do
-    table.insert(choices, string.format('%d: %s', i, label_fn(item)))
-  end
-  local choice = vim.fn.inputlist(choices)
-  if choice < 1 or choice > #items then
-    return nil
-  end
-  return items[choice]
-end
+  local function indexedFormatter(item)
+    local label = label_fn(item)
 
+    local idx = index_of(items, item)
+    return idx == -1 and label or string.format("%d. %s", idx, label)
+  end
 
-local function index_of(xs, term)
-  for i, x in pairs(xs) do
-    if x == term then
-      return i
+  local co = coroutine.running()
+  vim.ui.select(
+    items,
+    { prompt = prompt, format_item = indexedFormatter },
+    function(result)
+      coroutine.resume(co, result)
     end
-  end
-  return -1
-end
+  )
 
+  return coroutine.yield()
+end
 
 function M.pick_many(items, prompt, label_f, opts)
   if not items or #items == 0 then
