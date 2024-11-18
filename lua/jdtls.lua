@@ -1087,7 +1087,12 @@ function M.super_implementation()
   request(0, 'java/findLinks', params, function(err, result)
     assert(not err, vim.inspect(err))
     if result and #result == 1 then
-      vim.lsp.util.jump_to_location(result[1], offset_encoding, true)
+      if vim.lsp.util.show_document then
+        vim.lsp.util.show_document(result[1], offset_encoding, { focus = true })
+      else
+        ---@diagnostic disable-next-line: deprecated
+        vim.lsp.util.jump_to_location(result[1], offset_encoding, true)
+      end
     else
       assert(result == nil or #result == 0, 'Expected one or zero results for `findLinks`')
       vim.notify('No result found')
