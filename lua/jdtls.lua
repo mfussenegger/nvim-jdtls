@@ -855,9 +855,9 @@ end
 local function make_code_action_params(from_selection)
   local params
   if from_selection then
-    params = vim.lsp.util.make_given_range_params()
+    params = vim.lsp.util.make_given_range_params(nil, nil, 0, offset_encoding)
   else
-    params = vim.lsp.util.make_range_params()
+    params = vim.lsp.util.make_range_params(0, offset_encoding)
   end
   params.context = {
     diagnostics = {}
