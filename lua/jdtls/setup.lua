@@ -27,48 +27,6 @@ M.restart = function()
   end
 end
 
-local function may_jdtls_buf(bufnr)
-  if vim.bo[bufnr].filetype == "java" then
-    return true
-  end
-  local fname = api.nvim_buf_get_name(bufnr)
-  return vim.endswith(fname, "build.gradle") or vim.endswith(fname, "pom.xml")
-end
-
----@return integer? client_id
-local function attach_to_active_buf(bufnr, client_name)
-  local function try_attach(buf)
-    if not may_jdtls_buf(buf) then
-      return nil
-    end
-    local clients = util.get_clients({ bufnr = buf, name = client_name })
-    local _, client = next(clients)
-    if client then
-      lsp.buf_attach_client(bufnr, client.id)
-      return client.id
-    end
-    return nil
-  end
-
-  ---@diagnostic disable-next-line: param-type-mismatch
-  local altbuf = vim.fn.bufnr("#", -1)
-  if altbuf and altbuf > 0 then
-    local client_id = try_attach(altbuf)
-    if client_id then
-      return client_id
-    end
-  end
-  for _, buf in ipairs(api.nvim_list_bufs()) do
-    if api.nvim_buf_is_loaded(buf) then
-      local client_id = try_attach(buf)
-      if client_id then
-        return client_id
-      end
-    end
-  end
-  print('No active LSP client found to use for jdt:// document')
-  return nil
-end
 
 function M.find_root(markers, source)
   source = source or api.nvim_buf_get_name(api.nvim_get_current_buf())
@@ -87,24 +45,7 @@ function M.find_root(markers, source)
 end
 
 
-M.extendedClientCapabilities = {
-  classFileContentsSupport = true,
-  generateToStringPromptSupport = true,
-  hashCodeEqualsPromptSupport = true,
-  advancedExtractRefactoringSupport = true,
-  advancedOrganizeImportsSupport = true,
-  generateConstructorsPromptSupport = true,
-  generateDelegateMethodsPromptSupport = true,
-  moveRefactoringSupport = true,
-  overrideMethodsPromptSupport = true,
-  executeClientCommandSupport = true,
-  inferSelectionSupport = {
-    "extractMethod",
-    "extractVariable",
-    "extractConstant",
-    "extractVariableAllOccurrence"
-  },
-}
+M.extendedClientCapabilities = require("jdtls.capabilities")
 
 
 local function configuration_handler(err, result, ctx, config)
@@ -196,6 +137,7 @@ local function extract_data_dir(bufnr)
 
   return nil, nil
 end
+
 
 
 ---@param client vim.lsp.Client
@@ -291,6 +233,13 @@ local function add_commands(client, bufnr, opts)
 end
 
 
+---@param client vim.lsp.Client
+---@param bufnr integer
+function M._on_attach(client, bufnr)
+  add_commands(client, bufnr, {})
+end
+
+
 ---@class jdtls.start.opts
 ---@field dap? JdtSetupDapOpts
 
@@ -320,15 +269,6 @@ function M.start_or_attach(config, opts, start_opts)
 
   local bufnr = api.nvim_get_current_buf()
   local bufname = api.nvim_buf_get_name(bufnr)
-  -- Won't be able to get the correct root path for jdt:// URIs
-  -- So need to connect to an existing client
-  if vim.startswith(bufname, 'jdt://') then
-    local client_id = attach_to_active_buf(bufnr, config.name)
-    if client_id then
-      return client_id
-    end
-  end
-
   local uri = vim.uri_from_bufnr(bufnr)
   -- jdtls requires files to exist on the filesystem; it doesn't play well with scratch buffers
   if not vim.startswith(uri, "file://") then

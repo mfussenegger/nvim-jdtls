@@ -58,8 +58,37 @@ see some of the functionality in action.
 
 Install [eclipse.jdt.ls][3] by following their [Installation instructions](https://github.com/eclipse/eclipse.jdt.ls#installation).
 
+## Configuration
 
-## Configuration (quickstart)
+To configure jdtls you have several options. Pick one.
+
+**Important**:
+
+- eclipse.jdt.ls requires Java 21
+- If using the `jdtls` script from eclipse.jdt.ls you need Python 3.9 installed.
+- You'll have to teach eclipse.jdt.ls about your JDK installations by setting
+  up `runtimes` if your projects use a different Java version than the one
+  you're using for eclipse.jdt.ls itself. See `Java XY language features are
+  not available` in the troubleshooting section further below to learn how to
+  do that.
+
+### Via lsp.config
+
+Add the following to your `init.lua`:
+
+```lua
+vim.lsp.enable("jdtls")
+```
+
+A `jdtls` executable must be available in `$PATH` for this approach to work.
+
+Limitations:
+
+- Eclipse.jdt.ls will store project index files inside your temporary directory
+  which might be wiped on reboots. Use the low-level `ftplugin` approach for a
+  way to avoid that.
+
+### Via ftplugin
 
 Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directory`):
 
@@ -71,22 +100,18 @@ local config = {
 require('jdtls').start_or_attach(config)
 ```
 
-**Important**:
+Limitations:
 
-- eclipse.jdt.ls requires Java 21
-- The `jdtls` script requires Python 3.9
-- You'll have to teach eclipse.jdt.ls about your JDK installations by setting
-  up `runtimes` if your projects use a different Java version than the one
-  you're using for eclipse.jdt.ls itself. See `Java XY language features are
-  not available` in the troubleshooting section further below to learn how to
-  do that.
+- Eclipse.jdt.ls will store project index files inside your temporary directory
+  which might be wiped on reboots. This means eclipse.jdt.ls will re-index your
+  project after each reboot. Use the low-level `ftplugin` approach for a way to
+  avoid that.
 
-This should get you started, but will create temporary eclipse data folders
-when you open a project. Please read the `Configuration (verbose)` section if
-you want more control over the configuration or want to understand how things
-work.
+**Warning**
 
-## Configuration (verbose)
+Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using this approach.
+
+### Via ftplugin low-level
 
 To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
 Neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
@@ -176,6 +201,11 @@ You can also find more [complete configuration examples in the Wiki][11].
 If you have trouble getting jdtls to work, please read the
 [Troubleshooting](#troubleshooting) section.
 
+**Warning**
+
+Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using
+this approach.
+
 ### data directory configuration
 
 `eclipse.jdt.ls` stores project specific data within the folder set via the
@@ -208,42 +238,6 @@ local config = {
 `...` is not valid Lua in this context. It is meant as placeholder for the
 other options from the [Configuration](#configuration) section above.)
 
-### nvim-lspconfig and nvim-jdtls differences
-
-Both [nvim-lspconfig][9] and nvim-jdtls use the client built into neovim:
-
-```txt
-  ┌────────────┐           ┌────────────────┐
-  │ nvim-jdtls │           │ nvim-lspconfig │
-  └────────────┘           └────────────────┘
-       |                         |
-      start_or_attach           nvim_lsp.jdtls.setup
-       │                              |
-       │                             setup java filetype hook
-       │    ┌─────────┐                  │
-       └───►│ vim.lsp │◄─────────────────┘
-            └─────────┘
-                .start_client
-                .buf_attach_client
-```
-
-Some differences between the two:
-
-- The `setup` of lspconfig creates a `java` `filetype` hook itself and provides
-  some defaults for the `cmd` of the `config`.
-- `nvim-jdtls` delegates the choice when to call `start_or_attach` to the user.
-- `nvim-jdtls` adds some logic to handle `jdt://` URIs. These are necessary to
-  load source code from third party libraries or the JDK.
-- `nvim-jdtls` adds some additional handlers and sets same extra capabilities
-  to enable all the extensions.
-
-You could use either to start the `eclipse.jdt.ls` client, but it is
-recommended to use the `start_or_attach` method from `nvim-jdtls` because of
-the additional capabilities it configures and because of the `jdt://` URI
-handling.
-
-You **must not** use both at the same time for java. You'd end up with two
-clients and two language server instances.
 
 ### UI picker customization
 

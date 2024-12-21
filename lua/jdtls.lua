@@ -20,7 +20,7 @@ local M = {
   test_class = jdtls_dap.test_class,
   test_nearest_method = jdtls_dap.test_nearest_method,
   pick_test = jdtls_dap.pick_test,
-  extendedClientCapabilities = setup.extendedClientCapabilities,
+  extendedClientCapabilities = require("jdtls.capabilities"),
   setup = setup,
   settings = {
     jdt_uri_timeout_ms = 5000,
@@ -1227,14 +1227,22 @@ function M.open_classfile(fname)
   vim.bo[buf].modifiable = true
   vim.bo[buf].swapfile = false
   vim.bo[buf].buftype = 'nofile'
-  -- This triggers FileType event which should fire up the lsp client if not already running
   vim.bo[buf].filetype = 'java'
   local timeout_ms = M.settings.jdt_uri_timeout_ms
-  vim.wait(timeout_ms, function()
-    return next(util.get_clients({ name = "jdtls", bufnr = buf })) ~= nil
-  end)
-  local client = util.get_clients({ name = "jdtls", bufnr = buf })[1]
+
+  local altbuf = vim.fn.bufnr("#", -1)
+  local client = util.get_clients({ name = "jdtls", bufnr = altbuf })[1]
+  if not client then
+    client = util.get_clients({ name = "jdtls" })[1]
+  end
+  if not client then
+    vim.wait(timeout_ms, function()
+      return next(util.get_clients({ name = "jdtls", bufnr = buf })) ~= nil
+    end)
+    client = util.get_clients({ name = "jdtls", buf = buf })[1]
+  end
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
+
 
   local content
   local function handler(err, result)
@@ -1261,6 +1269,7 @@ function M.open_classfile(fname)
   -- Need to block. Otherwise logic could run that sets the cursor to a position
   -- that's still missing.
   vim.wait(timeout_ms, function() return content ~= nil end)
+  vim.lsp.buf_attach_client(buf, client.id)
 end
 
 
