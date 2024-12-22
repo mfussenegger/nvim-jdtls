@@ -28,7 +28,7 @@ local function fetch_needs_preview(mainclass, project, cb, bufnr)
 end
 
 
-local function enrich_dap_config(config_, on_config)
+local function enrich_dap_config(config_, on_config, bufnr)
   if config_.mainClass
     and config_.projectName
     and config_.modulePaths ~= nil
@@ -41,7 +41,6 @@ local function enrich_dap_config(config_, on_config)
   if not config.mainClass then
     config.mainClass = resolve_classname()
   end
-  local bufnr = api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, err and (err.message or vim.inspect(err)))
 
@@ -90,9 +89,15 @@ local function start_debug_adapter(callback, config)
   local jdtls = vim.tbl_filter(function(client)
     return client.name == 'jdtls'
       and client.config
-      and client.config.root_dir == config.cwd
+      and (
+        client.config.root_dir == config.cwd
+        or vim.startswith(config.cwd, client.config.root_dir)
+      )
   end, get_clients())[1]
   local bufnr = vim.lsp.get_buffers_by_client_id(jdtls and jdtls.id)[1] or vim.api.nvim_get_current_buf()
+  local function enrich_config(config_, on_config)
+    return enrich_dap_config(config_, on_config, bufnr)
+  end
   util.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
 
@@ -100,7 +105,7 @@ local function start_debug_adapter(callback, config)
       type = 'server';
       host = '127.0.0.1';
       port = port;
-      enrich_config = enrich_dap_config;
+      enrich_config = enrich_config;
     })
   end, bufnr)
 end
@@ -185,7 +190,11 @@ local function fetch_candidates(context, on_candidates)
   local params = {
     arguments = { context.uri };
   }
-  for _, c in ipairs(get_clients({ bufnr = context.bufnr })) do
+  local clients = get_clients({ bufnr = context.bufnr })
+  if not next(clients) then
+    clients = get_clients({ name = "jdtls" })
+  end
+  for _, c in ipairs(clients) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
     if vim.tbl_contains(commands, cmd_codelens) then
@@ -238,8 +247,8 @@ end
 local function fetch_launch_args(lens, context, on_launch_args)
   local req_arguments = make_request_args(lens, context.uri)
   local cmd_junit_args = {
-    command = 'vscode.java.test.junit.argument';
-    arguments = { vim.fn.json_encode(req_arguments) };
+    command = 'vscode.java.test.junit.argument',
+    arguments = { vim.fn.json_encode(req_arguments) },
   }
   util.execute_command(cmd_junit_args, function(err, launch_args)
     if err then
@@ -263,11 +272,19 @@ local function fetch_launch_args(lens, context, on_launch_args)
       -- That is why `java.project.getClasspaths` is used as well.
       local options = vim.fn.json_encode({ scope = 'test'; })
       local cmd = {
-        command = 'java.project.getClasspaths';
-        arguments = { vim.uri_from_bufnr(0), options };
+        command = 'java.project.getClasspaths',
+        arguments = { vim.uri_from_bufnr(context.bufnr), options },
       }
       util.execute_command(cmd, function(err1, resp)
-        assert(not err1, vim.inspect(err1))
+        if err1 then
+          local msg = string.format(
+            "%s bufnr=%d fname=%s",
+            err1.message,
+            context.bufnr,
+            api.nvim_buf_get_name(context.bufnr)
+          )
+          error(msg)
+        end
         launch_args.classpath = merge_unique(launch_args.classpath, resp.classpaths)
         on_launch_args(launch_args)
       end, context.bufnr)
@@ -341,6 +358,7 @@ local function testng_runner()
   return nil
 end
 
+---@return JdtDapConfig
 local function make_config(lens, launch_args, config_overrides)
   local config = {
     name = lens.fullName;
@@ -386,7 +404,7 @@ end
 
 ---@param bufnr? integer
 ---@return JdtDapContext
-local function make_context(bufnr)
+local function new_context(bufnr)
   bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
   return {
     bufnr = bufnr,
@@ -497,15 +515,16 @@ M.experimental = {
   run = run,
   fetch_lenses = fetch_candidates,
   fetch_launch_args = fetch_launch_args,
-  make_context = make_context,
+  make_context = new_context,
   make_config = make_config,
 }
+
 
 --- Debug the test class in the current buffer
 --- @param opts JdtTestOpts|nil
 function M.test_class(opts)
   opts = opts or {}
-  local context = make_context(opts.bufnr)
+  local context = new_context(opts.bufnr)
   fetch_candidates(context, function(lenses)
     local lens = get_first_class_lens(lenses)
     if not lens then
@@ -524,7 +543,7 @@ end
 --- @param opts nil|JdtTestOpts
 function M.test_nearest_method(opts)
   opts = opts or {}
-  local context = make_context(opts.bufnr)
+  local context = new_context(opts.bufnr)
   local lnum = opts.lnum or api.nvim_win_get_cursor(0)[1]
   fetch_candidates(context, function(lenses)
     local lens = get_method_lens_above_cursor(lenses, lnum)
@@ -539,6 +558,63 @@ function M.test_nearest_method(opts)
   end)
 end
 
+
+---@param items string[]
+---@param pattern string
+---@return string?
+local function first_match(items, pattern)
+  for _, item in ipairs(items) do
+    if item:match(pattern) then
+      return item
+    end
+  end
+  return nil
+end
+
+
+---@param config JdtDapConfig
+---@return string?
+local function get_jacoco_jar(config)
+  local pattern = "org%.jacoco%.agent"
+  return first_match(config.classPaths or {}, pattern)
+    or first_match(config.modulePaths or {}, pattern)
+    or first_match(
+      vim.tbl_get(get_clients({ name = "jdtls" })[1] or {}, "config", "init_options", "bundles"),
+      pattern)
+end
+
+
+---@param opts? JdtTestOpts
+---@param on_done fun(cwd: string?)
+function M.create_class_coverage(opts, on_done)
+  opts = opts or {}
+  local context = new_context(opts.bufnr)
+  fetch_candidates(context, function(lenses)
+    local lens = get_first_class_lens(lenses)
+    if not lens then
+      vim.notify('No test suite found in ' .. api.nvim_buf_get_name(context.bufnr))
+      on_done(nil)
+      return
+    end
+    fetch_launch_args(lens, context, function(launch_args)
+      local config = make_config(lens, launch_args, opts.config_overrides)
+      local jacoco = get_jacoco_jar(config)
+      assert(jacoco, "Must have jacoco agent in classpath")
+      config.vmArgs = string.format(
+        "%s -javaagent:%s=destfile=%s,append=false",
+        config.vmArgs or "",
+        jacoco,
+        "target/jacoco.exec"
+      )
+      opts.after_test = function()
+        on_done(config.cwd)
+      end
+      run(lens, config, context, opts)
+    end)
+  end)
+end
+
+
 local function populate_candidates(list, lenses)
   for _, v in pairs(lenses) do
     table.insert(list,  v)
@@ -552,7 +628,7 @@ end
 ---@param opts nil|JdtTestOpts
 function M.pick_test(opts)
   opts = opts or {}
-  local context = make_context(opts.bufnr)
+  local context = new_context(opts.bufnr)
 
   fetch_candidates(context, function(lenses)
     local candidates = {}
@@ -755,6 +831,8 @@ end
 ---@field cwd string|nil working directory for the test
 ---@field vmArgs string|nil vmArgs for the test
 ---@field noDebug boolean|nil If the test should run in debug mode
+---@field classPaths? string[]
+---@field modulePaths? string[]]
 
 ---@class JdtTestOpts
 ---@field config nil|table Skeleton used for the |dap-configuration|

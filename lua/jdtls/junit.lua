@@ -203,21 +203,26 @@ function M.mk_test_results(bufnr)
       local unique_lnums = {}
       -- Traverse in reverse order to preserve the mark position in case of Repeated/Parameterized Tests
       -- right_align doesn't seems to work correctly when set to false
+      local setextmark = vim.api.nvim_buf_is_loaded(bufnr)
       for i = #results, 1, -1 do
         local result = results[i]
         local symbol = result.success and success_symbol or error_symbol
-        vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
-          virt_text = { { symbol } },
-          invalidate = true
-        })
+        if setextmark then
+          vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
+            virt_text = { { symbol } },
+            invalidate = true
+          })
+        end
         unique_lnums[result.lnum] = true
       end
       for key, _ in pairs(unique_lnums) do
         local indent = '\t'
-        vim.api.nvim_buf_set_extmark(bufnr, ns, key, 0, {
-          virt_text = { { indent } },
-          invalidate = true
-        })
+        if setextmark then
+          vim.api.nvim_buf_set_extmark(bufnr, ns, key, 0, {
+            virt_text = { { indent } },
+            invalidate = true
+          })
+      end
       end
 
       if num_failures > 0 then

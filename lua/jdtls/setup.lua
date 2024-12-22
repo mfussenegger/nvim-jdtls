@@ -164,9 +164,24 @@ local function maybe_implicit_save()
   end
 end
 
+---@param client vim.lsp.Client
+---@return string?
+local function data_dir_from_client(client)
+  local cmd = client.config.cmd
+  if type(cmd) == "table" then
+    for i, part in pairs(cmd) do
+      -- jdtls helper script uses `--data`, java jar command uses `-data`.
+      if part == '-data' or part == '--data' then
+        return client.config.cmd[i + 1]
+      end
+    end
+  end
+  return nil
+end
+
 
 ---@return string?, vim.lsp.Client?
-local function extract_data_dir(bufnr)
+local function data_dir_frombuf(bufnr)
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
   local client = get_clients({ name = "jdtls", bufnr = bufnr })[1]
   if not client then
@@ -185,16 +200,8 @@ local function extract_data_dir(bufnr)
     end
   end
 
-  if client and client.config and client.config.cmd then
-    local cmd = client.config.cmd
-    if type(cmd) == "table" then
-      for i, part in pairs(cmd) do
-        -- jdtls helper script uses `--data`, java jar command uses `-data`.
-        if part == '-data' or part == '--data' then
-          return client.config.cmd[i + 1], client
-        end
-      end
-    end
+  if client then
+    return data_dir_from_client(client), client
   end
 
   return nil, nil
@@ -441,7 +448,7 @@ end
 
 
 function M.wipe_data_and_restart()
-  local data_dir, client = extract_data_dir(vim.api.nvim_get_current_buf())
+  local data_dir, client = data_dir_frombuf(vim.api.nvim_get_current_buf())
   if not data_dir or not client then
     vim.notify(
       "Data directory wasn't detected. " ..
@@ -484,7 +491,7 @@ end
 
 
 function M.show_logs()
-  local data_dir = extract_data_dir(vim.api.nvim_get_current_buf())
+  local data_dir = data_dir_frombuf(vim.api.nvim_get_current_buf())
   if data_dir then
     vim.cmd('split | e ' .. data_dir .. '/.metadata/.log | normal G')
   end
