@@ -361,7 +361,15 @@ function M.start_or_attach(config, opts, start_opts)
       local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
       local client_id = client.id
 
-      local function on_settings(_, settings)
+      ---@param err0 lsp.ResponseError?
+      ---@param settings table?
+      local function on_settings(err0, settings)
+        if err0 or not settings then
+          local msg = "Couldn't retrieve source path settings. Can't set 'path' (err=%s)"
+          local errmsg = err0 and err0.message or "unknown"
+          vim.notify(string.format(msg, errmsg), vim.log.levels.INFO)
+          return
+        end
         local paths = settings[setting]
         for i, path in ipairs(paths) do
           paths[i] = vim.fn.fnamemodify(path, ":.") .. "/**"
