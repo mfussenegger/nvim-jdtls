@@ -311,7 +311,7 @@ function M.start_or_attach(config, opts, start_opts)
   assert(
     config.cmd and type(config.cmd) == 'table',
     'Config must have a `cmd` property and that must be a table. Got: '
-      .. table.concat(config.cmd, ' ')
+      .. table.concat(config.cmd or {'nil'}, ' ')
   )
   config.name = 'jdtls'
   local on_attach = config.on_attach
