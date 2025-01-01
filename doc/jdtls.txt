@@ -26,6 +26,7 @@ M.compile({type})                                                *jdtls.compile*
     Parameters: ~
         {type}  (string|nil)  |"full"
                               |"incremental"
+	{quickfix_open_cmd?} (string) Command to open quickfix list. Defaults to `copen`
 
 
 M.build_projects({opts})                                  *jdtls.build_projects*
@@ -41,6 +42,7 @@ JdtBuildProjectOpts                                        *JdtBuildProjectOpts*
     Fields: ~
         {select_mode?}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
         {full_build?}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
+	{quickfix_open_cmd?} (string) Command to open quickfix list. Defaults to `copen`
 
 
 M.update_project_config()                          *jdtls.update_project_config*

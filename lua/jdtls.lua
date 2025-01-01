@@ -877,51 +877,55 @@ function M._complete_compile()
   return 'full\nincremental'
 end
 
-local function on_build_result(err, result, ctx)
-  local CompileWorkspaceStatus = {
-    FAILED = 0,
-    SUCCEED = 1,
-    WITHERROR = 2,
-    CANCELLED = 3,
-  }
-  assert(not err, 'Error trying to build project(s): ' .. vim.inspect(err))
-  if result == CompileWorkspaceStatus.SUCCEED then
-    vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
-    print('Compile successful')
-  else
-    local project_config_errors = {}
-    local compile_errors = {}
-    local ns = vim.lsp.diagnostic.get_namespace(ctx.client_id)
-    for _, d in pairs(vim.diagnostic.get(nil, { namespace = ns })) do
-      local fname = api.nvim_buf_get_name(d.bufnr)
-      local stat = vim.loop.fs_stat(fname)
-      local items
-      if (vim.endswith(fname, 'build.gradle')
-          or vim.endswith(fname, 'pom.xml')
-          or (stat and stat.type == 'directory')) then
-        items = project_config_errors
-      elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
-        items = compile_errors
-      end
-      if d.severity == vim.diagnostic.severity.ERROR and items then
-        table.insert(items, d)
-      end
-    end
-    local items = #project_config_errors > 0 and project_config_errors or compile_errors
-    vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
-    if #items > 0 then
-      local reverse_status = {
-        [0] = "FAILED",
-        [1] = "SUCCEEDED",
-        [2] = "WITHERROR",
-        [3] = "CANCELLED",
-      }
-      print(string.format('Compile error. (%s)', reverse_status[result]))
-      vim.cmd('copen')
+--- @param quickfix_open_cmd? string Command to open quickfix list. Defaults to `copen`
+local function on_build_result(quickfix_open_cmd)
+  quickfix_open_cmd = quickfix_open_cmd or 'copen'
+  return function(err, result, ctx)
+    local CompileWorkspaceStatus = {
+      FAILED = 0,
+      SUCCEED = 1,
+      WITHERROR = 2,
+      CANCELLED = 3,
+    }
+    assert(not err, 'Error trying to build project(s): ' .. vim.inspect(err))
+    if result == CompileWorkspaceStatus.SUCCEED then
+      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = {} })
+      print('Compile successful')
     else
-      print("Compile error, but no error diagnostics available."
-        .. " Save all pending changes and try running compile again."
-        .. " If you used incremental mode, try a full rebuild.")
+      local project_config_errors = {}
+      local compile_errors = {}
+      local ns = vim.lsp.diagnostic.get_namespace(ctx.client_id)
+      for _, d in pairs(vim.diagnostic.get(nil, { namespace = ns })) do
+        local fname = api.nvim_buf_get_name(d.bufnr)
+        local stat = vim.loop.fs_stat(fname)
+        local items
+        if (vim.endswith(fname, 'build.gradle')
+            or vim.endswith(fname, 'pom.xml')
+            or (stat and stat.type == 'directory')) then
+          items = project_config_errors
+        elseif vim.fn.fnamemodify(fname, ':e') == 'java' then
+          items = compile_errors
+        end
+        if d.severity == vim.diagnostic.severity.ERROR and items then
+          table.insert(items, d)
+        end
+      end
+      local items = #project_config_errors > 0 and project_config_errors or compile_errors
+      vim.fn.setqflist({}, 'r', { title = 'jdtls'; items = vim.diagnostic.toqflist(items) })
+      if #items > 0 then
+        local reverse_status = {
+          [0] = "FAILED",
+          [1] = "SUCCEEDED",
+          [2] = "WITHERROR",
+          [3] = "CANCELLED",
+        }
+        print(string.format('Compile error. (%s)', reverse_status[result]))
+        vim.cmd(quickfix_open_cmd)
+      else
+        print("Compile error, but no error diagnostics available."
+          .. " Save all pending changes and try running compile again."
+          .. " If you used incremental mode, try a full rebuild.")
+      end
     end
   end
 end
@@ -932,8 +936,9 @@ end
 ---@param type string|nil
 ---|"full"
 ---|"incremental"
-function M.compile(type)
-  request(0, 'java/buildWorkspace', type == 'full', on_build_result)
+---@param quickfix_open_cmd? string Command to open quickfix list. Defaults to `copen`
+function M.compile(type, quickfix_open_cmd)
+  request(0, 'java/buildWorkspace', type == 'full', on_build_result(quickfix_open_cmd))
 end
 
 
@@ -979,7 +984,7 @@ function M.build_projects(opts)
         identifiers = vim.tbl_map(function(project) return { uri = project } end, selection),
         isFullBuild = opts.full_build == nil and true or opts.full_build
       }
-      request(bufnr, 'java/buildProjects', params, on_build_result)
+      request(bufnr, 'java/buildProjects', params, on_build_result(opts.quickfix_open_cmd))
     end
   end)()
 end
@@ -987,6 +992,7 @@ end
 ---@class JdtBuildProjectOpts
 ---@field select_mode? JdtProjectSelectMode Show prompt to select projects or select all. Defaults to "prompt"
 ---@field full_build? boolean full rebuild or incremental build. Defaults to true (full build)
+---@field quickfix_open_cmd? string Command to open quickfix list. Defaults to `copen`
 
 --- Update the project configuration (from Gradle or Maven).
 --- In a multi-module project this will only update the configuration of the
