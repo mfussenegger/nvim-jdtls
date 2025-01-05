@@ -1,6 +1,5 @@
 local M = {}
 
-
 function M.pick_one_async(items, prompt, label_fn, cb)
   if vim.ui then
     return vim.ui.select(items, {
@@ -12,16 +11,15 @@ function M.pick_one_async(items, prompt, label_fn, cb)
   cb(result)
 end
 
-
 ---@generic T
 ---@param items T[]
 ---@param prompt string
 ---@param label_fn fun(item: T): string
 ---@result T|nil
 function M.pick_one(items, prompt, label_fn)
-  local choices = {prompt}
+  local choices = { prompt }
   for i, item in ipairs(items) do
-    table.insert(choices, string.format('%d: %s', i, label_fn(item)))
+    table.insert(choices, string.format("%d: %s", i, label_fn(item)))
   end
   local choice = vim.fn.inputlist(choices)
   if choice < 1 or choice > #items then
@@ -29,7 +27,6 @@ function M.pick_one(items, prompt, label_fn)
   end
   return items[choice]
 end
-
 
 local function index_of(xs, term)
   for i, x in pairs(xs) do
@@ -40,6 +37,21 @@ local function index_of(xs, term)
   return -1
 end
 
+local function mark_selected(answer, choices, items, selected)
+  local index = tonumber(answer)
+  if index ~= nil then
+    local choice = choices[index]
+    local item = items[index]
+    if string.find(choice, "*") == nil then
+      table.insert(selected, item)
+      choices[index] = choice .. " *"
+    else
+      choices[index] = string.gsub(choice, " %*$", "")
+      local idx = index_of(selected, item)
+      table.remove(selected, idx)
+    end
+  end
+end
 
 function M.pick_many(items, prompt, label_f, opts)
   if not items or #items == 0 then
@@ -72,22 +84,40 @@ function M.pick_many(items, prompt, label_f, opts)
       break
     end
 
-    local index = tonumber(answer)
-    if index ~= nil then
-      local choice = choices[index]
-      local item = items[index]
-      if string.find(choice, "*") == nil then
-        table.insert(selected, item)
-        choices[index] = choice .. " *"
-      else
-        choices[index] = string.gsub(choice, " %*$", "")
-        local idx = index_of(selected, item)
-        table.remove(selected, idx)
+    --[[ Multi values selection by typing: start_value-end_value.
+    Example: 1-3 will select values 1 till 3 inclusive.
+    --]]
+
+    local index_of_hyphen = string.find(answer, "-")
+
+    if index_of_hyphen ~= nil then
+      answer = string.gsub(answer, "%s+", "")
+      local range_first = tonumber(string.sub(answer, 0, index_of_hyphen - 1))
+      local range_last = tonumber(string.sub(answer, index_of_hyphen + 1, string.len(answer)))
+
+      -- Autocorrect incorrect out of range input values
+      if range_last > #items then
+        range_last = #items
       end
+
+      if range_first < 1 then
+        range_first = 1
+      end
+
+      if range_first > range_last then
+        local tmp = range_first
+        range_first = range_last
+        range_last = tmp
+      end
+
+      for i = range_first, range_last do
+        mark_selected(i, choices, items, selected)
+      end
+    else
+      mark_selected(answer, choices, items, selected)
     end
   end
   return selected
 end
-
 
 return M
