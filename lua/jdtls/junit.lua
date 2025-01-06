@@ -129,7 +129,7 @@ function M.mk_test_results(bufnr)
           local testMatch
           for _, msg in ipairs(test.traces) do
             local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%w%p]*:%d+)%)')
-            if match then
+            if ((not testMatch) and match) then
               testMatch = true
               local lnum = vim.split(match, ':')[2]
               local trace = table.concat(test.traces, '\n')
@@ -150,7 +150,6 @@ function M.mk_test_results(bufnr)
                 source = 'junit',
                 message = cause,
               })
-              break
             end
             repl.append(msg, '$')
           end
