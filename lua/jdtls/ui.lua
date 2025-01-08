@@ -1,6 +1,5 @@
 local M = {}
 
-
 function M.pick_one_async(items, prompt, label_fn, cb)
   if vim.ui then
     return vim.ui.select(items, {
@@ -21,7 +20,7 @@ end
 function M.pick_one(items, prompt, label_fn)
   local choices = {prompt}
   for i, item in ipairs(items) do
-    table.insert(choices, string.format('%d: %s', i, label_fn(item)))
+    table.insert(choices, string.format("%d: %s", i, label_fn(item)))
   end
   local choice = vim.fn.inputlist(choices)
   if choice < 1 or choice > #items then
@@ -38,6 +37,24 @@ local function index_of(xs, term)
     end
   end
   return -1
+end
+
+
+---@param index integer
+---@param choices string[]
+---@param items table[]
+---@param selected table[]
+local function mark_selected(index, choices, items, selected)
+  local choice = choices[index]
+  local item = items[index]
+  if string.find(choice, "*") == nil then
+    table.insert(selected, item)
+    choices[index] = choice .. " *"
+  else
+    choices[index] = string.gsub(choice, " %*$", "")
+    local idx = index_of(selected, item)
+    table.remove(selected, idx)
+  end
 end
 
 
@@ -71,18 +88,22 @@ function M.pick_many(items, prompt, label_f, opts)
     if answer == "" then
       break
     end
+    local range_start, range_end = answer:match("(%d+)%s*%-%s*(%d*)")
+    if range_start then
+      range_start = math.max(1, tonumber(range_start))
+      range_end = math.min(#items, tonumber(range_end) or #items)
 
-    local index = tonumber(answer)
-    if index ~= nil then
-      local choice = choices[index]
-      local item = items[index]
-      if string.find(choice, "*") == nil then
-        table.insert(selected, item)
-        choices[index] = choice .. " *"
-      else
-        choices[index] = string.gsub(choice, " %*$", "")
-        local idx = index_of(selected, item)
-        table.remove(selected, idx)
+      if range_start > range_end then
+        range_start, range_end = range_end, range_start
+      end
+
+      for i = range_start, range_end do
+        mark_selected(i, choices, items, selected)
+      end
+    else
+      local idx = tonumber(answer)
+      if idx then
+        mark_selected(idx, choices, items, selected)
       end
     end
   end
