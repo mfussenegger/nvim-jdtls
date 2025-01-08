@@ -88,7 +88,7 @@ function M.pick_many(items, prompt, label_f, opts)
     if answer == "" then
       break
     end
-    local range_start, range_end = answer:match("(%d+)%s*-%s*(%d*)")
+    local range_start, range_end = answer:match("(%d+)%s*%-%s*(%d*)")
     if range_start then
       range_start = math.max(1, tonumber(range_start))
       range_end = math.min(#items, tonumber(range_end) or #items)
