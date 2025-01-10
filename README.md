@@ -73,7 +73,7 @@ require('jdtls').start_or_attach(config)
 
 **Important**:
 
-- eclipse.jdt.ls requires Java 17
+- eclipse.jdt.ls requires Java 21
 - The `jdtls` script requires Python 3.9
 - You'll have to teach eclipse.jdt.ls about your JDK installations by setting
   up `runtimes` if your projects use a different Java version than the one
@@ -103,7 +103,7 @@ local config = {
   cmd = {
 
     -- 💀
-    'java', -- or '/path/to/java17_or_newer/bin/java'
+    'java', -- or '/path/to/java21_or_newer/bin/java'
             -- depends on if `java` is in your $PATH env variable and if it points to the right version.
 
     '-Declipse.application=org.eclipse.jdt.ls.core.id1',
@@ -424,7 +424,7 @@ either need to write them out or wrap the fragments in `vim.fn.expand` calls.
 
 ### Unrecognized option: --add-modules=ALL-SYSTEM
 
-Eclipse.jdt.ls requires at least Java 17. You're using a lower version.
+Eclipse.jdt.ls requires at least Java 21. You're using a lower version.
 
 ### is a non-project file, only syntax errors are reported
 
