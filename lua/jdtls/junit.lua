@@ -23,6 +23,26 @@ local function parse_test_case(line)
   }
 end
 
+
+local trace_exclude_patterns = {
+  "%sat com%.carrotsearch%.randomizedtesting",
+  "%sat java%.base/jdk%.internal%.reflect%.DirectMethodHandleAccessor%.invoke",
+  "%sat java%.base/java%.lang%.reflect%.Method%.invoke",
+  "%sat org%.junit%.rules%.",
+}
+
+---@param line string
+---@return boolean
+local function include(line)
+  for _, pattern in ipairs(trace_exclude_patterns) do
+    if line:find(pattern) then
+      return false
+    end
+  end
+  return true
+end
+
+
 local function parse(content, tests)
   local lines = vim.split(content, '\n')
   local tracing = false
@@ -52,7 +72,7 @@ local function parse(content, tests)
       tracing = true
     elseif vim.startswith(line, MessageId.TraceEnd) then
       tracing = false
-    elseif tracing and test then
+    elseif tracing and test and include(line) then
       table.insert(test.traces, line)
     end
   end
