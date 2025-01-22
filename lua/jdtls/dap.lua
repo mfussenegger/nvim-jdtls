@@ -185,7 +185,11 @@ local function fetch_candidates(context, on_candidates)
   local params = {
     arguments = { context.uri };
   }
-  for _, c in ipairs(get_clients({ bufnr = context.bufnr })) do
+  local clients = get_clients({ bufnr = context.bufnr })
+  if not next(clients) then
+    clients = get_clients({ name = "jdtls" })
+  end
+  for _, c in ipairs(clients) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
     if vim.tbl_contains(commands, cmd_codelens) then
@@ -238,8 +242,8 @@ end
 local function fetch_launch_args(lens, context, on_launch_args)
   local req_arguments = make_request_args(lens, context.uri)
   local cmd_junit_args = {
-    command = 'vscode.java.test.junit.argument';
-    arguments = { vim.fn.json_encode(req_arguments) };
+    command = 'vscode.java.test.junit.argument',
+    arguments = { vim.fn.json_encode(req_arguments) },
   }
   util.execute_command(cmd_junit_args, function(err, launch_args)
     if err then
@@ -263,11 +267,19 @@ local function fetch_launch_args(lens, context, on_launch_args)
       -- That is why `java.project.getClasspaths` is used as well.
       local options = vim.fn.json_encode({ scope = 'test'; })
       local cmd = {
-        command = 'java.project.getClasspaths';
-        arguments = { vim.uri_from_bufnr(0), options };
+        command = 'java.project.getClasspaths',
+        arguments = { vim.uri_from_bufnr(context.bufnr), options },
       }
       util.execute_command(cmd, function(err1, resp)
-        assert(not err1, vim.inspect(err1))
+        if err1 then
+          local msg = string.format(
+            "%s bufnr=%d fname=%s",
+            err1.message,
+            context.bufnr,
+            api.nvim_buf_get_name(context.bufnr)
+          )
+          error(msg)
+        end
         launch_args.classpath = merge_unique(launch_args.classpath, resp.classpaths)
         on_launch_args(launch_args)
       end, context.bufnr)

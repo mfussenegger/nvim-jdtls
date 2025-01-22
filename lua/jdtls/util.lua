@@ -8,6 +8,9 @@ local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
 function M.execute_command(command, callback, bufnr)
   local clients = {}
   local candidates = get_clients({ bufnr = bufnr })
+  if not next(candidates) then
+    candidates = get_clients({ name = "jdtls" })
+  end
   for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
@@ -17,13 +20,8 @@ function M.execute_command(command, callback, bufnr)
   end
   local num_clients = vim.tbl_count(clients)
   if num_clients == 0 then
-    if bufnr then
-      -- User could've switched buffer to non-java file, try all clients
-      return M.execute_command(command, callback, nil)
-    else
-      vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
-      return
-    end
+    vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
+    return
   end
 
   if num_clients > 1 then
@@ -61,7 +59,7 @@ function M.with_java_executable(mainclass, project, fn, bufnr)
 
   local client = get_clients({ name = "jdtls", bufnr = bufnr, method = "workspace/executeCommand" })[1]
   if not client then
-    print("No jdtls client found")
+    vim.notify("No jdtls client found for bufnr=" .. bufnr, vim.log.levels.INFO)
     return
   end
 
