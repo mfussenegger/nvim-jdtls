@@ -4,6 +4,7 @@
 local api = vim.api
 local M = {}
 
+
 --- Generate tests for the current class
 --- @param opts? {bufnr: integer}
 function M.generate(opts)
