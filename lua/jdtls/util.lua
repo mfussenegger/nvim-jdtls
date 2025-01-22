@@ -112,7 +112,7 @@ end
 function M.with_classpaths(fn)
   local bufnr = api.nvim_get_current_buf()
   local uri = vim.uri_from_bufnr(bufnr)
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local is_test_file_cmd = {
       command = 'java.project.isTestFile',
       arguments = { uri }
@@ -137,7 +137,7 @@ function M.with_classpaths(fn)
     else
       fn(resp)
     end
-  end)()
+  end)
 end
 
 

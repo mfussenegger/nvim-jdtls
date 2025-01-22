@@ -79,7 +79,7 @@ end
 local function java_generate_to_string_prompt(_, outer_ctx)
   local params = outer_ctx.params
   local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local err, result = request(bufnr, 'java/checkToStringStatus', params)
     if err then
       print("Could not execute java/checkToStringStatus: " .. err.message)
@@ -107,13 +107,13 @@ local function java_generate_to_string_prompt(_, outer_ctx)
     elseif edit then
       vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
     end
-  end)()
+  end)
 end
 
 
 local function java_generate_constructors_prompt(_, outer_ctx)
   local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local err0, status = request(bufnr, 'java/checkConstructorsStatus', outer_ctx.params)
     if err0 then
       print("Could not execute java/checkConstructorsStatus: " .. err0.message)
@@ -155,13 +155,13 @@ local function java_generate_constructors_prompt(_, outer_ctx)
     elseif edit then
       vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
     end
-  end)()
+  end)
 end
 
 
 local function java_generate_delegate_methods_prompt(_, outer_ctx)
   local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local err0, status = request(bufnr, 'java/checkDelegateMethodsStatus', outer_ctx.params)
     if err0 then
       print('Could not execute java/checkDelegateMethodsStatus: ', err0.message)
@@ -210,14 +210,14 @@ local function java_generate_delegate_methods_prompt(_, outer_ctx)
     elseif workspace_edit then
       vim.lsp.util.apply_workspace_edit(workspace_edit, offset_encoding)
     end
-  end)()
+  end)
 end
 
 
 local function java_hash_code_equals_prompt(_, outer_ctx)
   local bufnr = assert(outer_ctx.bufnr, '`outer_ctx` must have bufnr property')
   local params = outer_ctx.params
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local _, result = request(bufnr, 'java/checkHashCodeEqualsStatus', params)
     if not result then
       vim.notify("No result", vim.log.levels.INFO)
@@ -235,7 +235,7 @@ local function java_hash_code_equals_prompt(_, outer_ctx)
     elseif edit then
       vim.lsp.util.apply_workspace_edit(edit, offset_encoding)
     end
-  end)()
+  end)
 end
 
 
@@ -737,7 +737,7 @@ end
 
 local function java_override_methods(_, context)
   local bufnr = assert(context.bufnr, '`context` must have bufnr property')
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local err1, result1 = request(bufnr, 'java/listOverridableMethods', context.params)
     if err1 then
       vim.notify("Error getting overridable methods: " .. err1.message, vim.log.levels.WARN)
@@ -770,7 +770,7 @@ local function java_override_methods(_, context)
     if result2 then
       vim.lsp.util.apply_workspace_edit(result2, offset_encoding)
     end
-  end)()
+  end)
 end
 
 
@@ -977,7 +977,7 @@ end
 function M.build_projects(opts)
   opts = opts or {}
   local bufnr = api.nvim_get_current_buf()
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local selection = pick_projects(opts.select_mode or "prompt")
     if selection and next(selection) then
       local params = {
@@ -986,7 +986,7 @@ function M.build_projects(opts)
       }
       request(bufnr, 'java/buildProjects', params, on_build_result(opts.on_compile_result))
     end
-  end)()
+  end)
 end
 
 ---@class JdtBuildProjectOpts
@@ -1011,7 +1011,7 @@ end
 ---@param opts JdtUpdateProjectsOpts|nil configuration options
 function M.update_projects_config(opts)
   opts = opts or {}
-  coroutine.wrap(function()
+  require("jdtls.async").run(function()
     local bufnr = api.nvim_get_current_buf()
     local selection = pick_projects(opts.select_mode or "prompt")
     if selection and next(selection) then
@@ -1020,7 +1020,7 @@ function M.update_projects_config(opts)
       }
       vim.lsp.buf_notify(bufnr, 'java/projectConfigurationsUpdate', params)
     end
-  end)()
+  end)
 end
 
 ---@class JdtUpdateProjectsOpts
