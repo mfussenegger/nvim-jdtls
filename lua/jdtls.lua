@@ -462,11 +462,10 @@ end
 
 
 ---@param bufnr integer
----@param command table
+---@param signature table
+---@param cmd_name string
 ---@param code_action_params table
-local function change_signature(bufnr, command, code_action_params)
-  local cmd_name = command.arguments[1]
-  local signature = command.arguments[3]
+local function change_signature_prompt(bufnr, signature, cmd_name, code_action_params)
   local edit_buf = api.nvim_create_buf(false, true)
   api.nvim_create_autocmd("BufUnload", {
     buffer = edit_buf,
@@ -592,6 +591,33 @@ local function change_signature(bufnr, command, code_action_params)
     end_row = #lines
   })
 end
+
+
+---@param bufnr integer
+---@param command table
+---@param code_action_params table
+local function change_signature(bufnr, command, code_action_params)
+  local cmd_name = command.arguments[1]
+  local signature = command.arguments[3]
+  if signature then
+    change_signature_prompt(bufnr, signature, cmd_name, code_action_params)
+    return
+  end
+  local client = get_clients({ bufnr = bufnr, name = "jdtls" })[1]
+  if not client then
+    vim.notify("Server provided no signature, and can't retrieve client to fetch one", vim.log.levels.ERROR)
+    return
+  end
+  local function on_signature(err, sig)
+    if err then
+      error(vim.inspect(err))
+    end
+    change_signature_prompt(bufnr, sig, cmd_name, code_action_params)
+  end
+  client.request("java/getChangeSignatureInfo", code_action_params, on_signature, bufnr)
+end
+
+
 
 
 ---@param after_refactor? function
