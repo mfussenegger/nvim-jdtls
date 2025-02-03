@@ -714,6 +714,13 @@ function M.setup_dap(opts)
   end
   opts = opts or {}
   default_config_overrides = opts.config_overrides or {}
+
+  -- Silence warnings for custom events from java-debug
+  dap.listeners.before["event_processid"]["jdtls"] = function()
+  end
+  dap.listeners.before["event_telemetry"]["jdtls"] = function()
+  end
+
   dap.listeners.before['event_hotcodereplace']['jdtls'] = function(session, body)
     if body.changeType == hotcodereplace_type.BUILD_COMPLETE then
       if opts.hotcodereplace == 'auto' then
