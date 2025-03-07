@@ -1,4 +1,21 @@
+---@generic T : any
+---@alias pick_one fun(items: T[], prompt: string, label_fn: fun(item: T): string): T|nil
+
+---@generic T : any
+---@alias pick_one_async fun(items: T[], prompt: string, label_fn: fun(item: T): string, on_select: fun(item: T, index: number): any): nil
+
+---@generic T : any
+---@alias pick_many fun(items: T[], prompt: string, label_fn: fun(item: T): string, opts: {is_selected: fun(item: T): boolean}): T[]
+
+---@class JdtUiOpts
+---@field pick_one_cb pick_one
+---@field pick_one_async_cb pick_one_async
+---@field pick_many_cb pick_many
+
+---@class JdtUiOpts
 local M = {}
+
+local opts = require("jdtls.config").ui or {}
 
 function M.pick_one_async(items, prompt, label_fn, cb)
   if vim.ui then
@@ -11,14 +28,13 @@ function M.pick_one_async(items, prompt, label_fn, cb)
   cb(result)
 end
 
-
 ---@generic T
 ---@param items T[]
 ---@param prompt string
 ---@param label_fn fun(item: T): string
 ---@result T|nil
 function M.pick_one(items, prompt, label_fn)
-  local choices = {prompt}
+  local choices = { prompt }
   for i, item in ipairs(items) do
     table.insert(choices, string.format("%d: %s", i, label_fn(item)))
   end
@@ -29,7 +45,6 @@ function M.pick_one(items, prompt, label_fn)
   return items[choice]
 end
 
-
 local function index_of(xs, term)
   for i, x in pairs(xs) do
     if x == term then
@@ -38,7 +53,6 @@ local function index_of(xs, term)
   end
   return -1
 end
-
 
 ---@param index integer
 ---@param choices string[]
@@ -56,7 +70,6 @@ local function mark_selected(index, choices, items, selected)
     table.remove(selected, idx)
   end
 end
-
 
 function M.pick_many(items, prompt, label_f, opts)
   if not items or #items == 0 then
@@ -110,5 +123,6 @@ function M.pick_many(items, prompt, label_f, opts)
   return selected
 end
 
+vim.tbl_extend("force", M, opts)
 
 return M
