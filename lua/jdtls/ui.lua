@@ -1,22 +1,23 @@
 ---@generic T : any
----@alias pick_one fun(items: T[], prompt: string, label_fn: fun(item: T): string): T|nil
+---@alias pick_one_fn fun(items: T[], prompt: string, label_fn: fun(item: T): string): T|nil
 
 ---@generic T : any
----@alias pick_one_async fun(items: T[], prompt: string, label_fn: fun(item: T): string, on_select: fun(item: T, index: number): any): nil
+---@alias lbl_fn fun(item: T): string
+---@alias on_pick_fn fun(item: T, index?: number): nil
+---@alias pick_one_async_fn fun(items: T[], prompt: string, label_fn: lbl_fn, on_select: on_pick_fn): nil
 
 ---@generic T : any
----@alias pick_many fun(items: T[], prompt: string, label_fn: fun(item: T): string, opts: {is_selected: fun(item: T): boolean}): T[]
+---@alias pick_many_fn fun(items: T[], prompt: string, label_fn: fun(item: T): string, opts: {is_selected: fun(item: T): boolean}): T[]
 
 ---@class JdtUiOpts
----@field pick_one_cb pick_one
----@field pick_one_async_cb pick_one_async
----@field pick_many_cb pick_many
-
----@class JdtUiOpts
+---@field pick_one pick_one_fn
+---@field pick_one_async pick_one_async_fn
+---@field pick_many pick_many_fn
 local M = {}
 
-local opts = require("jdtls.config").ui or {}
+local opts = require("jdtls.setup").ui or {}
 
+---@type pick_one_async_fn
 function M.pick_one_async(items, prompt, label_fn, cb)
   if vim.ui then
     return vim.ui.select(items, {
