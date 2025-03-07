@@ -298,7 +298,8 @@ end
 ---@param start_opts? vim.lsp.start.Opts? options passed to vim.lsp.start
 ---@return integer? client_id
 function M.start_or_attach(config, opts, start_opts)
-  M.opts = opts or {}
+  opts = opts or {}
+  _G._jdtls_ui = opts.ui or nil
   assert(config, "config is required")
   assert(
     config.cmd and type(config.cmd) == "table",

@@ -7,15 +7,13 @@
 ---@alias pick_one_async_fn fun(items: T[], prompt: string, label_fn: lbl_fn, on_select: on_pick_fn): nil
 
 ---@generic T : any
----@alias pick_many_fn fun(items: T[], prompt: string, label_fn: fun(item: T): string, opts: {is_selected: fun(item: T): boolean}): T[]
+---@alias pick_many_fn fun(items: T[], prompt: string, label_fn: [fun(item: T): string], opts: {is_selected: fun(item: T): boolean}): T[]
 
 ---@class JdtUiOpts
 ---@field pick_one pick_one_fn
 ---@field pick_one_async pick_one_async_fn
 ---@field pick_many pick_many_fn
 local M = {}
-
-local opts = require("jdtls.setup").opts.ui or {}
 
 ---@type pick_one_async_fn
 function M.pick_one_async(items, prompt, label_fn, cb)
@@ -124,6 +122,7 @@ function M.pick_many(items, prompt, label_f, opts)
   return selected
 end
 
-vim.tbl_extend("force", M, opts)
+---@type JdtUiOpts?
+_G._jdtls_ui = _G._jdtls_ui or vim.tbl_extend("force", M, _G._jdtls_ui or {})
 
-return M
+return _G._jdtls_ui
