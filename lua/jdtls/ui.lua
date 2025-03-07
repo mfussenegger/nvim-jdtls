@@ -15,7 +15,7 @@
 ---@field pick_many pick_many_fn
 local M = {}
 
-local opts = require("jdtls.setup").ui or {}
+local opts = require("jdtls.setup").opts.ui or {}
 
 ---@type pick_one_async_fn
 function M.pick_one_async(items, prompt, label_fn, cb)
