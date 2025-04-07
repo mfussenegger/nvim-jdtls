@@ -1,12 +1,9 @@
 local api = vim.api
 local lsp = vim.lsp
 local uv = vim.loop
+local util = require('jdtls.util')
 local M = {}
 local URI_SCHEME_PATTERN = '^([a-zA-Z]+[a-zA-Z0-9+-.]*)://.*'
-
----@diagnostic disable-next-line: deprecated
-local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
-
 
 local status_callback = function(_, result)
   api.nvim_command(string.format(':echohl Function | echo "%s" | echohl None',
@@ -15,9 +12,9 @@ end
 
 
 M.restart = function()
-  for _, client in ipairs(get_clients({ name = "jdtls" })) do
+  for _, client in ipairs(util.get_clients({ name = "jdtls" })) do
     local bufs = lsp.get_buffers_by_client_id(client.id)
-    client.stop()
+    client:stop()
     vim.wait(30000, function()
       return lsp.get_client_by_id(client.id) == nil
     end)
@@ -44,7 +41,7 @@ local function attach_to_active_buf(bufnr, client_name)
     if not may_jdtls_buf(buf) then
       return nil
     end
-    local clients = get_clients({ bufnr = buf, name = client_name })
+    local clients = util.get_clients({ bufnr = buf, name = client_name })
     local _, client = next(clients)
     if client then
       lsp.buf_attach_client(bufnr, client.id)
@@ -168,11 +165,11 @@ end
 ---@return string?, vim.lsp.Client?
 local function extract_data_dir(bufnr)
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
-  local client = get_clients({ name = "jdtls", bufnr = bufnr })[1]
+  local client = util.get_clients({ name = "jdtls", bufnr = bufnr })[1]
   if not client then
     -- Try first matching jdtls client otherwise. In case the user is in a
     -- different buffer like the quickfix list
-    local clients = get_clients({ name = "jdtls" })
+    local clients = util.get_clients({ name = "jdtls" })
     if vim.tbl_count(clients) > 1 then
       ---@diagnostic disable-next-line: cast-local-type
       client = require('jdtls.ui').pick_one(
@@ -254,7 +251,6 @@ local function add_commands(client, bufnr, opts)
     })
   end
   local selected_profiles = "org.eclipse.m2e.core.selectedProfiles"
-  local util = require("jdtls.util")
   create_cmd("JdtUpdateMavenActiveProfiles", function (o)
     local active_profiles = o.args
     local settings = {
@@ -359,6 +355,7 @@ function M.start_or_attach(config, opts, start_opts)
         }
       }
       local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
+      client = util.add_client_methods(client)
       local client_id = client.id
 
       ---@param err0 lsp.ResponseError?
@@ -389,7 +386,7 @@ function M.start_or_attach(config, opts, start_opts)
         end
       end
 
-      client.request("workspace/executeCommand", params, on_settings, bufnr)
+      client:request("workspace/executeCommand", params, on_settings, bufnr)
     end
   end
   config.handlers['workspace/configuration'] = config.handlers['workspace/configuration'] or configuration_handler
@@ -457,7 +454,7 @@ function M.wipe_data_and_restart()
     end
     vim.schedule(function()
       local bufs = vim.lsp.get_buffers_by_client_id(client.id)
-      client.stop()
+      client:stop()
       vim.wait(30000, function()
         return vim.lsp.get_client_by_id(client.id) == nil
       end)

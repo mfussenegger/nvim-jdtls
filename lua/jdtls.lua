@@ -15,10 +15,6 @@ local setup = require('jdtls.setup')
 
 local offset_encoding = 'utf-16'
 
----@diagnostic disable-next-line: deprecated
-local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
-
-
 local M = {
   setup_dap = jdtls_dap.setup_dap,
   test_class = jdtls_dap.test_class,
@@ -43,7 +39,7 @@ end
 
 
 local request = function(bufnr, method, params, handler)
-  local clients = get_clients({ bufnr = bufnr, name = "jdtls" })
+  local clients = util.get_clients({ bufnr = bufnr, name = "jdtls" })
   local _, client = next(clients)
   if not client then
     vim.notify("No LSP client with name `jdtls` available", vim.log.levels.WARN)
@@ -58,7 +54,7 @@ local request = function(bufnr, method, params, handler)
       end
     end
   end
-  client.request(method, params, handler, bufnr)
+  client:request(method, params, handler, bufnr)
   if co then
     return coroutine.yield()
   end
@@ -603,7 +599,7 @@ local function change_signature(bufnr, command, code_action_params)
     change_signature_prompt(bufnr, signature, cmd_name, code_action_params)
     return
   end
-  local client = get_clients({ bufnr = bufnr, name = "jdtls" })[1]
+  local client = util.get_clients({ bufnr = bufnr, name = "jdtls" })[1]
   if not client then
     vim.notify("Server provided no signature, and can't retrieve client to fetch one", vim.log.levels.ERROR)
     return
@@ -614,7 +610,7 @@ local function change_signature(bufnr, command, code_action_params)
     end
     change_signature_prompt(bufnr, sig, cmd_name, code_action_params)
   end
-  client.request("java/getChangeSignatureInfo", code_action_params, on_signature, bufnr)
+  client:request("java/getChangeSignatureInfo", code_action_params, on_signature, bufnr)
 end
 
 
@@ -1235,9 +1231,9 @@ function M.open_classfile(fname)
   vim.bo[buf].filetype = 'java'
   local timeout_ms = M.settings.jdt_uri_timeout_ms
   vim.wait(timeout_ms, function()
-    return next(get_clients({ name = "jdtls", bufnr = buf })) ~= nil
+    return next(util.get_clients({ name = "jdtls", bufnr = buf })) ~= nil
   end)
-  local client = get_clients({ name = "jdtls", bufnr = buf })[1]
+  local client = util.get_clients({ name = "jdtls", bufnr = buf })[1]
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
 
   local content
@@ -1260,7 +1256,7 @@ function M.open_classfile(fname)
     local params = {
       uri = uri
     }
-    client.request("java/classFileContents", params, handler, buf)
+    client:request("java/classFileContents", params, handler, buf)
   end
   -- Need to block. Otherwise logic could run that sets the cursor to a position
   -- that's still missing.
@@ -1271,7 +1267,7 @@ end
 ---@private
 function M._complete_set_runtime()
   local client
-  for _, c in pairs(get_clients()) do
+  for _, c in pairs(util.get_clients()) do
     if c.config.settings.java then
       client = c
       break
@@ -1290,7 +1286,7 @@ end
 ---@param runtime nil|string Java runtime. Prompts for runtime if nil
 function M.set_runtime(runtime)
   local client
-  for _, c in pairs(get_clients()) do
+  for _, c in pairs(util.get_clients()) do
     if c.config.settings.java then
       client = c
       break
@@ -1325,7 +1321,7 @@ function M.set_runtime(runtime)
       )
       return
     end
-    client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
+    client:notify('workspace/didChangeConfiguration', { settings = client.config.settings })
   else
     ui.pick_one_async(
       runtimes,
@@ -1343,7 +1339,7 @@ function M.set_runtime(runtime)
             r.default = nil
           end
         end
-        client.notify('workspace/didChangeConfiguration', { settings = client.config.settings })
+        client:notify('workspace/didChangeConfiguration', { settings = client.config.settings })
       end
     )
   end

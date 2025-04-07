@@ -1,15 +1,29 @@
 local api = vim.api
 local M = {}
 
----@diagnostic disable-next-line: deprecated
-local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
+function M.add_client_methods(client)
+  if vim.fn.has('nvim-0.11') then
+    return client
+  end
 
+  return setmetatable({
+    request = function(_, ...) return client.request(...) end,
+    notify = function (_, ...) return client.notify(...) end,
+    stop = function (_, ...) return client.stop(...) end,
+  }, { __index = client })
+end
+
+function M.get_clients(...)
+  ---@diagnostic disable-next-line: deprecated
+  local clients = (vim.lsp.get_clients or vim.lsp.get_active_clients)(...)
+  return vim.tbl_map(M.add_client_methods, clients)
+end
 
 function M.execute_command(command, callback, bufnr)
   local clients = {}
-  local candidates = get_clients({ bufnr = bufnr })
+  local candidates = M.get_clients({ bufnr = bufnr })
   if not next(candidates) then
-    candidates = get_clients({ name = "jdtls" })
+    candidates = M.get_clients({ name = "jdtls" })
   end
   for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
@@ -57,7 +71,7 @@ function M.with_java_executable(mainclass, project, fn, bufnr)
 
   bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
 
-  local client = get_clients({ name = "jdtls", bufnr = bufnr, method = "workspace/executeCommand" })[1]
+  local client = M.get_clients({ name = "jdtls", bufnr = bufnr, method = "workspace/executeCommand" })[1]
   if not client then
     vim.notify("No jdtls client found for bufnr=" .. bufnr, vim.log.levels.INFO)
     return
@@ -103,7 +117,7 @@ function M.with_java_executable(mainclass, project, fn, bufnr)
       end
     end
   end
-  client.request("workspace/executeCommand", params, on_response, bufnr)
+  client:request("workspace/executeCommand", params, on_response, bufnr)
 end
 
 
