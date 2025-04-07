@@ -8,9 +8,6 @@ local with_java_executable = util.with_java_executable
 local M = {}
 local default_config_overrides = {}
 
----@diagnostic disable-next-line: deprecated
-local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
-
 local function fetch_needs_preview(mainclass, project, cb, bufnr)
   local params = {
     command = 'vscode.java.checkProjectSettings',
@@ -91,7 +88,7 @@ local function start_debug_adapter(callback, config)
     return client.name == 'jdtls'
       and client.config
       and client.config.root_dir == config.cwd
-  end, get_clients())[1]
+  end, util.get_clients())[1]
   local bufnr = vim.lsp.get_buffers_by_client_id(jdtls and jdtls.id)[1] or vim.api.nvim_get_current_buf()
   util.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
@@ -185,9 +182,9 @@ local function fetch_candidates(context, on_candidates)
   local params = {
     arguments = { context.uri };
   }
-  local clients = get_clients({ bufnr = context.bufnr })
+  local clients = util.get_clients({ bufnr = context.bufnr })
   if not next(clients) then
-    clients = get_clients({ name = "jdtls" })
+    clients = util.get_clients({ name = "jdtls" })
   end
   for _, c in ipairs(clients) do
     local command_provider = c.server_capabilities.executeCommandProvider
@@ -217,7 +214,7 @@ local function fetch_candidates(context, on_candidates)
       on_candidates(result or {})
     end
   end
-  client.request('workspace/executeCommand', params, handler, context.bufnr)
+  client:request('workspace/executeCommand', params, handler, context.bufnr)
 end
 
 
@@ -334,7 +331,7 @@ end
 ---@return string? path
 local function testng_runner()
   local vscode_runner = 'com.microsoft.java.test.runner-jar-with-dependencies.jar'
-  local client = get_clients({name='jdtls'})[1]
+  local client = util.get_clients({name='jdtls'})[1]
   local bundles = client and client.config.init_options.bundles or {}
   for _, jar_path in pairs(bundles) do
     local parts = vim.split(jar_path, '/')
@@ -609,7 +606,7 @@ function M.fetch_main_configs(opts, callback)
   end
   local configurations = {}
   local bufnr = api.nvim_get_current_buf()
-  local jdtls = get_clients({ bufnr = bufnr, name = "jdtls"})[1]
+  local jdtls = util.get_clients({ bufnr = bufnr, name = "jdtls"})[1]
   local root_dir = jdtls and jdtls.config and jdtls.config.root_dir
   util.execute_command({command = 'vscode.java.resolveMainClass'}, function(err, mainclasses)
     assert(not err, vim.inspect(err))
