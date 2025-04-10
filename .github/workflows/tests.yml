@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        neovim_version: ['nightly', 'v0.6.1']
+        neovim_version: ['nightly', 'v0.10.4', 'v0.11.0']
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - run: date +%F > todays-date
       - name: Restore cache for today's nightly.
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: _neovim
           key: ${{ runner.os }}-x64-${{ hashFiles('todays-date') }}
