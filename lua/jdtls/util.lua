@@ -2,7 +2,7 @@ local api = vim.api
 local M = {}
 
 function M.add_client_methods(client)
-  if vim.fn.has('nvim-0.11') then
+  if vim.fn.has('nvim-0.11') == 1 then
     return client
   end
 
