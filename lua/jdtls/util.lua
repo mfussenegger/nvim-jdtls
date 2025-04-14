@@ -53,7 +53,7 @@ function M.execute_command(command, callback, bufnr)
       end
     end
   end
-  clients[1].request('workspace/executeCommand', command, callback, bufnr)
+  clients[1]:request('workspace/executeCommand', command, callback, bufnr)
   if co then
     return coroutine.yield()
   end
@@ -65,9 +65,7 @@ end
 ---@param fn fun(java_exec: string)
 ---@param bufnr integer?
 function M.with_java_executable(mainclass, project, fn, bufnr)
-  vim.validate({
-    mainclass = { mainclass, 'string' }
-  })
+  assert(type(mainclass) == "string", "mainclass must be a string")
 
   bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
 
