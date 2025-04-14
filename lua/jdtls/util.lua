@@ -53,7 +53,7 @@ function M.execute_command(command, callback, bufnr)
       end
     end
   end
-  clients[1].request('workspace/executeCommand', command, callback, bufnr)
+  clients[1]:request('workspace/executeCommand', command, callback, bufnr)
   if co then
     return coroutine.yield()
   end
