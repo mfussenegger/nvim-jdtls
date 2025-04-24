@@ -1267,7 +1267,7 @@ end
 ---@private
 function M._complete_set_runtime()
   local client
-  for _, c in pairs(util.get_clients()) do
+  for _, c in pairs(util.get_clients({name = "jdtls"})) do
     if c.config.settings.java then
       client = c
       break
@@ -1286,7 +1286,7 @@ end
 ---@param runtime nil|string Java runtime. Prompts for runtime if nil
 function M.set_runtime(runtime)
   local client
-  for _, c in pairs(util.get_clients()) do
+  for _, c in pairs(util.get_clients({name = "jdtls"})) do
     if c.config.settings.java then
       client = c
       break
