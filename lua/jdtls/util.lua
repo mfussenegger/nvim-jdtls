@@ -1,10 +1,11 @@
 local api = vim.api
 local M = {}
 
+local get_clients = vim.lsp.get_clients or vim.lsp.get_active_clients
 
 function M.execute_command(command, callback, bufnr)
   local clients = {}
-  local candidates = vim.lsp.get_active_clients({ bufnr = bufnr })
+  local candidates = get_clients({ bufnr = bufnr })
   for _, c in pairs(candidates) do
     local command_provider = c.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
