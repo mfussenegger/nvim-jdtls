@@ -751,6 +751,10 @@ function M.setup_dap(opts)
       M.fetch_main_configs(nil, function(configs)
         if not resumed then
           resumed = true
+          local noDebug = vim.fn.input("noDebug? ") == 't' and true or false
+          for _, v in ipairs(configs) do
+            v.noDebug = noDebug
+          end
           coroutine.resume(co, configs)
         end
       end)
