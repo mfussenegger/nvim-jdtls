@@ -396,7 +396,7 @@ end
 ---@param bufnr? integer
 ---@return JdtDapContext
 local function make_context(bufnr)
-  bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
+  bufnr = bufnr or api.nvim_get_current_buf()
   return {
     bufnr = bufnr,
     uri = vim.uri_from_bufnr(bufnr)
@@ -510,6 +510,10 @@ M.experimental = {
   make_config = make_config,
 }
 
+local run_prev_class = function()
+  vim.notify("No previous test class")
+end
+
 --- Debug the test class in the current buffer
 --- @param opts JdtTestOpts|nil
 function M.test_class(opts)
@@ -521,6 +525,12 @@ function M.test_class(opts)
       vim.notify('No test class found')
       return
     end
+    run_prev_class = function (prev_opts)
+      prev_opts = prev_opts or {}
+      prev_opts.bufnr = context.bufnr
+      prev_opts.lens = lens
+      M.test_nearest_method(prev_opts)
+    end
     fetch_launch_args(lens, context, function(launch_args)
       local config = make_config(lens, launch_args, opts.config_overrides)
       run(lens, config, context, opts)
@@ -528,6 +538,15 @@ function M.test_class(opts)
   end)
 end
 
+--- Debug previous test class
+--- @param opts nil|JdtTestOpts
+function M.test_prev_class()
+  run_prev_class()
+end
+
+local run_prev_method = function()
+  vim.notify("No previous test method")
+end
 
 --- Debug the nearest test method in the current buffer
 --- @param opts nil|JdtTestOpts
@@ -536,16 +555,29 @@ function M.test_nearest_method(opts)
   local context = make_context(opts.bufnr)
   local lnum = opts.lnum or api.nvim_win_get_cursor(0)[1]
   fetch_candidates(context, function(lenses)
-    local lens = get_method_lens_above_cursor(lenses, lnum)
+    local lens = opts.lens or get_method_lens_above_cursor(lenses, lnum)
     if not lens then
       vim.notify('No suitable test method found')
       return
+    end
+    run_prev_method = function (prev_opts)
+      prev_opts = prev_opts or {}
+      prev_opts.lnum = lnum
+      prev_opts.bufnr = context.bufnr
+      prev_opts.lens = lens
+      M.test_nearest_method(prev_opts)
     end
     fetch_launch_args(lens, context, function(launch_args)
       local config = make_config(lens, launch_args, opts.config_overrides)
       run(lens, config, context, opts)
     end)
   end)
+end
+
+--- Debug previous test method
+--- @param opts nil|JdtTestOpts
+function M.test_prev_method(opts)
+  run_prev_method(opts)
 end
 
 local function populate_candidates(list, lenses)
@@ -777,7 +809,7 @@ end
 ---@field config_overrides nil|JdtDapConfig Overrides for the |dap-configuration|, see |JdtDapConfig|
 ---@field until_error number|nil Number of times the test should be repeated if it doesn't fail
 ---@field after_test nil|function Callback triggered after test run
----@field bufnr? number Buffer that contains the test
----@field lnum? number 1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window.
+---@field bufnr? number Buffer that contains the test -- ignored when running previous test method/class
+---@field lnum? number 1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window. -- ignored when running previous test method/class
 
 return M
