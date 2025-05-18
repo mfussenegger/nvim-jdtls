@@ -7,9 +7,9 @@ M.start_or_attach({config}, {opts?}, {start_opts?})
 
 
     Parameters: ~
-        {config}       (table<string,any>)  configuration. See |vim.lsp.start_client|
+        {config}       (table<string,any>)   configuration. See |vim.lsp.start_client|
         {opts?}        (jdtls.start.opts)
-        {start_opts?}  (lsp.StartOpts)      options passed to vim.lsp.start
+        {start_opts?}  (vim.lsp.start.Opts)  options passed to vim.lsp.start
 
     Returns: ~
         (integer|nil)  client_id
@@ -19,14 +19,14 @@ M.organize_imports()                                    *jdtls.organize_imports*
      Organize the imports in the current buffer
 
 
-M.compile({type})                                                *jdtls.compile*
+M.compile({type}, {on_compile_result?})                          *jdtls.compile*
      Compile the Java workspace
      If there are compile errors they'll be shown in the quickfix list.
 
     Parameters: ~
-        {type}  (string|nil)  |"full"
-                              |"incremental"
-	{on_compile_result?}  (fun(result: table[]): nil)  Callback to be called when the compile result is received.
+        {type}                (string|nil)               |"full"
+                                                         |"incremental"
+        {on_compile_result?}  (fun(result:table[]):nil)  Callback to be called when the compile result is received.
 
 
 M.build_projects({opts})                                  *jdtls.build_projects*
@@ -40,9 +40,9 @@ M.build_projects({opts})                                  *jdtls.build_projects*
 JdtBuildProjectOpts                                        *JdtBuildProjectOpts*
 
     Fields: ~
-        {select_mode?}  (JdtProjectSelectMode)  Show prompt to select projects or select all. Defaults to "prompt"
-        {full_build?}   (boolean)               full rebuild or incremental build. Defaults to true (full build)
-	{on_compile_result?}  (fun(result: table[]): nil)  Callback to be called when the compile result is received.
+        {select_mode?}        (JdtProjectSelectMode)     Show prompt to select projects or select all. Defaults to "prompt"
+        {full_build?}         (boolean)                  full rebuild or incremental build. Defaults to true (full build)
+        {on_compile_result?}  (fun(result:table[]):nil)  Callback to be called when the compile result is received.
 
 
 M.update_project_config()                          *jdtls.update_project_config*
@@ -179,8 +179,18 @@ M.test_class()                                            *jdtls.dap.test_class*
      @param opts JdtTestOpts|nil
 
 
+M.test_prev_class()                                  *jdtls.dap.test_prev_class*
+     Debug previously ran test class
+     @param opts nil|JdtTestOpts
+
+
 M.test_nearest_method()                          *jdtls.dap.test_nearest_method*
      Debug the nearest test method in the current buffer
+     @param opts nil|JdtTestOpts
+
+
+M.test_prev_method()                                *jdtls.dap.test_prev_method*
+     Debug the previously ran test method
      @param opts nil|JdtTestOpts
 
 
@@ -257,8 +267,8 @@ JdtTestOpts                                                        *JdtTestOpts*
         {config_overrides}  (nil|JdtDapConfig)  Overrides for the |dap-configuration|, see |JdtDapConfig|
         {until_error}       (number|nil)        Number of times the test should be repeated if it doesn't fail
         {after_test}        (nil|function)      Callback triggered after test run
-        {bufnr?}            (number)            Buffer that contains the test
-        {lnum?}             (number)            1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window.
+        {bufnr?}            (number)            Buffer that contains the test -- ignored when running previous test method/class
+        {lnum?}             (number)            1-indexed line number. Used to find nearest test. Defaults to cursor position of the current window. -- ignored when running previous test method/class
 
 
 ==============================================================================
