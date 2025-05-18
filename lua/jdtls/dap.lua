@@ -529,7 +529,7 @@ function M.test_class(opts)
       prev_opts = prev_opts or {}
       prev_opts.bufnr = context.bufnr
       prev_opts.lens = lens
-      M.test_nearest_method(prev_opts)
+      M.test_class(prev_opts)
     end
     fetch_launch_args(lens, context, function(launch_args)
       local config = make_config(lens, launch_args, opts.config_overrides)
