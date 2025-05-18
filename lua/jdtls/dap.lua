@@ -540,8 +540,8 @@ end
 
 --- Debug previous test class
 --- @param opts nil|JdtTestOpts
-function M.test_prev_class()
-  run_prev_class()
+function M.test_prev_class(opts)
+  run_prev_class(opts)
 end
 
 local run_prev_method = function()
