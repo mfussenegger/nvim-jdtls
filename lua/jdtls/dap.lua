@@ -368,7 +368,8 @@ local function make_config(lens, launch_args, config_overrides)
     local jar = testng_runner()
     if jar then
       config.mainClass = 'com.microsoft.java.test.runner.Launcher'
-      config.args = string.format('testng %s', lens.fullName)
+      -- 1234 is a placeholder for the actual port, set later in `run`.
+      config.args = string.format('1234 testng %s', lens.fullName)
       table.insert(config.classPaths, jar);
     else
       local msg = (
@@ -446,7 +447,7 @@ local function run(lens, config, context, opts)
           server:accept(sock)
           sock:read_start(test_results.mk_reader(sock))
         end)
-        conf.args = string.format('%s %s', server:getsockname().port, conf.args)
+        conf.args = conf.args:gsub('^([0-9]+)', server:getsockname().port);
         return conf
       end
 
