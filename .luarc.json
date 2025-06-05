@@ -12,5 +12,10 @@
       "${3rd}/luassert/library"
     ],
     "checkThirdParty": false
+  },
+  "diagnostics": {
+    "globals": [
+      "vim"
+    ]
   }
 }
