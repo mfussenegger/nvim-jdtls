@@ -1,28 +1,62 @@
 local M = {}
-local ns = vim.api.nvim_create_namespace('junit')
+local ns = vim.api.nvim_create_namespace("junit")
 
-local MessageId = {
-  TestStart = '%TESTS',
-  TestEnd = '%TESTE',
-  TestFailed = '%FAILED',
-  TestError = '%ERROR',
-  TraceStart = '%TRACES',
-  TraceEnd = '%TRACEE',
-  IGNORE_TEST_PREFIX = '@Ignore: ',
-  ASSUMPTION_FAILED_TEST_PREFIX = '@AssumptionFailure: ',
+-- Add missing constants
+local TestLevel = {
+  Workspace = 1,
+  WorkspaceFolder = 2,
+  Project = 3,
+  Package = 4,
+  Class = 5,
+  Method = 6,
 }
 
+local LegacyTestLevel = {
+  Root = 0,
+  Folder = 1,
+  Package = 2,
+  Class = 3,
+  Method = 4,
+}
+
+local MessageId = {
+  TestStart = "%TESTS",
+  TestEnd = "%TESTE",
+  TestFailed = "%FAILED",
+  TestError = "%ERROR",
+  TraceStart = "%TRACES",
+  TraceEnd = "%TRACEE",
+  IGNORE_TEST_PREFIX = "@Ignore: ",
+  ASSUMPTION_FAILED_TEST_PREFIX = "@AssumptionFailure: ",
+}
+
+local config = {
+  success_symbol = "✔️ ",
+  error_symbol = "❌",
+}
+
+function M.setup(testsConfig)
+  testsConfig = testsConfig or {}
+  config.success_symbol = testsConfig.success_symbol or config.success_symbol
+  config.error_symbol = testsConfig.error_symbol or config.error_symbol
+end
+
 local function parse_test_case(line)
-  local matches = vim.fn.matchlist(line, '\\v\\d+,(\\@AssumptionFailure: |\\@Ignore: )?(.*)(\\[\\d+\\])?\\((.*)\\)')
+  local matches = vim.fn.matchlist(line, "\\v\\d+,(\\@AssumptionFailure: |\\@Ignore: )?(.*)(\\[\\d+\\])?\\((.*)\\)")
   if #matches == 0 then
     return nil
   end
+  local method_name = matches[3]
+  local param_start = method_name:find("%(")
+  if param_start then
+    method_name = method_name:sub(1, param_start - 1)
+  end
+
   return {
     fq_class = matches[5],
-    method = matches[3],
+    method = method_name,
   }
 end
-
 
 local trace_exclude_patterns = {
   "%sat com%.carrotsearch%.randomizedtesting",
@@ -31,8 +65,6 @@ local trace_exclude_patterns = {
   "%sat org%.junit%.rules%.",
 }
 
----@param line string
----@return boolean
 local function include(line)
   for _, pattern in ipairs(trace_exclude_patterns) do
     if line:find(pattern) then
@@ -42,9 +74,8 @@ local function include(line)
   return true
 end
 
-
 local function parse(content, tests)
-  local lines = vim.split(content, '\n')
+  local lines = vim.split(content, "\n")
   local tracing = false
   local test = nil
   for _, line in ipairs(lines) do
@@ -53,17 +84,24 @@ local function parse(content, tests)
       if test then
         test.traces = {}
         test.failed = false
-      else
-        print('Could not parse line: ', line)
       end
     elseif vim.startswith(line, MessageId.TestEnd) then
-      table.insert(tests, test)
+      if test then
+        table.insert(tests, test)
+      end
       test = nil
     elseif vim.startswith(line, MessageId.TestFailed) or vim.startswith(line, MessageId.TestError) then
-      -- Can get test failure without test start if it is a class initialization failure
       if not test then
+        local parts = vim.split(line, ",")
+        local fq_class_from_error = parts[2]
+        if fq_class_from_error then
+          local class_end = fq_class_from_error:find("#")
+          if class_end then
+            fq_class_from_error = fq_class_from_error:sub(1, class_end - 1)
+          end
+        end
         test = {
-          fq_class = vim.split(line, ',')[2],
+          fq_class = fq_class_from_error or "UnknownClass",
           traces = {},
         }
       end
@@ -84,7 +122,7 @@ end
 M.__parse = parse
 
 local function mk_buf_loop(sock, handle_buffer)
-  local buffer = ''
+  local buffer = ""
   return function(err, chunk)
     assert(not err, err)
     if chunk then
@@ -96,163 +134,207 @@ local function mk_buf_loop(sock, handle_buffer)
   end
 end
 
-function M.mk_test_results(bufnr)
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
-  vim.diagnostic.reset(ns, bufnr)
-  local tests = {}
+local function flatten_lenses_recursive(lenses_tree, flattened_list)
+  flattened_list = flattened_list or {}
+  for _, lens in ipairs(lenses_tree) do
+    table.insert(flattened_list, lens)
+    if lens.children then
+      flatten_lenses_recursive(lens.children, flattened_list)
+    end
+  end
+  return flattened_list
+end
+
+local function get_test_start_line_num(all_available_lenses_flat, test)
+  for _, lens_item in ipairs(all_available_lenses_flat) do
+    local range = lens_item.location and lens_item.location.range or lens_item.range
+    if not range then
+      goto continue
+    end
+
+    local lens_full_name = lens_item.fullName or lens_item.classFullName
+    if not lens_full_name then
+      goto continue
+    end
+
+    if test.method then
+      local is_method_lens = lens_item.testLevel == TestLevel.Method or lens_item.level == LegacyTestLevel.Method
+      if is_method_lens then
+        local class_part, method_part = lens_full_name:match("([^#]+)#(.*)")
+        if class_part and method_part then
+          local param_start = method_part:find("%(")
+          if param_start then
+            method_part = method_part:sub(1, param_start - 1)
+          end
+          if class_part == test.fq_class and method_part == test.method then
+            return range.start.line
+          end
+        end
+      end
+    else
+      local is_class_lens = lens_item.testLevel == TestLevel.Class or lens_item.level == LegacyTestLevel.Class
+      if is_class_lens and lens_full_name == test.fq_class then
+        return range.start.line
+      end
+    end
+    ::continue::
+  end
+  return nil
+end
+
+function M.mk_test_results(bufnr, shared, class_to_file_map)
+  local tests = shared or {}
+  local file_map = class_to_file_map or {}
 
   local handle_buffer = function(buf)
     parse(buf, tests)
   end
 
-  local function get_test_start_line_num(lenses, test)
-    if test.method ~= nil then
-      if #lenses > 0 then
-        for _, v in ipairs(lenses) do
-          if vim.startswith(v.label, test.method) then
-            return v.range.start.line
-          end
-        end
-      else
-        if vim.startswith(lenses.label, test.method) then
-          return lenses.range.start.line
-        end
-      end
-    end
-    return nil
-  end
-
   return {
-    show = function(lens)
+    show = function(lens_or_lenses_tree)
       local items = {}
-      local repl = require('dap.repl')
+      local repl = require("dap.repl")
       local num_failures = 0
-      local lenses = lens.children or lens
       local failures = {}
       local results = {}
-      local error_symbol = '❌'
-      local success_symbol = '✔️ '
+
+      -- Determine if this is a package test (multiple classes)
+      local is_package_test = type(lens_or_lenses_tree) == "table" and #lens_or_lenses_tree > 1
+
+      -- Clear diagnostics and quickfix for both single class and package tests
+      vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+      vim.diagnostic.reset(ns, bufnr)
+
+      -- Clear quickfix list at the start
+      vim.fn.setqflist({}, "r", { title = "jdtls-tests", items = {} })
+
+      -- For single class tests, handle visual markers normally
+      local all_lenses_flat = {}
+      if not is_package_test then
+        if lens_or_lenses_tree.children then
+          all_lenses_flat = flatten_lenses_recursive(lens_or_lenses_tree.children)
+        else
+          all_lenses_flat = flatten_lenses_recursive({ lens_or_lenses_tree })
+        end
+      end
+
       for _, test in ipairs(tests) do
-        local start_line_num = get_test_start_line_num(lenses, test)
+        local start_line_num = nil
+
+        -- Only try to find line numbers for single class tests
+        if not is_package_test then
+          start_line_num = get_test_start_line_num(all_lenses_flat, test)
+        end
+
         if test.failed then
           num_failures = num_failures + 1
+
           if start_line_num ~= nil then
             table.insert(results, {
               lnum = start_line_num,
-              success = false
+              success = false,
             })
           end
 
-          if test.method then
-            repl.append(error_symbol .. ' ' .. test.method, '$')
+          -- Display name
+          local display_name = test.method
+          if is_package_test then
+            local class_name = test.fq_class:match("([^%.]+)$") or test.fq_class
+            display_name = class_name .. (test.method and ("#" .. test.method) or "")
           end
-          local testMatch
+
+          repl.append(config.error_symbol .. " " .. (display_name or test.fq_class), "$")
+
+          -- Add to quickfix with proper file paths
           for _, msg in ipairs(test.traces) do
-            local match = msg:match(string.format('at %s.%s', test.fq_class, test.method) .. '%(([%w%p]*:%d+)%)')
-            if ((not testMatch) and match) then
-              testMatch = true
-              local lnum = vim.split(match, ':')[2]
-              local trace = table.concat(test.traces, '\n')
-              local cause = trace:sub(1, trace:find(msg, 1, true) - 1)
-              if #trace > 140 then
-                trace = trace:sub(1, 140) .. '...'
+            local pattern = test.method and string.format("at %s.%s", test.fq_class, test.method)
+              or string.format("at %s", test.fq_class)
+            local match = msg:match(pattern .. "%(([%w%p]*:%d+)%)")
+
+            if match then
+              local file_line = vim.split(match, ":")
+              local filename = file_line[1]
+              local lnum = file_line[2]
+
+              -- For package tests, try to resolve the full file path
+              local full_filename = filename
+              if is_package_test and file_map[test.fq_class] then
+                full_filename = file_map[test.fq_class]
               end
+
               table.insert(items, {
-                bufnr = bufnr,
+                filename = full_filename,
                 lnum = lnum,
-                text = test.method .. ' ' .. trace,
+                text = (display_name or test.fq_class) .. ": " .. test.traces[1],
               })
-              table.insert(failures, {
-                bufnr = bufnr,
-                lnum = tonumber(lnum) - 1,
-                col = 0,
-                severity = vim.diagnostic.severity.ERROR,
-                source = 'junit',
-                message = cause,
-              })
-            end
-            repl.append(msg, '$')
-          end
-          if not testMatch then
-            for _, msg in ipairs(test.traces) do
-              local match = msg:match(string.format('at %s', test.fq_class) .. '[%w%p]+%(([%a%p]*:%d+)%)')
-              if match then
-                testMatch = true
-                local lnum = vim.split(match, ':')[2]
-                local trace = table.concat(test.traces, '\n')
-                local cause = trace:sub(1, trace:find(msg, 1, true) - 1)
+
+              -- Only add diagnostics for single class tests
+              if not is_package_test and start_line_num ~= nil then
+                local cause = table.concat(test.traces, "\n")
                 table.insert(failures, {
                   bufnr = bufnr,
                   lnum = tonumber(lnum) - 1,
                   col = 0,
                   severity = vim.diagnostic.severity.ERROR,
-                  source = 'junit',
+                  source = "junit",
                   message = cause,
                 })
-                break
               end
+              break
             end
-          end
-          if not testMatch then
-            local cause = test.traces[1] .. '\n'
-            if #test.traces > 2 then
-              cause = cause .. test.traces[2] .. '\n'
-            end
-            table.insert(failures, {
-              bufnr = bufnr,
-              -- Generic error. Avoid overlay conflicts with virtual text
-              lnum = start_line_num - 1,
-              col = 0,
-              severity = vim.diagnostic.severity.ERROR,
-              source = 'junit',
-              message = cause,
-            })
+            repl.append("  " .. msg, "$")
           end
         else
           if start_line_num ~= nil then
             table.insert(results, {
               lnum = start_line_num,
-              success = true
+              success = true,
             })
           end
-          repl.append(success_symbol .. ' ' .. test.method, '$')
+
+          local display_name = test.method
+          if is_package_test then
+            local class_name = test.fq_class:match("([^%.]+)$") or test.fq_class
+            display_name = class_name .. (test.method and ("#" .. test.method) or "")
+          end
+
+          repl.append(config.success_symbol .. " " .. (display_name or test.fq_class), "$")
         end
       end
-      vim.diagnostic.set(ns, bufnr, failures, {})
 
-      local unique_lnums = {}
-      -- Traverse in reverse order to preserve the mark position in case of Repeated/Parameterized Tests
-      -- right_align doesn't seems to work correctly when set to false
-      for i = #results, 1, -1 do
-        local result = results[i]
-        local symbol = result.success and success_symbol or error_symbol
-        vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
-          virt_text = { { symbol } },
-          invalidate = true
-        })
-        unique_lnums[result.lnum] = true
-      end
-      for key, _ in pairs(unique_lnums) do
-        local indent = '\t'
-        vim.api.nvim_buf_set_extmark(bufnr, ns, key, 0, {
-          virt_text = { { indent } },
-          invalidate = true
-        })
+      -- Only set diagnostics and markers for single class tests
+      if not is_package_test then
+        vim.diagnostic.set(ns, bufnr, failures, {})
+
+        for _, result in ipairs(results) do
+          local symbol = result.success and config.success_symbol or config.error_symbol
+          vim.api.nvim_buf_set_extmark(bufnr, ns, result.lnum, 0, {
+            virt_text = { { symbol } },
+            invalidate = true,
+          })
+        end
       end
 
+      local total_tests = #tests
       if num_failures > 0 then
-        vim.fn.setqflist({}, 'r', {
-          title = 'jdtls-tests',
+        vim.fn.setqflist({}, "r", {
+          title = "jdtls-tests",
           items = items,
         })
-        print(
-          'Tests finished. Results printed to dap-repl.',
-          #items > 0 and 'Errors added to quickfix list' or '',
-          string.format('(%s %d / %d)', error_symbol, num_failures, #tests)
+        local msg = string.format(
+          "Tests finished: %d passed, %d failed (%d total)",
+          total_tests - num_failures,
+          num_failures,
+          total_tests
         )
+        if is_package_test then
+          msg = msg .. " - Use quickfix list to navigate to failures"
+        end
+        print(msg)
       else
-        print('Tests finished. Results printed to dap-repl.', success_symbol, #tests, 'succeeded')
+        print(string.format("Tests finished: All %d tests passed %s", total_tests, config.success_symbol))
       end
+
       return items, tests
     end,
     mk_reader = function(sock)
