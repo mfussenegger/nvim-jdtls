@@ -960,6 +960,7 @@ end
 ---|"incremental"
 ---@param on_compile_result? fun(result: table[]): nil Callback to be called when the compile result is received.
 function M.compile(type, on_compile_result)
+  print('Compiling workspace ...')
   request(0, 'java/buildWorkspace', type == 'full', on_build_result(on_compile_result))
 end
 
