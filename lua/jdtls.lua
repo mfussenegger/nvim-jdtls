@@ -34,6 +34,9 @@ local M = {
 ---@param start_opts? vim.lsp.start.Opts options passed to vim.lsp.start
 ---@return integer|nil client_id
 function M.start_or_attach(config, opts, start_opts)
+  if config.tests then
+    require('jdtls.junit').setup(config.tests)
+  end
   return setup.start_or_attach(config, opts, start_opts)
 end
 
