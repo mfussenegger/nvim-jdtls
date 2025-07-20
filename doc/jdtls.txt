@@ -1,5 +1,5 @@
+*jdtls*                             LSP extensions for Neovim and eclipse.jdt.ls
 ==============================================================================
-LSP extensions for Neovim and eclipse.jdt.ls                             *jdtls*
 
                                                          *jdtls.start_or_attach*
 M.start_or_attach({config}, {opts?}, {start_opts?})
