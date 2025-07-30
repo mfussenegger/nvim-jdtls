@@ -49,8 +49,8 @@ see some of the functionality in action.
 - Requires Neovim (Latest stable (recommended) or nightly)
 - nvim-jdtls is a plugin. Install it like any other Vim plugin:
   - `git clone https://github.com/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
-  - Or with [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
-  - Or with [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
+  - Or with [vim-plug][16]: `Plug 'mfussenegger/nvim-jdtls'`
+  - Or with [packer.nvim][17]: `use 'mfussenegger/nvim-jdtls'`
   - Or any other plugin manager
 
 
@@ -171,7 +171,7 @@ The `ftplugin/java.lua` logic is executed each time a `FileType` event
 triggers. This happens every time you open a `.java` file or when you invoke
 `:set ft=java`:
 
-You can also find more [complete configuration examples in the Wiki][11].
+You can also find more [complete configuration examples in the Wiki][15].
 
 If you have trouble getting jdtls to work, please read the
 [Troubleshooting](#troubleshooting) section.
@@ -210,7 +210,7 @@ other options from the [Configuration](#configuration) section above.)
 
 ### nvim-lspconfig and nvim-jdtls differences
 
-Both [nvim-lspconfig][9] and nvim-jdtls use the client built into neovim:
+Both [nvim-lspconfig][13] and nvim-jdtls use the client built into neovim:
 
 ```txt
   ┌────────────┐           ┌────────────────┐
@@ -248,7 +248,7 @@ clients and two language server instances.
 ### UI picker customization
 
 **Tip**: You can get a better UI for code-actions and other functions by
-overriding the `jdtls.ui` picker. See [UI Extensions][10].
+overriding the `jdtls.ui` picker. See [UI Extensions][14].
 
 ## Usage
 
@@ -302,7 +302,7 @@ Once setup correctly, it enables the following additional functionality:
 3. Debug junit tests. Either whole classes or individual test methods
 
 For 1 & 2 to work, [eclipse.jdt.ls][3] needs to load the [java-debug][6]
-extension. For 3 to work, it also needs to load the [vscode-java-test][7] extension.
+extension. For 3 to work, it also needs to load the [vscode-java-test][10] extension.
 
 For usage instructions once installed, read the [nvim-dap][5] help.
 Debugging junit test classes or methods will be possible via these two functions:
@@ -314,17 +314,50 @@ require'jdtls'.test_nearest_method()
 
 ### java-debug installation
 
-- Clone [java-debug][6]
-- Navigate into the cloned repository (`cd java-debug`)
-- Run `./mvnw clean install`
-- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration-verbose)) as follows:
+[`java-debug`][6] is the Java implementation of the debug adapter protocol.
 
+It's recommended to download a pre-built version of `java-debug` from the [Open VSX registry][7].
 
+The donwloaded `.vsix` file can be unzipped as a regular ZIP archive, and placed wherever you like.
+
+Alternatively, if you use [Mason][8], the package can be installed from the [Mason registry][9] using the following command in Neovim:
+
+    :MasonInstall java-debug-adapter
+
+By default, Mason installs packages in a `mason/packages/` directory in `stdpath("data")` (see `:help mason-default-settings` and `:help stdpath()` for details).
+
+You must add the path to the `com.microsoft.java.debug.plugin-*.jar` to the `init_options.bundles` in your [configuration](#Configuration-verbose).
+
+The following sample code assumes you've downloaded and extracted the `.vsix` file to where Mason installs packages, or installed the package via Mason:
 ```lua
+local function join_path(...)
+  local segments = { ... }
+  local sep = vim.fn.has('macunix') == 0 and '\\' or '/'
+  local path = ''
+  for i, segment in ipairs(segments) do
+    if i == 1 then -- first index starts at 1 in lua
+      path = segment
+    else
+      path = path .. sep .. segment
+    end
+  end
+  return path
+end
+
+local mason_packages_path = join_path(vim.fn.stdpath('data'), 'mason', 'packages')
+
+local java_debug_adapter_path = join_path(mason_packages_path, 'java-debug-adapter')
+if not dir_exists(java_debug_adapter_path) then
+  vim.notify('Install Java Debug extension.', vim.log.levels.WARN)
+end
+
+local java_debug_path = vim.fn.glob(join_path(java_debug_adapter_path,
+  'extension', 'server', 'com.microsoft.java.debug.plugin-*.jar'))
+
+local bundles = { java_debug_path }
+
 config['init_options'] = {
-  bundles = {
-    vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1)
-  };
+  bundles = bundles
 }
 ```
 
@@ -349,26 +382,71 @@ To get an overview of all available `attach` and `launch` options, take a look a
 
 ### vscode-java-test installation
 
-To be able to debug junit tests, it is necessary to install the bundles from [vscode-java-test][7]:
+[`vscode-java-test`][10] allows running and debugging junit tests, and requires [installing `java-debug`](#java-debug-installation).
 
-- Clone the repository
-- Navigate into the folder (`cd vscode-java-test`)
-- Run `npm install`
-- Run `npm run build-plugin`
-- Extend the bundles in the nvim-jdtls config:
+It's recommended to download a pre-built version of `vscode-java-test` from the [Open VSX registry][12].
 
+The donwloaded `.vsix` file can be unzipped as a regular ZIP archive, and placed wherever you like.
 
+Alternatively, if you use [Mason][8], the package can be installed from the [Mason registry][11] using the following command in Neovim:
+
+    :MasonInstall java-test
+
+You must add all bundled JARs (excluding those without versions) to the `init_options.bundles` in your [configuration](#Configuration-verbose).
+
+The following sample code assumes you've downloaded and extracted the `.vsix` file to where Mason installs packages, or installed the package via Mason:
 ```lua
+-- The following code is the same as the java-test installation section.
+local function join_path(...)
+  local segments = { ... }
+  local sep = vim.fn.has('macunix') == 0 and '\\' or '/'
+  local path = ''
+  for i, segment in ipairs(segments) do
+    if i == 1 then -- first index starts at 1 in lua
+      path = segment
+    else
+      path = path .. sep .. segment
+    end
+  end
+  return path
+end
 
--- This bundles definition is the same as in the previous section (java-debug installation)
-local bundles = {
-  vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1),
-};
+local mason_packages_path = join_path(vim.fn.stdpath('data'), 'mason', 'packages')
 
--- This is the new part
-vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar", 1), "\n"))
+local java_debug_adapter_path = join_path(mason_packages_path, 'java-debug-adapter')
+if not dir_exists(java_debug_adapter_path) then
+  vim.notify('Install Java Debug extension.', vim.log.levels.WARN)
+end
+local java_debug_path = vim.fn.glob(join_path(java_debug_adapter_path,
+  'extension', 'server', 'com.microsoft.java.debug.plugin-*.jar'))
+
+local bundles = { java_debug_path }
+
+-- java-test (ADDED from previous java-test installation section)
+local java_test_path = join_path(mason_packages_path, 'java-test')
+if not dir_exists(java_test_path) then
+  vim.notify('Install Java Test extension.', vim.log.levels.WARN)
+end
+local vscode_java_test_paths = vim.fn.glob(join_path(java_test_path, 'extension', 'server', '*.jar'), true)
+vscode_java_test_paths = vim.split(vscode_java_test_paths, '\n')
+
+local non_versioned_jars = {
+  'com.microsoft.java.test.runner-jar-with-dependencies.jar',
+  'jacocoagent.jar'
+}
+vscode_java_test_paths = vim.tbl_filter(function(path)
+  for _, non_versioned_jar in ipairs(non_versioned_jars) do
+    if vim.endswith(path, non_versioned_jar) then
+      return true
+    end
+  end
+  return false
+end, vscode_java_test_paths)
+
+vim.list_extend(bundles, vscode_java_test_paths)
+
 config['init_options'] = {
-  bundles = bundles;
+  bundles = bundles
 }
 ```
 
@@ -522,10 +600,15 @@ priority.
 [3]: https://github.com/eclipse/eclipse.jdt.ls
 [5]: https://github.com/mfussenegger/nvim-dap
 [6]: https://github.com/microsoft/java-debug
-[7]: https://github.com/microsoft/vscode-java-test
-[9]: https://github.com/neovim/nvim-lspconfig
-[10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
-[11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
-[14]: https://github.com/junegunn/vim-plug
-[15]: https://github.com/wbthomason/packer.nvim
+[7]: https://open-vsx.org/extension/vscjava/vscode-java-debug
+[8]: https://github.com/mason-org/mason.nvim
+[9]: https://mason-registry.dev/registry/list?search=java-debug-adapter
+[10]: https://github.com/microsoft/vscode-java-test
+[11]: https://mason-registry.dev/registry/list?search=java-test
+[12]: https://open-vsx.org/extension/vscjava/vscode-java-test
+[13]: https://github.com/neovim/nvim-lspconfig
+[14]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
+[15]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
+[16]: https://github.com/junegunn/vim-plug
+[17]: https://github.com/wbthomason/packer.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
