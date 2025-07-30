@@ -430,17 +430,12 @@ end
 local vscode_java_test_paths = vim.fn.glob(join_path(java_test_path, 'extension', 'server', '*.jar'), true)
 vscode_java_test_paths = vim.split(vscode_java_test_paths, '\n')
 
-local non_versioned_jars = {
-  'com.microsoft.java.test.runner-jar-with-dependencies.jar',
-  'jacocoagent.jar'
-}
+-- Filter out non-versioned JARs such as:
+-- * com.microsoft.java.test.runner-jar-with-dependencies.jar
+-- * jacocoagent.jar
+local version_pattern = "%d+\\.%d+\\.%d+"
 vscode_java_test_paths = vim.tbl_filter(function(path)
-  for _, non_versioned_jar in ipairs(non_versioned_jars) do
-    if vim.endswith(path, non_versioned_jar) then
-      return true
-    end
-  end
-  return false
+  return string.match(path, version_pattern)
 end, vscode_java_test_paths)
 
 vim.list_extend(bundles, vscode_java_test_paths)
