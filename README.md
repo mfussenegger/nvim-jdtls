@@ -60,17 +60,18 @@ Install [eclipse.jdt.ls][3] by following their [Installation instructions](https
 
 ## Configuration
 
-To configure jdtls you have several options. Pick one.
+To configure jdtls you have several options. Pick one from below.
 
 **Important**:
 
-- eclipse.jdt.ls requires Java 21
 - If using the `jdtls` script from eclipse.jdt.ls you need Python 3.9 installed.
-- You'll have to teach eclipse.jdt.ls about your JDK installations by setting
-  up `runtimes` if your projects use a different Java version than the one
-  you're using for eclipse.jdt.ls itself. See `Java XY language features are
-  not available` in the troubleshooting section further below to learn how to
-  do that.
+- eclipse.jdt.ls itself requires Java 21
+- eclipse.jdt.ls can handle projects using a different JDK than the one
+  you use to run eclipse.jdt.ls. Any JDK >= 8 is supported but you need
+  to configure `runtimes` for eclipse.jdt.ls to discover them. See
+  `Java XY language features are not available` in the troubleshooting
+  section further below to learn how to do that.
+- Please also read the [data directory configuration](#data-directory-configuration) section.
 
 ### Via lsp.config
 
@@ -82,91 +83,30 @@ vim.lsp.enable("jdtls")
 
 A `jdtls` executable must be available in `$PATH` for this approach to work.
 
-Limitations:
-
-- Eclipse.jdt.ls will store project index files inside your temporary directory
-  which might be wiped on reboots. Use the low-level `ftplugin` approach for a
-  way to avoid that.
-
 ### Via ftplugin
 
-Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directory`):
+- Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using this approach.
+- Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directory`):
 
 ```lua
+-- See `:help vim.lsp.start` for an overview of the supported `config` options.
 local config = {
-    cmd = {'/path/to/jdt-language-server/bin/jdtls'},
-    root_dir = vim.fs.dirname(vim.fs.find({'gradlew', '.git', 'mvnw'}, { upward = true })[1]),
-}
-require('jdtls').start_or_attach(config)
-```
-
-Limitations:
-
-- Eclipse.jdt.ls will store project index files inside your temporary directory
-  which might be wiped on reboots. This means eclipse.jdt.ls will re-index your
-  project after each reboot. Use the low-level `ftplugin` approach for a way to
-  avoid that.
-
-**Warning**
-
-Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using this approach.
-
-### Via ftplugin low-level
-
-To configure `nvim-jdtls`, add the following in `ftplugin/java.lua` within the
-Neovim configuration base directory (e.g. `~/.config/nvim/ftplugin/java.lua`,
-see `:help base-directory`).
-
-Watch out for the 💀, it indicates that you must adjust something.
+  name = "jdtls",
 
 
-```lua
--- See `:help vim.lsp.start_client` for an overview of the supported `config` options.
-local config = {
-  -- The command that starts the language server
-  -- See: https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line
-  cmd = {
-
-    -- 💀
-    'java', -- or '/path/to/java21_or_newer/bin/java'
-            -- depends on if `java` is in your $PATH env variable and if it points to the right version.
-
-    '-Declipse.application=org.eclipse.jdt.ls.core.id1',
-    '-Dosgi.bundles.defaultStartLevel=4',
-    '-Declipse.product=org.eclipse.jdt.ls.core.product',
-    '-Dlog.protocol=true',
-    '-Dlog.level=ALL',
-    '-Xmx1g',
-    '--add-modules=ALL-SYSTEM',
-    '--add-opens', 'java.base/java.util=ALL-UNNAMED',
-    '--add-opens', 'java.base/java.lang=ALL-UNNAMED',
-
-    -- 💀
-    '-jar', '/path/to/jdtls_install_location/plugins/org.eclipse.equinox.launcher_VERSION_NUMBER.jar',
-         -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                       ^^^^^^^^^^^^^^
-         -- Must point to the                                                     Change this to
-         -- eclipse.jdt.ls installation                                           the actual version
-
-
-    -- 💀
-    '-configuration', '/path/to/jdtls_install_location/config_SYSTEM',
-                    -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^        ^^^^^^
-                    -- Must point to the                      Change to one of `linux`, `win` or `mac`
-                    -- eclipse.jdt.ls installation            Depending on your system.
-
-
-    -- 💀
-    -- See `data directory configuration` section in the README
-    '-data', '/path/to/unique/per/project/workspace/folder'
-  },
-
-  -- 💀
-  -- This is the default if not provided, you can remove it. Or adjust as needed.
-  -- One dedicated LSP server & client will be started per unique root_dir
+  -- `cmd` defines the executable to launch eclipse.jdt.ls.
+  -- `jdtls` must be available in $PATH and you must have Python3.9 for this to work.
   --
-  -- vim.fs.root requires Neovim 0.10.
-  -- If you're using an earlier version, use: require('jdtls.setup').find_root({'.git', 'mvnw', 'gradlew'}),
-  root_dir = vim.fs.root(0, {".git", "mvnw", "gradlew"}),
+  -- As alternative you could also avoid the `jdtls` wrapper and launch
+  -- eclipse.jdt.ls via the `java` executable
+  -- See: https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line
+  cmd = {"jdtls"},
+
+
+  -- `root_dir` must point to the root of your project.
+  -- See `:help vim.fs.root`
+  root_dir = vim.fs.root(0, {'gradlew', '.git', 'mvnw'})
+
 
   -- Here you can configure eclipse.jdt.ls specific settings
   -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
@@ -176,19 +116,18 @@ local config = {
     }
   },
 
-  -- Language server `initializationOptions`
-  -- You need to extend the `bundles` with paths to jar files
-  -- if you want to use additional eclipse.jdt.ls plugins.
+
+  -- This sets the `initializationOptions` sent to the language server
+  -- If you plan on using additional eclipse.jdt.ls plugins like java-debug
+  -- you'll need to set the `bundles`
   --
   -- See https://codeberg.org/mfussenegger/nvim-jdtls#java-debug-installation
   --
-  -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
+  -- If you don't plan on any eclipse.jdt.ls plugins you can remove this
   init_options = {
     bundles = {}
   },
 }
--- This starts a new client & server,
--- or attaches to an existing client & server depending on the `root_dir`.
 require('jdtls').start_or_attach(config)
 ```
 
@@ -196,24 +135,23 @@ The `ftplugin/java.lua` logic is executed each time a `FileType` event
 triggers. This happens every time you open a `.java` file or when you invoke
 `:set ft=java`:
 
-You can also find more [complete configuration examples in the Wiki][11].
-
 If you have trouble getting jdtls to work, please read the
 [Troubleshooting](#troubleshooting) section.
+You can also find more [complete configuration examples in the Wiki][11].
 
-**Warning**
-
-Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using
-this approach.
 
 ### data directory configuration
 
-`eclipse.jdt.ls` stores project specific data within the folder set via the
-`-data` flag. If you're using `eclipse.jdt.ls` with multiple different projects
-you must use a dedicated data directory per project.
+`jdtls` takes a `-data` option which defines the location where eclipse.jdt.ls
+stores index data for each project it loads.
 
-An example how you could accomplish that is to infer the workspace directory
-name from the current working directory:
+If the option is not explicitly set, `jdtls` stored the data in a sub-folder
+within [tempdir](https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir).
+The sub-folder name is derived from `root_dir`.
+
+If your system wipes the temporary directory on a shutdown/boot it means
+eclipse.jdt.ls will have to reindex your projects after each boot. To avoid
+that you can set a `-data` location explicitly. For example like this:
 
 
 ```lua
@@ -237,7 +175,6 @@ local config = {
 
 `...` is not valid Lua in this context. It is meant as placeholder for the
 other options from the [Configuration](#configuration) section above.)
-
 
 ### UI picker customization
 
