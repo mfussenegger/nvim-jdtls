@@ -163,7 +163,7 @@ stores index data for each project it loads.
 
 If the option is not explicitly set, `jdtls` stored the data in a sub-folder
 within [tempdir](https://docs.python.org/3/library/tempfile.html#tempfile.gettempdir).
-The sub-folder name is derived from `root_dir`.
+The sub-folder name is derived from `cwd`.
 
 If your system wipes the temporary directory on a shutdown/boot it means
 eclipse.jdt.ls will have to reindex your projects after each boot. To avoid

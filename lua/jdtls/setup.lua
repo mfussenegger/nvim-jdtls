@@ -103,24 +103,55 @@ local function maybe_implicit_save()
 end
 
 
+---@return string?
+local function tempdir()
+  local candidates = {
+    os.getenv("TMPDIR"),
+    os.getenv("TEMP"),
+    os.getenv("TMP"),
+    "/tmp"
+  }
+  for _, candidate in pairs(candidates) do
+    if candidate and uv.fs_stat(candidate) then
+      return candidate
+    end
+  end
+  return nil
+end
+
+
+---@param val string
+---@return string
+local function sha1(val)
+  local cmd = {
+    "python",
+    "-c",
+    string.format("from hashlib import sha1; print(sha1(b'%s').hexdigest())", val)
+  }
+  return vim.trim(vim.system(cmd):wait().stdout)
+end
+
+
 ---@return string?, vim.lsp.Client?
 local function extract_data_dir(bufnr)
   -- Prefer client from current buffer, in case there are multiple jdtls clients (multiple projects)
-  local client = util.get_clients({ name = "jdtls", bufnr = bufnr })[1]
-  if not client then
-    -- Try first matching jdtls client otherwise. In case the user is in a
-    -- different buffer like the quickfix list
-    local clients = util.get_clients({ name = "jdtls" })
-    if vim.tbl_count(clients) > 1 then
-      ---@diagnostic disable-next-line: cast-local-type
-      client = require('jdtls.ui').pick_one(
-        clients,
-        'Multiple jdtls clients found, pick one: ',
-        function(c) return c.config.root_dir end
-      )
-    else
-      client = clients[1]
-    end
+  local clients = util.get_clients({ name = "jdtls", bufnr = bufnr })
+  if not next(clients) then
+    -- Fallback to other active `jdtls` clients - in case the user is in a different
+    -- buffer like the quickfix list
+    clients = util.get_clients({ name = "jdtls" })
+  end
+
+  local client
+  if #clients > 1 then
+    ---@diagnostic disable-next-line: cast-local-type
+    client = require('jdtls.ui').pick_one(
+      clients,
+      'Multiple jdtls clients found, pick one: ',
+      function(c) return c.config.root_dir end
+    )
+  else
+    client = clients[1]
   end
 
   if client and client.config and client.config.cmd then
@@ -130,6 +161,17 @@ local function extract_data_dir(bufnr)
         -- jdtls helper script uses `--data`, java jar command uses `-data`.
         if part == '-data' or part == '--data' then
           return client.config.cmd[i + 1], client
+        end
+      end
+      if cmd[1] == "jdtls" or vim.endswith(cmd[1], "/jdtls") then
+        -- The jdtls script defaults to `tmpdir/jdtls- + sha1(cwd_name)`
+        local tmp = tempdir()
+        if tmp then
+          local cwd_basename = vim.fn.fnamemodify(vim.fn.getcwd(), ":t")
+          local datadir = vim.fs.joinpath(tmp, "jdtls-" .. sha1(cwd_basename))
+          if uv.fs_stat(datadir) then
+            return datadir, client
+          end
         end
       end
     end
