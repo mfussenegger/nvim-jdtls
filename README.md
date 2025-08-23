@@ -48,7 +48,7 @@ see some of the functionality in action.
 
 - Requires Neovim (Latest stable (recommended) or nightly)
 - nvim-jdtls is a plugin. Install it like any other Vim plugin:
-  - `git clone https://github.com/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
+  - `git clone https://codeberg.org/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
   - Or with [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
   - Or with [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
   - Or any other plugin manager
@@ -155,7 +155,7 @@ local config = {
   -- You need to extend the `bundles` with paths to jar files
   -- if you want to use additional eclipse.jdt.ls plugins.
   --
-  -- See https://github.com/mfussenegger/nvim-jdtls#java-debug-installation
+  -- See https://codeberg.org/mfussenegger/nvim-jdtls#java-debug-installation
   --
   -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
   init_options = {
@@ -343,7 +343,7 @@ that `nvim-dap` is listed as dependency for `nvim-jdtls` for this to work.
 
 To discover the main classes you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtUpdateDebugConfigs` command. It will only discover classes once eclipse.jdt.ls fully loaded the project. Depending on the project that may take a while. Because of that, calling `require('jdtls.dap').setup_dap_main_class_configs()` as part of an `on_attach` handler may not work well.
 
-For manual configuration see [nvim-dap Adapter Installation Wiki](https://github.com/mfussenegger/nvim-dap/wiki/Java).
+For manual configuration see [nvim-dap Adapter Installation Wiki](https://codeberg.org/mfussenegger/nvim-dap/wiki/Java).
 
 To get an overview of all available `attach` and `launch` options, take a look at [java-debug options](https://github.com/microsoft/vscode-java-debug#options). Keep in mind that any `java.debug` options are settings of the vscode-java client extension and not understood by the debug-adapter itself.
 
@@ -520,12 +520,12 @@ priority.
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
-[5]: https://github.com/mfussenegger/nvim-dap
+[5]: https://codeberg.org/mfussenegger/nvim-dap
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
 [9]: https://github.com/neovim/nvim-lspconfig
-[10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
-[11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
+[10]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/UI-Extensions
+[11]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
