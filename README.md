@@ -83,6 +83,22 @@ vim.lsp.enable("jdtls")
 
 A `jdtls` executable must be available in `$PATH` for this approach to work.
 
+If you need to customize `settings`, use:
+
+```lua
+vim.lsp.config("jdtls", {
+  settings = {
+    java = {
+        -- Custom eclipse.jdt.ls options go here
+    },
+  },
+})
+vim.lsp.enable("jdtls")
+```
+
+See `:help lsp-config` for more information.
+
+
 ### Via ftplugin
 
 - Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using this approach.
