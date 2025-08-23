@@ -259,12 +259,15 @@ function M.start_or_attach(config, opts, start_opts)
       .. table.concat(config.cmd or {'nil'}, ' ')
   )
   config.name = 'jdtls'
-  local on_attach = config.on_attach
-  config.on_attach = function(client, bufnr)
-    if on_attach then
-      on_attach(client, bufnr)
+
+  if opts.dap then
+    local on_attach = config.on_attach
+    config.on_attach = function(client, bufnr)
+      if on_attach then
+        on_attach(client, bufnr)
+      end
+      add_commands(client, bufnr, opts)
     end
-    add_commands(client, bufnr, opts)
   end
 
   local bufnr = api.nvim_get_current_buf()

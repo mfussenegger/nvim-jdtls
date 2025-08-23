@@ -8,7 +8,4 @@ return {
   settings = {
     java = vim.empty_dict(),
   },
-  on_attach = function (client, bufnr)
-    return require("jdtls.setup")._on_attach(client, bufnr)
-  end,
 }
