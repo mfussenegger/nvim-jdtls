@@ -316,13 +316,19 @@ that `nvim-dap` is listed as dependency for `nvim-jdtls` for this to work.
 
 ### nvim-dap configuration
 
-`nvim-jdtls` includes functionality to discover main classes and create `nvim-dap` configuration entries for them.
+Running `:DapNew` will automatically discover main classes in your
+project if the `java-debug` bundles are installed and configured
+correctly.
 
-To discover the main classes you have to call `require('jdtls.dap').setup_dap_main_class_configs()` or use the `JdtUpdateDebugConfigs` command. It will only discover classes once eclipse.jdt.ls fully loaded the project. Depending on the project that may take a while. Because of that, calling `require('jdtls.dap').setup_dap_main_class_configs()` as part of an `on_attach` handler may not work well.
+If you need additional configurations you can either add project local
+configurations in `.vscode/launch.json` or extend the
+`dap.java.configurations` list. See `:help dap-configuration`.
 
-For manual configuration see [nvim-dap Adapter Installation Wiki](https://codeberg.org/mfussenegger/nvim-dap/wiki/Java).
+To get an overview of all available `attach` and `launch` options, take
+a look at [java-debug options][java-debug-options]. Keep
+in mind that any `java.debug` options are settings of the vscode-java
+client extension and not understood by the debug-adapter itself.
 
-To get an overview of all available `attach` and `launch` options, take a look at [java-debug options](https://github.com/microsoft/vscode-java-debug#options). Keep in mind that any `java.debug` options are settings of the vscode-java client extension and not understood by the debug-adapter itself.
 
 ### vscode-java-test installation
 
@@ -508,3 +514,4 @@ priority.
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
 [aur]: https://aur.archlinux.org/
 [aur-java-debug]: https://aur.archlinux.org/packages/java-debug
+[java-debug-options]: https://github.com/microsoft/vscode-java-debug#options
