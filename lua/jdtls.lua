@@ -1240,13 +1240,15 @@ function M.open_classfile(fname)
       return next(util.get_clients({ name = "jdtls", bufnr = buf })) ~= nil
     end)
     client = util.get_clients({ name = "jdtls", bufnr = buf })[1]
+  else
+    vim.lsp.buf_attach_client(buf, client.id)
   end
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
-
 
   local content
   local function handler(err, result)
     assert(not err, vim.inspect(err))
+    assert(result, "jdtls client must return result for java/classFileContents")
     content = result
     local normalized = string.gsub(result, '\r\n', '\n')
     local source_lines = vim.split(normalized, "\n", { plain = true })
@@ -1269,7 +1271,6 @@ function M.open_classfile(fname)
   -- Need to block. Otherwise logic could run that sets the cursor to a position
   -- that's still missing.
   vim.wait(timeout_ms, function() return content ~= nil end)
-  vim.lsp.buf_attach_client(buf, client.id)
 end
 
 
