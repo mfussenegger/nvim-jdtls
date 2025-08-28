@@ -130,8 +130,8 @@ function M.mk_test_results(bufnr)
       local lenses = lens.children or lens
       local failures = {}
       local results = {}
-      local error_symbol = '❌'
-      local success_symbol = '✔️ '
+      local error_symbol = '✗ '
+      local success_symbol = '✓ '
       for _, test in ipairs(tests) do
         local start_line_num = get_test_start_line_num(lenses, test)
         if test.failed then
