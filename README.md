@@ -298,10 +298,11 @@ The build artifacts will be in `com.microsoft.java.debug.plugin/target/`.
 - Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration)) as follows:
 
 ```lua
+local bundles = {
+  vim.fn.glob("path/to/com.microsoft.java.debug.plugin-*.jar", 1)
+}
 config['init_options'] = {
-  bundles = {
-    vim.fn.glob("path/to/com.microsoft.java.debug.plugin-*.jar", 1)
-  };
+  bundles = bundles
 }
 ```
 
@@ -332,6 +333,20 @@ client extension and not understood by the debug-adapter itself.
 
 ### vscode-java-test installation
 
+Install `vscode-java-test`. If there is a package in your package manager of choice use that, if not, use one of the following methods:
+
+---
+
+#### From Open VSX Registry
+
+
+- Download [vscode-java-test](https://open-vsx.org/extension/vscjava/vscode-java-debug)
+- Unpack it using `unzip`
+
+The artifacts you need are in `dist/server` within the unpacked folder.
+
+#### From source
+
 To be able to debug junit tests, it is necessary to install the bundles from [vscode-java-test][7]:
 
 - Clone the repository
@@ -340,16 +355,35 @@ To be able to debug junit tests, it is necessary to install the bundles from [vs
 - Run `npm run build-plugin`
 - Extend the bundles in the nvim-jdtls config:
 
+---
+
+
+### vscode-java-test configuration
+
 
 ```lua
 
 -- This bundles definition is the same as in the previous section (java-debug installation)
 local bundles = {
-  vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1),
-};
+  vim.fn.glob("path/to/com.microsoft.java.debug.plugin-*.jar", 1)
+}
+
 
 -- This is the new part
-vim.list_extend(bundles, vim.split(vim.fn.glob("/path/to/microsoft/vscode-java-test/server/*.jar", 1), "\n"))
+local java_test_bundles = vim.split(vim.fn.glob("/path/to/vscode-java-test/server/*.jar", 1), "\n")
+local excluded = {
+  "com.microsoft.java.test.runner-jar-with-dependencies.jar",
+  "jacocoagent.jar",
+}
+for _, java_test_jar in ipairs(java_test_bundles) do
+  local fname = vim.fn.fnamemodify(java_test_jar, ":t")
+  if not vim.tbl_contains(excluded, fname) then
+    table.insert(bundles, java_test_jar)
+  end
+end
+-- End of the new part
+
+
 config['init_options'] = {
   bundles = bundles;
 }
