@@ -261,16 +261,46 @@ require'jdtls'.test_nearest_method()
 
 ### java-debug installation
 
+Install `java-debug`. If there is a package in your package manager of choice use that, if not, use one of the following methods:
+
+---
+
+#### Via Maven
+
+```bash
+MAVEN_OPTS="-Dmaven.repo.local=/tmp/m2" mvn dependency:get "-Dartifact=com.microsoft.java:com.microsoft.java.debug.plugin:0.53.1"
+```
+
+The artifact you need is `/tmp/m2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/com.microsoft.java.debug.plugin-0.53.1.jar`
+
+(Replace `0.53.1` with the current java-debug version)
+
+#### From Open VSX Registry
+
+- Download [Debugger for Java](https://open-vsx.org/extension/vscjava/vscode-java-debug)
+- Unpack it using `unzip`
+
+The artifact you need will be in `vscjava.vscode-java-debug-*/extension/server/`
+
+#### From source
+
 - Clone [java-debug][6]
 - Navigate into the cloned repository (`cd java-debug`)
 - Run `./mvnw clean install`
-- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration-verbose)) as follows:
 
+The build artifacts will be in `com.microsoft.java.debug.plugin/target/`.
+
+---
+
+
+### java-debug bundle configuration
+
+- Set or extend the `initializationOptions` (= `init_options` of the `config` from [configuration](#Configuration)) as follows:
 
 ```lua
 config['init_options'] = {
   bundles = {
-    vim.fn.glob("path/to/java-debug/com.microsoft.java.debug.plugin/target/com.microsoft.java.debug.plugin-*.jar", 1)
+    vim.fn.glob("path/to/com.microsoft.java.debug.plugin-*.jar", 1)
   };
 }
 ```
@@ -476,3 +506,5 @@ priority.
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
+[aur]: https://aur.archlinux.org/
+[aur-java-debug]: https://aur.archlinux.org/packages/java-debug
