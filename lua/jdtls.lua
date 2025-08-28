@@ -1239,7 +1239,7 @@ function M.open_classfile(fname)
     vim.wait(timeout_ms, function()
       return next(util.get_clients({ name = "jdtls", bufnr = buf })) ~= nil
     end)
-    client = util.get_clients({ name = "jdtls", buf = buf })[1]
+    client = util.get_clients({ name = "jdtls", bufnr = buf })[1]
   end
   assert(client, 'Must have a `jdtls` client to load class file or jdt uri')
 
