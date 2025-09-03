@@ -11,7 +11,7 @@ for _, pattern in ipairs({"jdt://", "*.class"}) do
     pattern = pattern,
     ---@param args vim.api.keyset.create_autocmd.callback_args
     callback = function (args)
-      require('jdtls').open_classfile(vim.fn.expand(args.match))
+      require('jdtls').open_classfile(args.match)
     end
   })
 end
