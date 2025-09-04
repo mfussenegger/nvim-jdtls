@@ -124,7 +124,7 @@ end
 ---@return string
 local function sha1(val)
   local cmd = {
-    "python",
+    vim.fn.executable("python3") and "python3" or "python",
     "-c",
     string.format("from hashlib import sha1; print(sha1(b'%s').hexdigest())", val)
   }
