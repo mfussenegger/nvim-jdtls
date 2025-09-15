@@ -19,25 +19,28 @@ function M.get_clients(...)
   return vim.tbl_map(M.add_client_methods, clients)
 end
 
-function M.execute_command(command, callback, bufnr)
-  local clients = {}
-  local candidates = M.get_clients({ bufnr = bufnr })
-  if not next(candidates) then
-    candidates = M.get_clients({ name = "jdtls" })
-  end
-  for _, c in pairs(candidates) do
-    local command_provider = c.server_capabilities.executeCommandProvider
+
+---@return fun(client: vim.lsp.Client):boolean
+local function has_command_predicate(command)
+  return function(client)
+    local command_provider = client.server_capabilities.executeCommandProvider
     local commands = type(command_provider) == 'table' and command_provider.commands or {}
-    if vim.tbl_contains(commands, command.command) then
-      table.insert(clients, c)
-    end
+    return vim.tbl_contains(commands, command.command)
+  end
+end
+
+
+function M.execute_command(command, callback, bufnr)
+  local has_command = has_command_predicate(command)
+  local clients = vim.tbl_filter(has_command, M.get_clients({ bufnr = bufnr }))
+  if not next(clients) then
+    clients = vim.tbl_filter(has_command, M.get_clients({ name = "jdtls" }))
   end
   local num_clients = vim.tbl_count(clients)
   if num_clients == 0 then
     vim.notify('No LSP client found that supports ' .. command.command, vim.log.levels.ERROR)
     return
   end
-
   if num_clients > 1 then
     vim.notify(
       'Multiple LSP clients found that support ' .. command.command .. ' you should have at most one JDTLS server running',
@@ -70,6 +73,9 @@ function M.with_java_executable(mainclass, project, fn, bufnr)
   bufnr = assert((bufnr == nil or bufnr == 0) and api.nvim_get_current_buf() or bufnr)
 
   local client = M.get_clients({ name = "jdtls", bufnr = bufnr, method = "workspace/executeCommand" })[1]
+  if not client then
+    client = M.get_clients({ name = "jdtls", method = "workspace/executeCommand" })[1]
+  end
   if not client then
     vim.notify("No jdtls client found for bufnr=" .. bufnr, vim.log.levels.INFO)
     return
