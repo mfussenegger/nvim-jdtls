@@ -5,7 +5,7 @@ vim.g.nvim_jdtls = 1
 
 local api = vim.api
 local group = api.nvim_create_augroup("jdtls", {})
-for _, pattern in ipairs({"jdt://", "*.class"}) do
+for _, pattern in ipairs({"jdt://*", "*.class"}) do
   api.nvim_create_autocmd("BufReadCmd", {
     group = group,
     pattern = pattern,
