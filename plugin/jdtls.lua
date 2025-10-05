@@ -22,6 +22,7 @@ api.nvim_create_autocmd("LspAttach", {
     if client.name ~= "jdtls" then
       return
     end
+    require("jdtls") -- force command registration
     require("jdtls.setup")._on_attach(client, args.buf)
   end
 })
