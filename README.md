@@ -340,7 +340,7 @@ Install `vscode-java-test`. If there is a package in your package manager of cho
 #### From Open VSX Registry
 
 
-- Download [vscode-java-test](https://open-vsx.org/extension/vscjava/vscode-java-debug)
+- Download [vscode-java-test](https://open-vsx.org/extension/vscjava/vscode-java-test)
 - Unpack it using `unzip`
 
 The artifacts you need are in `dist/server` within the unpacked folder.
