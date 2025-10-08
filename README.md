@@ -265,16 +265,6 @@ Install `java-debug`. If there is a package in your package manager of choice us
 
 ---
 
-#### Via Maven
-
-```bash
-MAVEN_OPTS="-Dmaven.repo.local=/tmp/m2" mvn dependency:get "-Dartifact=com.microsoft.java:com.microsoft.java.debug.plugin:0.53.1"
-```
-
-The artifact you need is `/tmp/m2/com/microsoft/java/com.microsoft.java.debug.plugin/0.53.1/com.microsoft.java.debug.plugin-0.53.1.jar`
-
-(Replace `0.53.1` with the current java-debug version)
-
 #### From Open VSX Registry
 
 - Download [Debugger for Java](https://open-vsx.org/extension/vscjava/vscode-java-debug)
