@@ -102,7 +102,7 @@ See `:help lsp-config` for more information.
 ### Via ftplugin
 
 - Make sure you don't have `jdtls` enabled via `vim.lsp.enable("jdtls")` if using this approach.
-- Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directory`):
+- Add the following to `~/.config/nvim/ftplugin/java.lua` (See `:help base-directories`):
 
 ```lua
 -- See `:help vim.lsp.start` for an overview of the supported `config` options.
