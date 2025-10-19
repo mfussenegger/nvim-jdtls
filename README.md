@@ -51,6 +51,7 @@ see some of the functionality in action.
   - `git clone https://codeberg.org/mfussenegger/nvim-jdtls.git ~/.config/nvim/pack/plugins/start/nvim-jdtls`
   - Or with [vim-plug][14]: `Plug 'mfussenegger/nvim-jdtls'`
   - Or with [packer.nvim][15]: `use 'mfussenegger/nvim-jdtls'`
+  - Or with [lazy.nvim][16] `return "mfussenegger/nvim-jdtls"`
   - Or any other plugin manager
 
 
@@ -531,10 +532,11 @@ priority.
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
 [9]: https://github.com/neovim/nvim-lspconfig
-[10]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/UI-Extensions
-[11]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
+[10]: https://github.com/mfussenegger/nvim-jdtls/wiki/UI-Extensions
+[11]: https://github.com/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
+[16]: https://github.com/folke/lazy.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
 [aur]: https://aur.archlinux.org/
 [aur-java-debug]: https://aur.archlinux.org/packages/java-debug
