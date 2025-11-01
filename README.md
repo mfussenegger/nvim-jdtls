@@ -153,7 +153,6 @@ triggers. This happens every time you open a `.java` file or when you invoke
 
 If you have trouble getting jdtls to work, please read the
 [Troubleshooting](#troubleshooting) section.
-You can also find more [complete configuration examples in the Wiki][11].
 
 
 ### data directory configuration
@@ -192,10 +191,6 @@ local config = {
 `...` is not valid Lua in this context. It is meant as placeholder for the
 other options from the [Configuration](#configuration) section above.)
 
-### UI picker customization
-
-**Tip**: You can get a better UI for code-actions and other functions by
-overriding the `jdtls.ui` picker. See [UI Extensions][10].
 
 ## Usage
 
@@ -531,8 +526,6 @@ priority.
 [6]: https://github.com/microsoft/java-debug
 [7]: https://github.com/microsoft/vscode-java-test
 [9]: https://github.com/neovim/nvim-lspconfig
-[10]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/UI-Extensions
-[11]: https://codeberg.org/mfussenegger/nvim-jdtls/wiki/Sample-Configurations
 [14]: https://github.com/junegunn/vim-plug
 [15]: https://github.com/wbthomason/packer.nvim
 [kiss]: https://en.wikipedia.org/wiki/KISS_principle
