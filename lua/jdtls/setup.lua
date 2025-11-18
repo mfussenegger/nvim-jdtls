@@ -13,7 +13,7 @@ end
 
 M.restart = function()
   for _, client in ipairs(util.get_clients({ name = "jdtls" })) do
-    local bufs = lsp.get_buffers_by_client_id(client.id)
+    local bufs = vim.tbl_keys(client.attached_buffers)
     client:stop()
     vim.wait(30000, function()
       return lsp.get_client_by_id(client.id) == nil
@@ -438,7 +438,7 @@ function M.wipe_data_and_restart()
       return
     end
     vim.schedule(function()
-      local bufs = vim.lsp.get_buffers_by_client_id(client.id)
+      local bufs = vim.tbl_keys(client.attached_buffers)
       client:stop()
       vim.wait(30000, function()
         return vim.lsp.get_client_by_id(client.id) == nil

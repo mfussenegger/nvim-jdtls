@@ -1,6 +1,8 @@
 local api = vim.api
 local M = {}
 
+---@param client vim.lsp.Client
+---@return vim.lsp.Client
 function M.add_client_methods(client)
   if vim.fn.has('nvim-0.11') == 1 then
     return client
@@ -13,6 +15,7 @@ function M.add_client_methods(client)
   }, { __index = client })
 end
 
+---@return vim.lsp.Client[]
 function M.get_clients(...)
   ---@diagnostic disable-next-line: deprecated
   local clients = (vim.lsp.get_clients or vim.lsp.get_active_clients)(...)

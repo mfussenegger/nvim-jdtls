@@ -89,7 +89,12 @@ local function start_debug_adapter(callback, config)
       and client.config
       and client.config.root_dir == config.cwd
   end, util.get_clients())[1]
-  local bufnr = vim.lsp.get_buffers_by_client_id(jdtls and jdtls.id)[1] or vim.api.nvim_get_current_buf()
+  local bufnr
+  if jdtls then
+    bufnr = next(jdtls.attached_buffers)
+  else
+    bufnr = vim.api.nvim_get_current_buf()
+  end
   util.execute_command({command = 'vscode.java.startDebugSession'}, function(err0, port)
     assert(not err0, vim.inspect(err0))
 
