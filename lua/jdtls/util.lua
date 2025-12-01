@@ -100,8 +100,10 @@ function M.with_java_executable(mainclass, project, fn, bufnr)
     on_response = function(err, java_exec)
       if err then
         print('Could not resolve java executable: ' .. err.message)
-      else
+      elseif java_exec then
         fn(java_exec)
+      else
+        print(string.format("Could not resolve java executable for %s %s", mainclass, project))
       end
     end
   else
@@ -161,7 +163,8 @@ end
 
 
 function M.resolve_classname()
-  local lines = api.nvim_buf_get_lines(0, 0, -1, true)
+  local bufnr = api.nvim_get_current_buf()
+  local lines = api.nvim_buf_get_lines(bufnr, 0, -1, true)
   local pkgname
   for _, line in ipairs(lines) do
     local match = line:match('package ([a-z0-9_\\.]+);')
@@ -170,7 +173,31 @@ function M.resolve_classname()
       break
     end
   end
-  local classname = vim.fn.fnamemodify(vim.fn.expand('%'), ':t:r')
+  local fname = vim.fn.expand("%")
+  local classname
+  if vim.startswith(fname, "jdt://") then
+    local parser, err = vim.treesitter.get_parser(bufnr, nil, { error = false })
+    assert(parser, err)
+    local query = vim.treesitter.query.parse(parser:lang(), [[
+      (class_declaration
+        name: (identifier) @name
+      )
+    ]])
+    local tree = parser:parse()[1]
+    assert(tree, "Must be able to parse buffer")
+    local root = tree:root()
+    local class_node = nil
+    for _, node in query:iter_captures(root, bufnr, 0, -1) do
+      class_node = node
+    end
+    if class_node then
+      classname =  vim.treesitter.get_node_text(class_node, bufnr)
+    else
+      error("Couldn't find class declaration in: " .. fname)
+    end
+  else
+    classname = vim.fn.fnamemodify(fname, ':t:r')
+  end
   if pkgname then
     return pkgname .. '.' .. classname
   else
