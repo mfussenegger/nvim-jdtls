@@ -1356,4 +1356,127 @@ function M.set_runtime(runtime)
 end
 
 
+
+---@class jdtls.ExtendedDocumentSymbol : lsp.DocumentSymbol
+---@field uri string?
+---@field __parent jdtls.ExtendedDocumentSymbol?
+
+
+--- Queries the symbols of the current class - including those inherited from
+--- base classes - and shows the result using ui.select.
+---
+--- Jumps to the location on selection.
+function M.extended_symbols()
+  -- Code is derived from nvim-qwahl lsp_tags
+
+  local bufnr = api.nvim_get_current_buf()
+  local win = api.nvim_get_current_win()
+  local method = "java/extendedDocumentSymbol"
+  local clients = util.get_clients({ name = "jdtls", bufnr = bufnr, method = method })
+  if not next(clients) then
+    vim.notify("No jdtls client found supporting " .. method)
+    return
+  end
+
+  local num_remaining = #clients
+  local items = {}
+  local add_items = nil
+  local num_root_primitives = 0
+
+  ---@param xs table[]
+  ---@param parent table?
+  add_items = function(xs, parent)
+    for _, x in ipairs(xs) do
+      x.__parent = parent
+      table.insert(items, x)
+      if x.children then
+        assert(add_items)
+        add_items(x.children, x)
+      end
+    end
+  end
+
+  ---@param item jdtls.ExtendedDocumentSymbol
+  local function jump(item)
+    if not item then
+      return
+    end
+    if item.uri then
+      local buf = vim.uri_to_bufnr(item.uri)
+      api.nvim_win_set_buf(win, buf)
+    end
+    local range = item.range
+    api.nvim_win_set_cursor(win, {
+      range.start.line + 1,
+      range.start.character
+    })
+    api.nvim_win_call(win, function()
+      vim.cmd('normal! zvzz')
+    end)
+  end
+
+  local function countdown()
+    num_remaining = num_remaining - 1
+    if num_remaining > 0 then
+      return
+    end
+
+    if not next(items) then
+      vim.notify("No symbols found", vim.log.levels.INFO)
+      return
+    end
+
+    local prompt = "Symbol: "
+
+    ---@param item jdtls.ExtendedDocumentSymbol
+    local function format_item(item)
+      local path = {}
+      local parent = item.__parent
+      while parent do
+        table.insert(path, parent.name)
+        parent = parent.__parent
+      end
+      local kind = vim.lsp.protocol.SymbolKind[item.kind]
+      -- Omit the root if there are no non-container symbols on root level
+      if num_root_primitives == 0 and next(path) then
+        table.remove(path, #path)
+      end
+      if next(path) then
+        local reverse_path = vim.iter(path):rev():totable()
+        return string.format('[%s] %s: %s', kind, table.concat(reverse_path, ' » '), item.name)
+      else
+        return string.format('[%s] %s', kind, item.name)
+      end
+    end
+    ui.pick_one_async(items, prompt, format_item, jump)
+  end
+
+  ---@param err lsp.ResponseError
+  ---@param result jdtls.ExtendedDocumentSymbol[]
+  local function on_response(err, result)
+    if err then
+      error(vim.inspect(err))
+    end
+    local xs = result or {}
+    for _, x in ipairs(xs) do
+      -- 6= Method; first kind not a container
+      -- (File = 1; Module = 2; Namespace = 3; Package = 4; Class = 5;)
+      if x.kind >= 6 then
+        num_root_primitives = num_root_primitives + 1
+      end
+    end
+    add_items(xs)
+    countdown()
+  end
+
+  for _, client in ipairs(clients) do
+    local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+
+    --- off-spec method
+    ---@diagnostic disable-next-line: param-type-mismatch
+    client:request(method, params, on_response, bufnr)
+  end
+end
+
+
 return M

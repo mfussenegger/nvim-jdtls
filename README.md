@@ -33,6 +33,7 @@ alternative:
   - [x] Generate delegate methods
   - [x] Move package, instance method, static method or type
   - [x] Signature refactoring
+- [x] `extended_symbols` function to show symbol selection including those from base classes.
 - [x] `javap` command to show bytecode of current file
 - [x] `jol` command to show memory usage of current file (`jol_path` must be set)
 - [x] `jshell` command to open up `jshell` with `classpath` from project set
@@ -519,6 +520,33 @@ This is expected. The Neovim `shiftwidth` and `tabstop` settings have a higher
 priority.
 
 
+## Development
+
+Run tests with [busted]:
+
+```
+busted spec/
+```
+
+Run `eval $(luarocks path --no-bin)` first if you see the following error:
+
+```
+E5113: Error while calling lua chunk: ...uarocks/lib/luarocks/rocks-5.1/busted/2.2.0-1/bin/busted:3: module 'busted.runner' not found:
+        no field package.preload['busted.runner']
+```
+
+
+Generate docs with [vimcats]:
+
+```
+vimcats -t -f \
+    lua/jdtls.lua \
+    lua/jdtls/dap.lua \
+    lua/jdtls/tests.lua \
+    > doc/jdtls.txt
+```
+
+
 [1]: https://microsoft.github.io/language-server-protocol/
 [2]: https://neovim.io/
 [3]: https://github.com/eclipse/eclipse.jdt.ls
@@ -532,3 +560,5 @@ priority.
 [aur]: https://aur.archlinux.org/
 [aur-java-debug]: https://aur.archlinux.org/packages/java-debug
 [java-debug-options]: https://github.com/microsoft/vscode-java-debug#options
+[vimcats]: https://github.com/mrcjkb/vimcats
+[busted]: https://lunarmodules.github.io/busted/
