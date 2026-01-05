@@ -313,6 +313,7 @@ function M.start_or_attach(config, opts, start_opts)
   end
 
   local bufnr = api.nvim_get_current_buf()
+  start_opts = vim.tbl_extend('force', { bufnr = bufnr }, start_opts or {})
   local bufname = api.nvim_buf_get_name(bufnr)
   local uri = vim.uri_from_bufnr(bufnr)
   -- jdtls requires files to exist on the filesystem; it doesn't play well with scratch buffers
