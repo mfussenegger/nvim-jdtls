@@ -327,6 +327,9 @@ function M.start_or_attach(config, opts, start_opts)
   config.handlers = config.handlers or {}
   local status_handler = config.handlers["language/status"] or status_callback
   config.handlers['language/status'] = function(err, result, ctx)
+    if not vim.api.nvim_buf_is_valid(bufnr) then
+      return
+    end
     pcall(status_handler, err, result)
     if result.type == "ServiceReady" then
       local setting = "org.eclipse.jdt.ls.core.sourcePaths"
