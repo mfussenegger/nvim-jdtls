@@ -8,11 +8,12 @@ matrix:
   nvim_version:
     - latest
     - 0.11
+    - 0.12
 
 steps:
   - name: test
-    image: anatolelucet/neovim:${nvim_version}-alpine
+    image: codeberg.org/mfussenegger/nvimdev:${nvim_version}
+    pull: true
     commands:
-      - apk add lua5.1 luarocks5.1 lua-busted
-      - eval $(luarocks-5.1 path --no-bin)
+      - luacheck .
       - busted

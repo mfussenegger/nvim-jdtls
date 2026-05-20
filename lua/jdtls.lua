@@ -1209,8 +1209,9 @@ end
 --- nvim-jdtls by defaults configures a `BufReadCmd` event which uses this function.
 --- You shouldn't need to call this manually.
 ---
+---@param buf integer
 ---@param fname string
-function M.open_classfile(fname)
+function M.open_classfile(buf, fname)
   local uri
   local use_cmd
   if vim.startswith(fname, "jdt://") then
@@ -1223,7 +1224,6 @@ function M.open_classfile(fname)
       return
     end
   end
-  local buf = api.nvim_get_current_buf()
   vim.bo[buf].modifiable = true
   vim.bo[buf].swapfile = false
   vim.bo[buf].buftype = 'nofile'
